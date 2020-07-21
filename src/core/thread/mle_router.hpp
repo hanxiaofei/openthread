@@ -377,7 +377,7 @@ public:
      *
      * @param[in]  aAddress  The address of the Neighbor.
      *
-     * @returns A pointer to the Neighbor corresponding to @p aAddress, NULL otherwise.
+     * @returns A pointer to the Neighbor corresponding to @p aAddress, nullptr otherwise.
      *
      */
     Neighbor *GetNeighbor(uint16_t aAddress);
@@ -387,7 +387,7 @@ public:
      *
      * @param[in]  aAddress  The address of the Neighbor.
      *
-     * @returns A pointer to the Neighbor corresponding to @p aAddress, NULL otherwise.
+     * @returns A pointer to the Neighbor corresponding to @p aAddress, nullptr otherwise.
      *
      */
     Neighbor *GetNeighbor(const Mac::ExtAddress &aAddress);
@@ -397,7 +397,7 @@ public:
      *
      * @param[in]  aAddress  The address of the Neighbor.
      *
-     * @returns A pointer to the Neighbor corresponding to @p aAddress, NULL otherwise.
+     * @returns A pointer to the Neighbor corresponding to @p aAddress, nullptr otherwise.
      *
      */
     Neighbor *GetNeighbor(const Mac::Address &aAddress);
@@ -407,7 +407,7 @@ public:
      *
      * @param[in]  aAddress  The address of the Neighbor.
      *
-     * @returns A pointer to the Neighbor corresponding to @p aAddress, NULL otherwise.
+     * @returns A pointer to the Neighbor corresponding to @p aAddress, nullptr otherwise.
      *
      */
     Neighbor *GetNeighbor(const Ip6::Address &aAddress);
@@ -418,7 +418,7 @@ public:
      *
      * @param[in]  aAddress  The address of the Neighbor.
      *
-     * @returns A pointer to the Neighbor corresponding to @p aAddress, NULL otherwise.
+     * @returns A pointer to the Neighbor corresponding to @p aAddress, nullptr otherwise.
      *
      */
     Neighbor *GetRxOnlyNeighborRouter(const Mac::Address &aAddress);
@@ -569,7 +569,7 @@ public:
      *
      */
     void SetSteeringData(const Mac::ExtAddress *aExtAddress);
-#endif // OPENTHREAD_CONFIG_MLE_STEERING_DATA_SET_OOB_ENABLE
+#endif
 
     /**
      * This method gets the assigned parent priority.
@@ -605,8 +605,8 @@ public:
     /**
      * This method register the "neighbor table changed" callback function.
      *
-     * The provided callback (if non-NULL) will be invoked when a child/router entry is being added/remove to/from the
-     * neighbor table. Subsequent calls to this method will overwrite the previous callback.
+     * The provided callback (if non-nullptr) will be invoked when a child/router entry is being added/remove to/from
+     * the neighbor table. Subsequent calls to this method will overwrite the previous callback.
      *
      * @param[in] aCallback    A pointer to callback handler function.
      *
@@ -723,11 +723,11 @@ private:
     otError AppendPendingDataset(Message &aMessage);
     otError GetChildInfo(Child &aChild, otChildInfo &aChildInfo);
     void    GetNeighborInfo(Neighbor &aNeighbor, otNeighborInfo &aNeighInfo);
-    otError RefreshStoredChildren(void);
+    void    RefreshStoredChildren(void);
     void    HandleDetachStart(void);
-    otError HandleChildStart(AttachMode aMode);
-    otError HandleLinkRequest(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo, Neighbor *aNeighbor);
-    otError HandleLinkAccept(const Message &         aMessage,
+    void    HandleChildStart(AttachMode aMode);
+    void    HandleLinkRequest(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo, Neighbor *aNeighbor);
+    void    HandleLinkAccept(const Message &         aMessage,
                              const Ip6::MessageInfo &aMessageInfo,
                              uint32_t                aKeySequence,
                              Neighbor *              aNeighbor);
@@ -736,23 +736,21 @@ private:
                              uint32_t                aKeySequence,
                              Neighbor *              aNeighbor,
                              bool                    aRequest);
-    otError HandleLinkAcceptAndRequest(const Message &         aMessage,
+    void    HandleLinkAcceptAndRequest(const Message &         aMessage,
                                        const Ip6::MessageInfo &aMessageInfo,
                                        uint32_t                aKeySequence,
                                        Neighbor *              aNeighbor);
     otError HandleAdvertisement(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo, Neighbor *);
-    otError HandleParentRequest(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
-    otError HandleChildIdRequest(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo, uint32_t aKeySequence);
-    otError HandleChildUpdateRequest(const Message &         aMessage,
-                                     const Ip6::MessageInfo &aMessageInfo,
-                                     uint32_t                aKeySequence);
-    otError HandleChildUpdateResponse(const Message &         aMessage,
-                                      const Ip6::MessageInfo &aMessageInfo,
-                                      uint32_t                aKeySequence,
-                                      Neighbor *              aNeighbor);
-    otError HandleDataRequest(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo, const Neighbor *aNeighbor);
-    void    HandleNetworkDataUpdateRouter(void);
-    otError HandleDiscoveryRequest(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
+    void    HandleParentRequest(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
+    void    HandleChildIdRequest(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo, uint32_t aKeySequence);
+    void HandleChildUpdateRequest(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo, uint32_t aKeySequence);
+    void HandleChildUpdateResponse(const Message &         aMessage,
+                                   const Ip6::MessageInfo &aMessageInfo,
+                                   uint32_t                aKeySequence,
+                                   Neighbor *              aNeighbor);
+    void HandleDataRequest(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo, const Neighbor *aNeighbor);
+    void HandleNetworkDataUpdateRouter(void);
+    void HandleDiscoveryRequest(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
     void HandleTimeSync(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo, const Neighbor *aNeighbor);
 #endif
@@ -760,11 +758,11 @@ private:
     otError ProcessRouteTlv(const RouteTlv &aRoute);
     void    StopAdvertiseTimer(void);
     otError SendAddressSolicit(ThreadStatusTlv::Status aStatus);
-    otError SendAddressRelease(void);
+    void    SendAddressRelease(void);
     void    SendAddressSolicitResponse(const Coap::Message &   aRequest,
                                        const Router *          aRouter,
                                        const Ip6::MessageInfo &aMessageInfo);
-    otError SendAdvertisement(void);
+    void    SendAdvertisement(void);
     otError SendLinkAccept(const Ip6::MessageInfo &aMessageInfo,
                            Neighbor *              aNeighbor,
                            const RequestedTlvs &   aRequestedTlvs,
@@ -777,10 +775,7 @@ private:
                                     const uint8_t *         aTlvs,
                                     uint8_t                 aTlvsLength,
                                     const Challenge &       aChallenge);
-    otError SendDataResponse(const Ip6::Address &aDestination,
-                             const uint8_t *     aTlvs,
-                             uint8_t             aTlvsLength,
-                             uint16_t            aDelay);
+    void SendDataResponse(const Ip6::Address &aDestination, const uint8_t *aTlvs, uint8_t aTlvsLength, uint16_t aDelay);
     otError SendDiscoveryResponse(const Ip6::Address &aDestination, uint16_t aPanId);
 
     void    SetStateRouter(uint16_t aRloc16);
@@ -861,8 +856,8 @@ private:
 #endif
 
 #if OPENTHREAD_CONFIG_MLE_STEERING_DATA_SET_OOB_ENABLE
-    MeshCoP::SteeringDataTlv mSteeringData;
-#endif // OPENTHREAD_CONFIG_MLE_STEERING_DATA_SET_OOB_ENABLE
+    MeshCoP::SteeringData mSteeringData;
+#endif
 };
 
 #endif // OPENTHREAD_FTD

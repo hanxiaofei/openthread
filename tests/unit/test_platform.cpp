@@ -32,20 +32,20 @@
 
 bool                 g_testPlatAlarmSet     = false;
 uint32_t             g_testPlatAlarmNext    = 0;
-testPlatAlarmStop    g_testPlatAlarmStop    = NULL;
-testPlatAlarmStartAt g_testPlatAlarmStartAt = NULL;
-testPlatAlarmGetNow  g_testPlatAlarmGetNow  = NULL;
+testPlatAlarmStop    g_testPlatAlarmStop    = nullptr;
+testPlatAlarmStartAt g_testPlatAlarmStartAt = nullptr;
+testPlatAlarmGetNow  g_testPlatAlarmGetNow  = nullptr;
 
 otRadioCaps                     g_testPlatRadioCaps               = OT_RADIO_CAPS_NONE;
-testPlatRadioSetPanId           g_testPlatRadioSetPanId           = NULL;
-testPlatRadioSetExtendedAddress g_testPlatRadioSetExtendedAddress = NULL;
-testPlatRadioIsEnabled          g_testPlatRadioIsEnabled          = NULL;
-testPlatRadioEnable             g_testPlatRadioEnable             = NULL;
-testPlatRadioDisable            g_testPlatRadioDisable            = NULL;
-testPlatRadioSetShortAddress    g_testPlatRadioSetShortAddress    = NULL;
-testPlatRadioReceive            g_testPlatRadioReceive            = NULL;
-testPlatRadioTransmit           g_testPlatRadioTransmit           = NULL;
-testPlatRadioGetTransmitBuffer  g_testPlatRadioGetTransmitBuffer  = NULL;
+testPlatRadioSetPanId           g_testPlatRadioSetPanId           = nullptr;
+testPlatRadioSetExtendedAddress g_testPlatRadioSetExtendedAddress = nullptr;
+testPlatRadioIsEnabled          g_testPlatRadioIsEnabled          = nullptr;
+testPlatRadioEnable             g_testPlatRadioEnable             = nullptr;
+testPlatRadioDisable            g_testPlatRadioDisable            = nullptr;
+testPlatRadioSetShortAddress    g_testPlatRadioSetShortAddress    = nullptr;
+testPlatRadioReceive            g_testPlatRadioReceive            = nullptr;
+testPlatRadioTransmit           g_testPlatRadioTransmit           = nullptr;
+testPlatRadioGetTransmitBuffer  g_testPlatRadioGetTransmitBuffer  = nullptr;
 
 enum
 {
@@ -55,40 +55,20 @@ enum
 
 uint8_t g_flash[FLASH_SWAP_SIZE * FLASH_SWAP_NUM];
 
-void testPlatResetToDefaults(void)
-{
-    g_testPlatAlarmSet     = false;
-    g_testPlatAlarmNext    = 0;
-    g_testPlatAlarmStop    = NULL;
-    g_testPlatAlarmStartAt = NULL;
-    g_testPlatAlarmGetNow  = NULL;
-
-    g_testPlatRadioCaps               = OT_RADIO_CAPS_NONE;
-    g_testPlatRadioSetPanId           = NULL;
-    g_testPlatRadioSetExtendedAddress = NULL;
-    g_testPlatRadioSetShortAddress    = NULL;
-    g_testPlatRadioIsEnabled          = NULL;
-    g_testPlatRadioEnable             = NULL;
-    g_testPlatRadioDisable            = NULL;
-    g_testPlatRadioReceive            = NULL;
-    g_testPlatRadioTransmit           = NULL;
-    g_testPlatRadioGetTransmitBuffer  = NULL;
-}
-
 ot::Instance *testInitInstance(void)
 {
-    otInstance *instance = NULL;
+    otInstance *instance = nullptr;
 
 #if OPENTHREAD_CONFIG_MULTIPLE_INSTANCE_ENABLE
     size_t   instanceBufferLength = 0;
-    uint8_t *instanceBuffer       = NULL;
+    uint8_t *instanceBuffer       = nullptr;
 
     // Call to query the buffer size
-    (void)otInstanceInit(NULL, &instanceBufferLength);
+    (void)otInstanceInit(nullptr, &instanceBufferLength);
 
     // Call to allocate the buffer
     instanceBuffer = (uint8_t *)malloc(instanceBufferLength);
-    VerifyOrQuit(instanceBuffer != NULL, "Failed to allocate otInstance");
+    VerifyOrQuit(instanceBuffer != nullptr, "Failed to allocate otInstance");
     memset(instanceBuffer, 0, instanceBufferLength);
 
     // Initialize OpenThread with the buffer
@@ -167,7 +147,7 @@ uint32_t otPlatAlarmMilliGetNow(void)
     else
     {
         struct timeval tv;
-        gettimeofday(&tv, NULL);
+        gettimeofday(&tv, nullptr);
         return (uint32_t)((tv.tv_sec * 1000) + (tv.tv_usec / 1000) + 123456);
     }
 }
@@ -206,7 +186,7 @@ uint32_t otPlatAlarmMicroGetNow(void)
     else
     {
         struct timeval tv;
-        gettimeofday(&tv, NULL);
+        gettimeofday(&tv, nullptr);
         return (uint32_t)((tv.tv_sec * 1000000) + tv.tv_usec + 123456);
     }
 }
@@ -616,7 +596,7 @@ uint64_t otPlatTimeGet(void)
 {
     struct timeval tv;
 
-    gettimeofday(&tv, NULL);
+    gettimeofday(&tv, nullptr);
 
     return (uint64_t)tv.tv_sec * 1000000 + (uint64_t)tv.tv_usec;
 }
@@ -626,5 +606,12 @@ uint16_t otPlatTimeGetXtalAccuracy(void)
     return 0;
 }
 #endif // OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
+
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+void otPlatOtnsStatus(const char *aStatus)
+{
+    OT_UNUSED_VARIABLE(aStatus);
+}
+#endif // OPENTHREAD_CONFIG_OTNS_ENABLE
 
 } // extern "C"

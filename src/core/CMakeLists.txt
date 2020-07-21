@@ -38,17 +38,14 @@ set_target_properties(
 )
 
 target_compile_definitions(openthread-ftd PRIVATE
-    ${OT_PRIVATE_DEFINES}
     OPENTHREAD_FTD=1
 )
 
 target_compile_definitions(openthread-mtd PRIVATE
-    ${OT_PRIVATE_DEFINES}
     OPENTHREAD_MTD=1
 )
 
 target_compile_definitions(openthread-radio PRIVATE
-    ${OT_PRIVATE_DEFINES}
     OPENTHREAD_RADIO=1
 )
 
@@ -65,7 +62,6 @@ target_compile_options(openthread-radio PRIVATE
 )
 
 set(COMMON_INCLUDES
-    ${OT_PRIVATE_INCLUDES}
     ${PROJECT_SOURCE_DIR}/src/core
 )
 
@@ -176,6 +172,7 @@ set(COMMON_SOURCES
     thread/announce_begin_server.cpp
     thread/announce_sender.cpp
     thread/child_table.cpp
+    thread/discover_scanner.cpp
     thread/dua_manager.cpp
     thread/energy_scan_server.cpp
     thread/indirect_sender.cpp
@@ -231,6 +228,8 @@ target_sources(openthread-radio PRIVATE
     common/string.cpp
     common/tasklet.cpp
     common/timer.cpp
+    crypto/aes_ccm.cpp
+    crypto/aes_ecb.cpp
     diags/factory_diags.cpp
     mac/link_raw.cpp
     mac/mac_frame.cpp
@@ -247,9 +246,17 @@ target_sources(openthread-radio PRIVATE
 target_link_libraries(openthread-ftd
     PRIVATE
         ${OT_MBEDTLS}
+        ot-config
 )
 
 target_link_libraries(openthread-mtd
     PRIVATE
         ${OT_MBEDTLS}
+        ot-config
+)
+
+target_link_libraries(openthread-radio
+    PRIVATE
+        ${OT_MBEDTLS}
+        ot-config
 )

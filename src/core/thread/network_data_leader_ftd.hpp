@@ -152,7 +152,7 @@ public:
      * This method scans network data for given Service ID and returns pointer to the respective TLV, if present.
      *
      * @param aServiceId Service ID to look for.
-     * @return Pointer to the Service TLV for given Service ID, or NULL if not present.
+     * @return Pointer to the Service TLV for given Service ID, or nullptr if not present.
      *
      */
     const ServiceTlv *FindServiceById(uint8_t aServiceId) const;
@@ -206,7 +206,7 @@ private:
     static void HandleTimer(Timer &aTimer);
     void        HandleTimer(void);
 
-    otError RegisterNetworkData(uint16_t aRloc16, const uint8_t *aTlvs, uint8_t aTlvsLength);
+    void RegisterNetworkData(uint16_t aRloc16, const uint8_t *aTlvs, uint8_t aTlvsLength);
 
     otError AddPrefix(const PrefixTlv &aPrefix, ChangedFlags &aChangedFlags);
     otError AddHasRoute(const HasRouteTlv &aHasRoute, PrefixTlv &aDstPrefix, ChangedFlags &aChangedFlags);

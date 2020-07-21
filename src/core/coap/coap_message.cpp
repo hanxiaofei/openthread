@@ -47,7 +47,7 @@ void Message::Init(void)
 {
     GetHelpData().Clear();
     SetVersion(kVersion1);
-    IgnoreError(SetOffset(0));
+    SetOffset(0);
     GetHelpData().mHeaderLength = kMinHeaderLength;
 
     IgnoreError(SetLength(GetHelpData().mHeaderLength));
@@ -175,7 +175,7 @@ otError Message::AppendUriPathOptions(const char *aUriPath)
     const char *cur   = aUriPath;
     const char *end;
 
-    while ((end = strchr(cur, '/')) != NULL)
+    while ((end = strchr(cur, '/')) != nullptr)
     {
         SuccessOrExit(error = AppendOption(OT_COAP_OPTION_URI_PATH, static_cast<uint16_t>(end - cur), cur));
         cur = end + 1;
@@ -235,7 +235,7 @@ otError Message::SetPayloadMarker(void)
     GetHelpData().mHeaderLength = GetLength();
 
     // Set offset to the start of payload.
-    IgnoreError(SetOffset(GetHelpData().mHeaderLength));
+    SetOffset(GetHelpData().mHeaderLength);
 
 exit:
     return error;
@@ -246,7 +246,7 @@ otError Message::ParseHeader(void)
     otError        error = OT_ERROR_NONE;
     OptionIterator iterator;
 
-    OT_ASSERT(mBuffer.mHead.mInfo.mReserved >=
+    OT_ASSERT(mBuffer.mHead.mMetadata.mReserved >=
               sizeof(GetHelpData()) +
                   static_cast<size_t>((reinterpret_cast<uint8_t *>(&GetHelpData()) - mBuffer.mHead.mData)));
 
@@ -258,13 +258,13 @@ otError Message::ParseHeader(void)
     VerifyOrExit(GetTokenLength() <= kMaxTokenLength, error = OT_ERROR_PARSE);
 
     SuccessOrExit(error = iterator.Init(this));
-    for (const otCoapOption *option = iterator.GetFirstOption(); option != NULL; option = iterator.GetNextOption())
+    for (const otCoapOption *option = iterator.GetFirstOption(); option != nullptr; option = iterator.GetNextOption())
     {
     }
 
     VerifyOrExit(iterator.mNextOptionOffset > 0, error = OT_ERROR_PARSE);
     GetHelpData().mHeaderLength = iterator.mNextOptionOffset - GetHelpData().mHeaderOffset;
-    IgnoreError(MoveOffset(GetHelpData().mHeaderLength));
+    MoveOffset(GetHelpData().mHeaderLength);
 
 exit:
     return error;
@@ -304,7 +304,7 @@ Message *Message::Clone(uint16_t aLength) const
 {
     Message *message = static_cast<Message *>(ot::Message::Clone(aLength));
 
-    VerifyOrExit(message != NULL, OT_NOOP);
+    VerifyOrExit(message != nullptr, OT_NOOP);
 
     memcpy(&message->GetHelpData(), &GetHelpData(), sizeof(GetHelpData()));
 
@@ -434,9 +434,9 @@ exit:
 
 const otCoapOption *OptionIterator::GetFirstOptionMatching(uint16_t aOption)
 {
-    const otCoapOption *rval = NULL;
+    const otCoapOption *rval = nullptr;
 
-    for (const otCoapOption *option = GetFirstOption(); option != NULL; option = GetNextOption())
+    for (const otCoapOption *option = GetFirstOption(); option != nullptr; option = GetNextOption())
     {
         if (option->mNumber == aOption)
         {
@@ -451,7 +451,7 @@ const otCoapOption *OptionIterator::GetFirstOptionMatching(uint16_t aOption)
 
 const otCoapOption *OptionIterator::GetFirstOption(void)
 {
-    const otCoapOption *option  = NULL;
+    const otCoapOption *option  = nullptr;
     const Message &     message = GetMessage();
 
     ClearOption();
@@ -468,9 +468,9 @@ const otCoapOption *OptionIterator::GetFirstOption(void)
 
 const otCoapOption *OptionIterator::GetNextOptionMatching(uint16_t aOption)
 {
-    const otCoapOption *rval = NULL;
+    const otCoapOption *rval = nullptr;
 
-    for (const otCoapOption *option = GetNextOption(); option != NULL; option = GetNextOption())
+    for (const otCoapOption *option = GetNextOption(); option != nullptr; option = GetNextOption())
     {
         if (option->mNumber == aOption)
         {
@@ -490,7 +490,7 @@ const otCoapOption *OptionIterator::GetNextOption(void)
     uint16_t       optionLength;
     uint8_t        buf[Message::kMaxOptionHeaderSize];
     uint8_t *      cur     = buf + 1;
-    otCoapOption * rval    = NULL;
+    otCoapOption * rval    = nullptr;
     const Message &message = GetMessage();
 
     VerifyOrExit(mNextOptionOffset < message.GetLength(), error = OT_ERROR_NOT_FOUND);

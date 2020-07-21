@@ -36,13 +36,7 @@
 
 #include "utils/code_utils.h"
 
-#ifndef __linux__
-#define __linux__ 0
-#endif
-
-// linux microsecond timer
-#if __linux__
-
+#ifdef __linux__
 #include <signal.h>
 #include <time.h>
 
@@ -57,12 +51,21 @@ timer_t sMicroTimer;
 #include <openthread/platform/alarm-milli.h>
 #include <openthread/platform/diag.h>
 
+#include "core/common/logging.hpp"
+#include "lib/platform/exit_code.h"
+
 #define MS_PER_S 1000
 #define NS_PER_US 1000
 #define US_PER_MS 1000
 #define US_PER_S 1000000
 
 #define DEFAULT_TIMEOUT 10 // seconds
+
+#ifdef CLOCK_MONOTONIC_RAW
+#define OT_SIMULATION_CLOCK_ID CLOCK_MONOTONIC_RAW
+#else
+#define OT_SIMULATION_CLOCK_ID CLOCK_MONOTONIC
+#endif
 
 static bool     sIsMsRunning = false;
 static uint32_t sMsAlarm     = 0;
@@ -72,11 +75,13 @@ static uint32_t sUsAlarm     = 0;
 
 static uint32_t sSpeedUpFactor = 1;
 
-#if __linux__
+#ifdef __linux__
 static void microTimerHandler(int aSignal, siginfo_t *aSignalInfo, void *aUserContext)
 {
     assert(aSignal == OPENTHREAD_CONFIG_MICRO_TIMER_SIGNAL);
     assert(aSignalInfo->si_value.sival_ptr == &sMicroTimer);
+    (void)aSignal;
+    (void)aSignalInfo;
     (void)aUserContext;
 }
 #endif
@@ -85,7 +90,7 @@ void platformAlarmInit(uint32_t aSpeedUpFactor)
 {
     sSpeedUpFactor = aSpeedUpFactor;
 
-#if __linux__
+#ifdef __linux__
     {
         struct sigaction sa;
 
@@ -105,7 +110,7 @@ void platformAlarmInit(uint32_t aSpeedUpFactor)
         sev.sigev_signo           = OPENTHREAD_CONFIG_MICRO_TIMER_SIGNAL;
         sev.sigev_value.sival_ptr = &sMicroTimer;
 
-        if (-1 == timer_create(CLOCK_REALTIME, &sev, &sMicroTimer))
+        if (-1 == timer_create(CLOCK_MONOTONIC, &sev, &sMicroTimer))
         {
             perror("timer_create");
             exit(EXIT_FAILURE);
@@ -120,13 +125,9 @@ uint64_t platformGetNow(void)
     struct timespec now;
     int             err;
 
-#ifdef CLOCK_MONOTONIC_RAW
-    err = clock_gettime(CLOCK_MONOTONIC_RAW, &now);
-#else
-    err = clock_gettime(CLOCK_MONOTONIC, &now);
-#endif
+    err = clock_gettime(OT_SIMULATION_CLOCK_ID, &now);
 
-    assert(err == 0);
+    VerifyOrDie(err == 0, OT_EXIT_ERROR_ERRNO);
 
     return (uint64_t)now.tv_sec * sSpeedUpFactor * US_PER_S + (uint64_t)now.tv_nsec * sSpeedUpFactor / NS_PER_US;
 }
@@ -176,7 +177,7 @@ void otPlatAlarmMicroStartAt(otInstance *aInstance, uint32_t aT0, uint32_t aDt)
     sUsAlarm     = aT0 + aDt;
     sIsUsRunning = true;
 
-#if __linux__
+#ifdef __linux__
     {
         struct itimerspec its;
         uint32_t          diff = sUsAlarm - otPlatAlarmMicroGetNow();
@@ -202,7 +203,7 @@ void otPlatAlarmMicroStop(otInstance *aInstance)
 
     sIsUsRunning = false;
 
-#if __linux__
+#ifdef __linux__
     {
         struct itimerspec its = {{0, 0}, {0, 0}};
 

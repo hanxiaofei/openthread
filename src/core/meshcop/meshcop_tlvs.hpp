@@ -41,7 +41,6 @@
 #include <openthread/dataset.h>
 #include <openthread/platform/radio.h>
 
-#include "common/crc16.hpp"
 #include "common/encoding.hpp"
 #include "common/message.hpp"
 #include "common/string.hpp"
@@ -158,26 +157,34 @@ public:
      * @retval OT_ERROR_NOT_FOUND  Could not find the TLV with Type @p aType.
      *
      */
-    static otError GetTlv(const Message &aMessage, Type aType, uint16_t aMaxLength, Tlv &aTlv)
+    static otError FindTlv(const Message &aMessage, Type aType, uint16_t aMaxLength, Tlv &aTlv)
     {
-        return ot::Tlv::Get(aMessage, static_cast<uint8_t>(aType), aMaxLength, aTlv);
+        return ot::Tlv::FindTlv(aMessage, static_cast<uint8_t>(aType), aMaxLength, aTlv);
     }
 
     /**
-     * This static method finds the offset and length of a given TLV type.
+     * This static method searches for a TLV with a given type in a message, ensures its length is same or larger than
+     * an expected minimum value, and then reads its value into a given buffer.
      *
-     * @param[in]   aMessage    A reference to the message.
-     * @param[in]   aType       The Type value to search for.
-     * @param[out]  aOffset     The offset where the value starts.
-     * @param[out]  aLength     The length of the value.
+     * If the TLV length is smaller than the minimum length @p aLength, the TLV is considered invalid. In this case,
+     * this method returns `OT_ERROR_PARSE` and the @p aValue buffer is not updated.
      *
-     * @retval OT_ERROR_NONE       Successfully found the TLV.
+     * If the TLV length is larger than @p aLength, the TLV is considered valid, but only the first @p aLength bytes
+     * of the value are read and copied into the @p aValue buffer.
+     *
+     * @param[in]    aMessage    A reference to the message.
+     * @param[in]    aType       The TLV type to search for.
+     * @param[out]   aValue      A buffer to output the value (must contain at least @p aLength bytes).
+     * @param[in]    aLength     The expected (minimum) length of the TLV value.
+     *
+     * @retval OT_ERROR_NONE       The TLV was found and read successfully. @p aValue is updated.
      * @retval OT_ERROR_NOT_FOUND  Could not find the TLV with Type @p aType.
+     * @retval OT_ERROR_PARSE      TLV was found but it was not well-formed and could not be parsed.
      *
      */
-    static otError GetValueOffset(const Message &aMessage, Type aType, uint16_t &aOffset, uint16_t &aLength)
+    static otError FindTlv(const Message &aMessage, Type aType, void *aValue, uint8_t aLength)
     {
-        return ot::Tlv::GetValueOffset(aMessage, static_cast<uint8_t>(aType), aOffset, aLength);
+        return ot::Tlv::FindTlv(aMessage, aType, aValue, aLength);
     }
 
     /**
@@ -197,7 +204,7 @@ public:
      * @param[in]  aTlvsLength The length (number of bytes) in TLV sequence.
      * @param[in]  aType       The TLV Type to search for.
      *
-     * @returns A pointer to the TLV if found, or NULL if not found.
+     * @returns A pointer to the TLV if found, or nullptr if not found.
      *
      */
     static Tlv *FindTlv(uint8_t *aTlvsStart, uint16_t aTlvsLength, Type aType)
@@ -212,7 +219,7 @@ public:
      * @param[in]  aTlvsLength The length (number of bytes) in TLV sequence.
      * @param[in]  aType       The TLV Type to search for.
      *
-     * @returns A pointer to the TLV if found, or NULL if not found.
+     * @returns A pointer to the TLV if found, or nullptr if not found.
      *
      */
     static const Tlv *FindTlv(const uint8_t *aTlvsStart, uint16_t aTlvsLength, Type aType);
@@ -224,7 +231,7 @@ public:
      * @param[in]  aTlvsStart  A pointer to the start of the sequence of TLVs to search within.
      * @param[in]  aTlvsLength The length (number of bytes) in TLV sequence.
      *
-     * @returns A pointer to the TLV if found, or NULL if not found.
+     * @returns A pointer to the TLV if found, or nullptr if not found.
      *
      */
     template <typename TlvType> static TlvType *FindTlv(uint8_t *aTlvsStart, uint16_t aTlvsLength)
@@ -239,7 +246,7 @@ public:
      * @param[in]  aTlvsStart  A pointer to the start of the sequence of TLVs to search within.
      * @param[in]  aTlvsLength The length (number of bytes) in TLV sequence.
      *
-     * @returns A pointer to the TLV if found, or NULL if not found.
+     * @returns A pointer to the TLV if found, or nullptr if not found.
      *
      */
     template <typename TlvType> static const TlvType *FindTlv(const uint8_t *aTlvsStart, uint16_t aTlvsLength)
@@ -716,6 +723,8 @@ private:
     Mle::MeshLocalPrefix mMeshLocalPrefix;
 } OT_TOOL_PACKED_END;
 
+class SteeringData;
+
 /**
  * This class implements Steering Data TLV generation and parsing.
  *
@@ -767,88 +776,12 @@ public:
     void Clear(void) { memset(mSteeringData, 0, GetSteeringDataLength()); }
 
     /**
-     * Ths method sets all bits in the Bloom Filter to one.
+     * This method copies the Steering Data from the TLV into a given `SteeringData` variable.
+     *
+     * @param[out]  aSteeringData   A reference to a `SteeringData` to copy into.
      *
      */
-    void Set(void) { memset(mSteeringData, 0xff, GetSteeringDataLength()); }
-
-    /**
-     * Ths method indicates whether or not the SteeringData allows all Joiners.
-     *
-     * @retval TRUE   If the SteeringData allows all Joiners.
-     * @retval FALSE  If the SteeringData doesn't allow any Joiner.
-     *
-     */
-    bool DoesAllowAny(void)
-    {
-        bool rval = true;
-
-        for (uint8_t i = 0; i < GetSteeringDataLength(); i++)
-        {
-            if (mSteeringData[i] != 0xff)
-            {
-                rval = false;
-                break;
-            }
-        }
-
-        return rval;
-    }
-
-    /**
-     * This method returns the number of bits in the Bloom Filter.
-     *
-     * @returns The number of bits in the Bloom Filter.
-     *
-     */
-    uint8_t GetNumBits(void) const { return GetSteeringDataLength() * 8; }
-
-    /**
-     * This method indicates whether or not bit @p aBit is set.
-     *
-     * @param[in]  aBit  The bit offset.
-     *
-     * @retval TRUE   If bit @p aBit is set.
-     * @retval FALSE  If bit @p aBit is not set.
-     *
-     */
-    bool GetBit(uint8_t aBit) const
-    {
-        return (mSteeringData[GetSteeringDataLength() - 1 - (aBit / 8)] & (1 << (aBit % 8))) != 0;
-    }
-
-    /**
-     * This method clears bit @p aBit.
-     *
-     * @param[in]  aBit  The bit offset.
-     *
-     */
-    void ClearBit(uint8_t aBit) { mSteeringData[GetSteeringDataLength() - 1 - (aBit / 8)] &= ~(1 << (aBit % 8)); }
-
-    /**
-     * This method sets bit @p aBit.
-     *
-     * @param[in]  aBit  The bit offset.
-     *
-     */
-    void SetBit(uint8_t aBit) { mSteeringData[GetSteeringDataLength() - 1 - (aBit / 8)] |= 1 << (aBit % 8); }
-
-    /**
-     * Ths method indicates whether or not the SteeringData is all zeros.
-     *
-     * @retval TRUE   If the SteeringData is all zeros.
-     * @retval FALSE  If the SteeringData isn't all zeros.
-     *
-     */
-    bool IsCleared(void) const;
-
-    /**
-     * This method computes the Bloom Filter.
-     *
-     * @param[in]  aJoinerId  The Joiner ID.
-     *
-     */
-    void ComputeBloomFilter(const otExtAddress &aJoinerId);
+    void CopyTo(SteeringData &aSteeringData);
 
 private:
     uint8_t mSteeringData[OT_STEERING_DATA_MAX_LENGTH];
@@ -1544,7 +1477,7 @@ public:
     /**
      * This method gets the first Channel Mask Entry in the Channel Mask TLV.
      *
-     * @returns A pointer to first Channel Mask Entry or NULL if not found.
+     * @returns A pointer to first Channel Mask Entry or nullptr if not found.
      *
      */
     const ChannelMaskEntryBase *GetFirstEntry(void) const;
@@ -1552,7 +1485,7 @@ public:
     /**
      * This method gets the first Channel Mask Entry in the Channel Mask TLV.
      *
-     * @returns A pointer to first Channel Mask Entry or NULL if not found.
+     * @returns A pointer to first Channel Mask Entry or nullptr if not found.
      *
      */
     ChannelMaskEntryBase *GetFirstEntry(void);
@@ -1760,7 +1693,7 @@ public:
      */
     void SetVendorName(const char *aVendorName)
     {
-        uint16_t len = (aVendorName == NULL) ? 0 : StringLength(aVendorName, sizeof(mVendorName));
+        uint16_t len = (aVendorName == nullptr) ? 0 : StringLength(aVendorName, sizeof(mVendorName));
 
         SetLength(static_cast<uint8_t>(len));
 
@@ -1829,7 +1762,7 @@ public:
      */
     void SetVendorModel(const char *aVendorModel)
     {
-        uint16_t len = (aVendorModel == NULL) ? 0 : StringLength(aVendorModel, sizeof(mVendorModel));
+        uint16_t len = (aVendorModel == nullptr) ? 0 : StringLength(aVendorModel, sizeof(mVendorModel));
 
         SetLength(static_cast<uint8_t>(len));
 
@@ -1898,7 +1831,7 @@ public:
      */
     void SetVendorSwVersion(const char *aVendorSwVersion)
     {
-        uint16_t len = (aVendorSwVersion == NULL) ? 0 : StringLength(aVendorSwVersion, sizeof(mVendorSwVersion));
+        uint16_t len = (aVendorSwVersion == nullptr) ? 0 : StringLength(aVendorSwVersion, sizeof(mVendorSwVersion));
 
         SetLength(static_cast<uint8_t>(len));
 
@@ -1967,7 +1900,7 @@ public:
      */
     void SetVendorData(const char *aVendorData)
     {
-        uint16_t len = (aVendorData == NULL) ? 0 : StringLength(aVendorData, sizeof(mVendorData));
+        uint16_t len = (aVendorData == nullptr) ? 0 : StringLength(aVendorData, sizeof(mVendorData));
 
         SetLength(static_cast<uint8_t>(len));
 

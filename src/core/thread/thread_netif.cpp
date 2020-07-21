@@ -72,6 +72,7 @@ ThreadNetif::ThreadNetif(Instance &aInstance)
     , mMac(aInstance)
     , mMeshForwarder(aInstance)
     , mMleRouter(aInstance)
+    , mDiscoverScanner(aInstance)
 #if OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE || OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     , mNetworkDataLocal(aInstance)
 #endif
@@ -137,7 +138,7 @@ void ThreadNetif::Up(void)
 
     mIsUp = true;
 
-    IgnoreError(SubscribeAllNodesMulticast());
+    SubscribeAllNodesMulticast();
     IgnoreError(Get<Mle::MleRouter>().Enable());
     IgnoreError(Get<Coap::Coap>().Start(kCoapUdpPort));
 #if OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
@@ -146,7 +147,7 @@ void ThreadNetif::Up(void)
 #if OPENTHREAD_CONFIG_SNTP_CLIENT_ENABLE
     IgnoreError(Get<Sntp::Client>().Start());
 #endif
-    Get<Notifier>().Signal(OT_CHANGED_THREAD_NETIF_STATE);
+    Get<Notifier>().Signal(kEventThreadNetifStateChanged);
 
 exit:
     return;
@@ -169,15 +170,15 @@ void ThreadNetif::Down(void)
     IgnoreError(Get<Mle::MleRouter>().Disable());
     RemoveAllExternalUnicastAddresses();
     UnsubscribeAllExternalMulticastAddresses();
-    IgnoreError(UnsubscribeAllRoutersMulticast());
-    IgnoreError(UnsubscribeAllNodesMulticast());
+    UnsubscribeAllRoutersMulticast();
+    UnsubscribeAllNodesMulticast();
 
     mIsUp = false;
     Get<MeshForwarder>().Stop();
 #if OPENTHREAD_CONFIG_CHANNEL_MONITOR_ENABLE
     IgnoreError(Get<Utils::ChannelMonitor>().Stop());
 #endif
-    Get<Notifier>().Signal(OT_CHANGED_THREAD_NETIF_STATE);
+    Get<Notifier>().Signal(kEventThreadNetifStateChanged);
 
 exit:
     return;
@@ -204,6 +205,11 @@ otError ThreadNetif::TmfFilter(const Coap::Message &aMessage, const Ip6::Message
     OT_UNUSED_VARIABLE(aMessage);
 
     return static_cast<ThreadNetif *>(aContext)->IsTmfMessage(aMessageInfo) ? OT_ERROR_NONE : OT_ERROR_NOT_TMF;
+}
+
+bool ThreadNetif::IsOnMesh(const Ip6::Address &aAddress) const
+{
+    return Get<NetworkData::Leader>().IsOnMesh(aAddress);
 }
 
 bool ThreadNetif::IsTmfMessage(const Ip6::MessageInfo &aMessageInfo)

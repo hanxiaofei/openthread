@@ -75,7 +75,7 @@ extern "C" {
  *       '-Wno-unused-result' compiler option.
  *
  */
-#if defined(__clang__)
+#if defined(__clang__) && (__clang_major__ >= 4 || (__clang_major__ >= 3 && __clang_minor__ >= 9))
 #define OT_MUST_USE_RESULT __attribute__((warn_unused_result))
 #else
 #define OT_MUST_USE_RESULT
@@ -247,6 +247,14 @@ extern "C" {
 #endif
 
 #endif
+#endif
+
+#ifdef __APPLE__
+#define OT_APPLE_IGNORE_GNU_FOLDING_CONSTANT(...)                                               \
+    _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wgnu-folding-constant\"") \
+        __VA_ARGS__ _Pragma("GCC diagnostic pop")
+#else
+#define OT_APPLE_IGNORE_GNU_FOLDING_CONSTANT(...) __VA_ARGS__
 #endif
 
 /**

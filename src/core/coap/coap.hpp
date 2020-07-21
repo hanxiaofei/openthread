@@ -38,6 +38,7 @@
 #include "common/linked_list.hpp"
 #include "common/locator.hpp"
 #include "common/message.hpp"
+#include "common/non_copyable.hpp"
 #include "common/timer.hpp"
 #include "net/ip6.hpp"
 #include "net/netif.hpp"
@@ -89,11 +90,11 @@ public:
     /**
      * This static method coverts a pointer to `otCoapTxParameters` to `Coap::TxParamters`
      *
-     * If the pointer is NULL, the default parameters are used instead.
+     * If the pointer is nullptr, the default parameters are used instead.
      *
      * @param[in] aTxParameters   A pointer to tx parameter.
      *
-     * @returns A reference to corresponding `TxParamters` if  @p aTxParameters is not NULL, otherwise the default tx
+     * @returns A reference to corresponding `TxParamters` if  @p aTxParameters is not nullptr, otherwise the default tx
      * parameters.
      *
      */
@@ -153,7 +154,7 @@ public:
     /**
      * This constructor initializes the resource.
      *
-     * @param[in]  aUriPath  A pointer to a NULL-terminated string for the URI path.
+     * @param[in]  aUriPath  A pointer to a null-terminated string for the URI path.
      * @param[in]  aHandler  A function pointer that is called when receiving a CoAP message for @p aUriPath.
      * @param[in]  aContext  A pointer to arbitrary context information.
      */
@@ -162,7 +163,7 @@ public:
         mUriPath = aUriPath;
         mHandler = aHandler;
         mContext = aContext;
-        mNext    = NULL;
+        mNext    = nullptr;
     }
 
     /**
@@ -268,7 +269,7 @@ private:
  * This class implements the CoAP client and server.
  *
  */
-class CoapBase : public InstanceLocator
+class CoapBase : public InstanceLocator, private NonCopyable
 {
     friend class ResponsesQueue;
 
@@ -307,11 +308,8 @@ public:
      *
      * @param[in]  aResource  A reference to the resource.
      *
-     * @retval OT_ERROR_NONE     Successfully added @p aResource.
-     * @retval OT_ERROR_ALREADY  The @p aResource was already added.
-     *
      */
-    otError AddResource(Resource &aResource);
+    void AddResource(Resource &aResource);
 
     /**
      * This method removes a resource from the CoAP server.
@@ -324,7 +322,7 @@ public:
     /* This method sets the default handler for unhandled CoAP requests.
      *
      * @param[in]  aHandler   A function pointer that shall be called when an unhandled request arrives.
-     * @param[in]  aContext   A pointer to arbitrary context information. May be NULL if not used.
+     * @param[in]  aContext   A pointer to arbitrary context information. May be nullptr if not used.
      *
      */
     void SetDefaultHandler(RequestHandler aHandler, void *aContext);
@@ -332,21 +330,29 @@ public:
     /**
      * This method creates a new message with a CoAP header.
      *
-     * @note If @p aSettings is 'NULL', the link layer security is enabled and the message priority is set to
-     * OT_MESSAGE_PRIORITY_NORMAL by default.
+     * @param[in]  aSettings  The message settings.
      *
-     * @param[in]  aSettings  A pointer to the message settings or NULL to set default settings.
-     *
-     * @returns A pointer to the message or NULL if failed to allocate message.
+     * @returns A pointer to the message or nullptr if failed to allocate message.
      *
      */
-    Message *NewMessage(const otMessageSettings *aSettings = NULL);
+    Message *NewMessage(const Message::Settings &aSettings = Message::Settings::GetDefault());
+
+    /**
+     * This method creates a new message with a CoAP header that has Network Control priority level.
+     *
+     * @returns A pointer to the message or nullptr if failed to allocate message.
+     *
+     */
+    Message *NewPriorityMessage(void)
+    {
+        return NewMessage(Message::Settings(Message::kWithLinkSecurity, Message::kPriorityNet));
+    }
 
     /**
      * This method sends a CoAP message with custom transmission parameters.
      *
      * If a response for a request is expected, respective function and context information should be provided.
-     * If no response is expected, these arguments should be NULL pointers.
+     * If no response is expected, these arguments should be nullptr pointers.
      * If Message Id was not set in the header (equal to 0), this function will assign unique Message Id to the message.
      *
      * @param[in]  aMessage      A reference to the message to send.
@@ -362,14 +368,14 @@ public:
     otError SendMessage(Message &               aMessage,
                         const Ip6::MessageInfo &aMessageInfo,
                         const TxParameters &    aTxParameters,
-                        ResponseHandler         aHandler = NULL,
-                        void *                  aContext = NULL);
+                        ResponseHandler         aHandler = nullptr,
+                        void *                  aContext = nullptr);
 
     /**
      * This method sends a CoAP message with default transmission parameters.
      *
      * If a response for a request is expected, respective function and context information should be provided.
-     * If no response is expected, these arguments should be NULL pointers.
+     * If no response is expected, these arguments should be nullptr pointers.
      * If Message Id was not set in the header (equal to 0), this function will assign unique Message Id to the message.
      *
      * @param[in]  aMessage      A reference to the message to send.
@@ -383,8 +389,8 @@ public:
      */
     otError SendMessage(Message &               aMessage,
                         const Ip6::MessageInfo &aMessageInfo,
-                        ResponseHandler         aHandler = NULL,
-                        void *                  aContext = NULL);
+                        ResponseHandler         aHandler = nullptr,
+                        void *                  aContext = nullptr);
 
     /**
      * This method sends a CoAP reset message.
@@ -561,7 +567,7 @@ private:
     void ProcessReceivedRequest(Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
     void ProcessReceivedResponse(Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
 
-    otError SendCopy(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
+    void    SendCopy(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
     otError SendEmptyMessage(Message::Type aType, const Message &aRequest, const Ip6::MessageInfo &aMessageInfo);
 
     otError Send(ot::Message &aMessage, const Ip6::MessageInfo &aMessageInfo);

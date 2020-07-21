@@ -41,22 +41,28 @@
 #include <openthread/tasklet.h>
 #include <openthread/platform/alarm-milli.h>
 #include <openthread/platform/radio.h>
+#include <openthread/platform/uart.h>
+
+#include "common/code_utils.hpp"
 
 uint64_t gNodeId = 0;
 
 otInstance *otSysInit(otPlatformConfig *aPlatformConfig)
 {
-    otInstance *instance = NULL;
+    otInstance *         instance = nullptr;
+    ot::Posix::Arguments args(aPlatformConfig->mRadioUrl);
 
 #if OPENTHREAD_POSIX_VIRTUAL_TIME
-    virtualTimeInit();
+    virtualTimeInit(static_cast<uint16_t>(atoi(args.GetValue("forkpty-arg"))));
 #endif
-    platformAlarmInit(aPlatformConfig->mSpeedUpFactor);
-    platformRadioInit(aPlatformConfig);
+
+    VerifyOrDie(args.GetPath() != nullptr, OT_EXIT_INVALID_ARGUMENTS);
+    platformAlarmInit(aPlatformConfig->mSpeedUpFactor, aPlatformConfig->mRealTimeSignal);
+    platformRadioInit(&args);
     platformRandomInit();
 
     instance = otInstanceInitSingle();
-    assert(instance != NULL);
+    assert(instance != nullptr);
 
 #if OPENTHREAD_CONFIG_PLATFORM_NETIF_ENABLE
     platformNetifInit(instance, aPlatformConfig->mInterfaceName);
@@ -76,6 +82,7 @@ void otSysDeinit(void)
 #if OPENTHREAD_CONFIG_PLATFORM_NETIF_ENABLE
     platformNetifDeinit();
 #endif
+    IgnoreError(otPlatUartDisable());
 }
 
 #if OPENTHREAD_POSIX_VIRTUAL_TIME
@@ -167,7 +174,7 @@ int otSysMainloopPoll(otSysMainloopContext *aMainloop)
             }
 
             rval = select(aMainloop->mMaxFd + 1, &aMainloop->mReadFdSet, &aMainloop->mWriteFdSet,
-                          &aMainloop->mErrorFdSet, NULL);
+                          &aMainloop->mErrorFdSet, nullptr);
         }
     }
     else

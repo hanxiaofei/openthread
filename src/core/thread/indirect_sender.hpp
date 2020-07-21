@@ -120,8 +120,8 @@ public:
         bool     mUseShortAddress : 1;         // Indicates whether to use short or extended address.
         bool     mSourceMatchPending : 1;      // Indicates whether or not pending to add to src match table.
 
-        OT_STATIC_ASSERT(OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS < (1UL << 14),
-                         "mQueuedMessageCount cannot fit max required!");
+        static_assert(OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS < (1UL << 14),
+                      "mQueuedMessageCount cannot fit max required!");
     };
 
     /**
@@ -152,12 +152,8 @@ public:
      * @param[in] aMessage  The message to add.
      * @param[in] aChild    The (sleepy) child for indirect transmission.
      *
-     * @retval OT_ERROR_NONE           Successfully added the message for indirect transmission.
-     * @retval OT_ERROR_ALREADY        The message was already added for indirect transmission to same child.
-     * @retval OT_ERROR_INVALID_STATE  The child is not sleepy.
-     *
      */
-    otError AddMessageForSleepyChild(Message &aMessage, Child &aChild);
+    void AddMessageForSleepyChild(Message &aMessage, Child &aChild);
 
     /**
      * This method removes a message for indirect transmission to a sleepy child.

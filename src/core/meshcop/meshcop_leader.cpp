@@ -60,8 +60,8 @@ Leader::Leader(Instance &aInstance)
     , mDelayTimerMinimal(DelayTimerTlv::kDelayTimerMinimal)
     , mSessionId(Random::NonCrypto::GetUint16())
 {
-    IgnoreError(Get<Coap::Coap>().AddResource(mPetition));
-    IgnoreError(Get<Coap::Coap>().AddResource(mKeepAlive));
+    Get<Coap::Coap>().AddResource(mPetition);
+    Get<Coap::Coap>().AddResource(mKeepAlive);
 }
 
 void Leader::HandlePetition(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo)
@@ -81,7 +81,7 @@ void Leader::HandlePetition(Coap::Message &aMessage, const Ip6::MessageInfo &aMe
     otLogInfoMeshCoP("received petition");
 
     VerifyOrExit(Get<Mle::MleRouter>().IsRoutingLocator(aMessageInfo.GetPeerAddr()), OT_NOOP);
-    SuccessOrExit(Tlv::GetTlv(aMessage, Tlv::kCommissionerId, sizeof(commissionerId), commissionerId));
+    SuccessOrExit(Tlv::FindTlv(aMessage, Tlv::kCommissionerId, sizeof(commissionerId), commissionerId));
 
     if (mTimer.IsRunning())
     {
@@ -117,17 +117,17 @@ void Leader::HandlePetition(Coap::Message &aMessage, const Ip6::MessageInfo &aMe
     mTimer.Start(Time::SecToMsec(kTimeoutLeaderPetition));
 
 exit:
-    IgnoreError(SendPetitionResponse(aMessage, aMessageInfo, state));
+    SendPetitionResponse(aMessage, aMessageInfo, state);
 }
 
-otError Leader::SendPetitionResponse(const Coap::Message &   aRequest,
-                                     const Ip6::MessageInfo &aMessageInfo,
-                                     StateTlv::State         aState)
+void Leader::SendPetitionResponse(const Coap::Message &   aRequest,
+                                  const Ip6::MessageInfo &aMessageInfo,
+                                  StateTlv::State         aState)
 {
     otError        error = OT_ERROR_NONE;
     Coap::Message *message;
 
-    VerifyOrExit((message = NewMeshCoPMessage(Get<Coap::Coap>())) != NULL, error = OT_ERROR_NO_BUFS);
+    VerifyOrExit((message = NewMeshCoPMessage(Get<Coap::Coap>())) != nullptr, error = OT_ERROR_NO_BUFS);
 
     SuccessOrExit(error = message->SetDefaultResponseHeader(aRequest));
     SuccessOrExit(error = message->SetPayloadMarker());
@@ -150,12 +150,15 @@ otError Leader::SendPetitionResponse(const Coap::Message &   aRequest,
 
 exit:
 
-    if (error != OT_ERROR_NONE && message != NULL)
+    if (error != OT_ERROR_NONE)
     {
-        message->Free();
-    }
+        otLogInfoMeshCoP("Failed to send petition response: %s", otThreadErrorToString(error));
 
-    return error;
+        if (message != nullptr)
+        {
+            message->Free();
+        }
+    }
 }
 
 void Leader::HandleKeepAlive(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo)
@@ -173,14 +176,14 @@ void Leader::HandleKeepAlive(Coap::Message &aMessage, const Ip6::MessageInfo &aM
 
     otLogInfoMeshCoP("received keep alive");
 
-    SuccessOrExit(Tlv::ReadUint8Tlv(aMessage, Tlv::kState, state));
+    SuccessOrExit(Tlv::FindUint8Tlv(aMessage, Tlv::kState, state));
 
-    SuccessOrExit(Tlv::ReadUint16Tlv(aMessage, Tlv::kCommissionerSessionId, sessionId));
+    SuccessOrExit(Tlv::FindUint16Tlv(aMessage, Tlv::kCommissionerSessionId, sessionId));
 
     borderAgentLocator = static_cast<BorderAgentLocatorTlv *>(
         Get<NetworkData::Leader>().GetCommissioningDataSubTlv(Tlv::kBorderAgentLocator));
 
-    if ((borderAgentLocator == NULL) || (sessionId != mSessionId))
+    if ((borderAgentLocator == nullptr) || (sessionId != mSessionId))
     {
         responseState = StateTlv::kReject;
     }
@@ -203,20 +206,20 @@ void Leader::HandleKeepAlive(Coap::Message &aMessage, const Ip6::MessageInfo &aM
         mTimer.Start(Time::SecToMsec(kTimeoutLeaderPetition));
     }
 
-    IgnoreError(SendKeepAliveResponse(aMessage, aMessageInfo, responseState));
+    SendKeepAliveResponse(aMessage, aMessageInfo, responseState);
 
 exit:
     return;
 }
 
-otError Leader::SendKeepAliveResponse(const Coap::Message &   aRequest,
-                                      const Ip6::MessageInfo &aMessageInfo,
-                                      StateTlv::State         aState)
+void Leader::SendKeepAliveResponse(const Coap::Message &   aRequest,
+                                   const Ip6::MessageInfo &aMessageInfo,
+                                   StateTlv::State         aState)
 {
     otError        error = OT_ERROR_NONE;
     Coap::Message *message;
 
-    VerifyOrExit((message = NewMeshCoPMessage(Get<Coap::Coap>())) != NULL, error = OT_ERROR_NO_BUFS);
+    VerifyOrExit((message = NewMeshCoPMessage(Get<Coap::Coap>())) != nullptr, error = OT_ERROR_NO_BUFS);
 
     SuccessOrExit(error = message->SetDefaultResponseHeader(aRequest));
     SuccessOrExit(error = message->SetPayloadMarker());
@@ -229,21 +232,24 @@ otError Leader::SendKeepAliveResponse(const Coap::Message &   aRequest,
 
 exit:
 
-    if (error != OT_ERROR_NONE && message != NULL)
+    if (error != OT_ERROR_NONE)
     {
-        message->Free();
-    }
+        otLogWarnMeshCoP("Failed to send keep alive response: %s", otThreadErrorToString(error));
 
-    return error;
+        if (message != nullptr)
+        {
+            message->Free();
+        }
+    }
 }
 
-otError Leader::SendDatasetChanged(const Ip6::Address &aAddress)
+void Leader::SendDatasetChanged(const Ip6::Address &aAddress)
 {
     otError          error = OT_ERROR_NONE;
     Ip6::MessageInfo messageInfo;
     Coap::Message *  message;
 
-    VerifyOrExit((message = NewMeshCoPMessage(Get<Coap::Coap>())) != NULL, error = OT_ERROR_NO_BUFS);
+    VerifyOrExit((message = NewMeshCoPMessage(Get<Coap::Coap>())) != nullptr, error = OT_ERROR_NO_BUFS);
 
     SuccessOrExit(error = message->Init(OT_COAP_TYPE_CONFIRMABLE, OT_COAP_CODE_POST, OT_URI_PATH_DATASET_CHANGED));
 
@@ -256,12 +262,15 @@ otError Leader::SendDatasetChanged(const Ip6::Address &aAddress)
 
 exit:
 
-    if (error != OT_ERROR_NONE && message != NULL)
+    if (error != OT_ERROR_NONE)
     {
-        message->Free();
-    }
+        otLogWarnMeshCoP("Failed to send dataset changed: %s", otThreadErrorToString(error));
 
-    return error;
+        if (message != nullptr)
+        {
+            message->Free();
+        }
+    }
 }
 
 otError Leader::SetDelayTimerMinimal(uint32_t aDelayTimerMinimal)

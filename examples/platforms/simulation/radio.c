@@ -117,6 +117,19 @@ static bool sSrcMatchEnabled = false;
 static bool sRadioCoexEnabled = true;
 #endif
 
+otRadioCaps gRadioCaps =
+#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
+    OT_RADIO_CAPS_TRANSMIT_SEC;
+#else
+    OT_RADIO_CAPS_NONE;
+#endif
+
+static uint32_t        sMacFrameCounter;
+static uint8_t         sKeyId;
+static struct otMacKey sPrevKey;
+static struct otMacKey sCurrKey;
+static struct otMacKey sNextKey;
+
 static void ReverseExtAddress(otExtAddress *aReversed, const otExtAddress *aOrigin)
 {
     for (size_t i = 0; i < sizeof(*aReversed); i++)
@@ -198,6 +211,8 @@ void otPlatRadioGetIeeeEui64(otInstance *aInstance, uint8_t *aIeeeEui64)
 
 void otPlatRadioSetPanId(otInstance *aInstance, otPanId aPanid)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     sPanid = aPanid;
@@ -206,6 +221,8 @@ void otPlatRadioSetPanId(otInstance *aInstance, otPanId aPanid)
 
 void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aExtAddress)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     ReverseExtAddress(&sExtAddress, aExtAddress);
@@ -213,6 +230,8 @@ void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aE
 
 void otPlatRadioSetShortAddress(otInstance *aInstance, otShortAddress aAddress)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     sShortAddress = aAddress;
@@ -220,6 +239,8 @@ void otPlatRadioSetShortAddress(otInstance *aInstance, otShortAddress aAddress)
 
 void otPlatRadioSetPromiscuous(otInstance *aInstance, bool aEnable)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     sPromiscuous = aEnable;
@@ -359,6 +380,8 @@ exit:
 
 otError otPlatRadioSleep(otInstance *aInstance)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     otError error = OT_ERROR_INVALID_STATE;
@@ -374,6 +397,8 @@ otError otPlatRadioSleep(otInstance *aInstance)
 
 otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     otError error = OT_ERROR_INVALID_STATE;
@@ -391,6 +416,9 @@ otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel)
 
 otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aRadio)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+    OT_UNUSED_VARIABLE(aRadio);
+
     assert(aInstance != NULL);
     assert(aRadio != NULL);
 
@@ -407,6 +435,8 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aRadio)
 
 otRadioFrame *otPlatRadioGetTransmitBuffer(otInstance *aInstance)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     return &sTransmitFrame;
@@ -414,6 +444,8 @@ otRadioFrame *otPlatRadioGetTransmitBuffer(otInstance *aInstance)
 
 int8_t otPlatRadioGetRssi(otInstance *aInstance)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     int8_t   rssi    = SIM_LOW_RSSI_SAMPLE;
@@ -439,13 +471,17 @@ exit:
 
 otRadioCaps otPlatRadioGetCaps(otInstance *aInstance)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
-    return OT_RADIO_CAPS_NONE;
+    return gRadioCaps;
 }
 
 bool otPlatRadioGetPromiscuous(otInstance *aInstance)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     return sPromiscuous;
@@ -518,12 +554,66 @@ static void radioComputeCrc(struct RadioMessage *aMessage, uint16_t aLength)
     aMessage->mPsdu[crc_offset + 1] = crc >> 8;
 }
 
+static otError radioProcessTransmitSecurity(otRadioFrame *aFrame)
+{
+    otError error = OT_ERROR_NONE;
+#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
+    struct otMacKey *key = NULL;
+    uint8_t          keyId;
+
+    otEXPECT(otMacFrameIsSecurityEnabled(aFrame) && otMacFrameIsKeyIdMode1(aFrame) &&
+             !aFrame->mInfo.mTxInfo.mIsSecurityProcessed);
+
+    if (otMacFrameIsAck(aFrame))
+    {
+        keyId = otMacFrameGetKeyId(aFrame);
+
+        otEXPECT_ACTION(keyId != 0, error = OT_ERROR_FAILED);
+
+        if (keyId == sKeyId)
+        {
+            key = &sCurrKey;
+        }
+        else if (keyId == sKeyId - 1)
+        {
+            key = &sPrevKey;
+        }
+        else if (keyId == sKeyId + 1)
+        {
+            key = &sNextKey;
+        }
+        else
+        {
+            error = OT_ERROR_SECURITY;
+            otEXPECT(false);
+        }
+    }
+    else
+    {
+        key   = &sCurrKey;
+        keyId = sKeyId;
+    }
+
+    aFrame->mInfo.mTxInfo.mAesKey = key;
+
+    if (!aFrame->mInfo.mTxInfo.mIsARetx)
+    {
+        otMacFrameSetKeyId(aFrame, keyId);
+        otMacFrameSetFrameCounter(aFrame, sMacFrameCounter++);
+    }
+#else
+    otEXPECT(!aFrame->mInfo.mTxInfo.mIsSecurityProcessed);
+#endif // OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
+
+    otMacFrameProcessTransmitAesCcm(aFrame, &sExtAddress);
+
+exit:
+    return error;
+}
+
 void radioSendMessage(otInstance *aInstance)
 {
-#if OPENTHREAD_CONFIG_MAC_HEADER_IE_SUPPORT
-    bool notifyFrameUpdated = false;
-
-#if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
+#if OPENTHREAD_CONFIG_MAC_HEADER_IE_SUPPORT && OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
     if (sTransmitFrame.mInfo.mTxInfo.mIeInfo->mTimeIeOffset != 0)
     {
         uint8_t *timeIe = sTransmitFrame.mPsdu + sTransmitFrame.mInfo.mTxInfo.mIeInfo->mTimeIeOffset;
@@ -537,19 +627,12 @@ void radioSendMessage(otInstance *aInstance)
             time        = time >> 8;
             *(++timeIe) = (uint8_t)(time & 0xff);
         }
-
-        notifyFrameUpdated = true;
     }
-#endif // OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
-
-    if (notifyFrameUpdated)
-    {
-        otMacFrameProcessTransmitAesCcm(&sTransmitFrame, &sExtAddress);
-    }
-#endif // OPENTHREAD_CONFIG_MAC_HEADER_IE_SUPPORT
+#endif // OPENTHREAD_CONFIG_MAC_HEADER_IE_SUPPORT && OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
 
     sTransmitMessage.mChannel = sTransmitFrame.mChannel;
 
+    otEXPECT(radioProcessTransmitSecurity(&sTransmitFrame) == OT_ERROR_NONE);
     otPlatRadioTxStarted(aInstance, &sTransmitFrame);
     radioComputeCrc(&sTransmitMessage, sTransmitFrame.mLength);
     radioTransmit(&sTransmitMessage, &sTransmitFrame);
@@ -577,6 +660,8 @@ void radioSendMessage(otInstance *aInstance)
     // Wait for echo radio in virtual time mode.
     sTxWait = true;
 #endif // OPENTHREAD_SIMULATION_VIRTUAL_TIME
+exit:
+    return;
 }
 
 bool platformRadioIsTransmitPending(void)
@@ -711,28 +796,41 @@ void radioTransmit(struct RadioMessage *aMessage, const struct otRadioFrame *aFr
 
 void radioSendAck(void)
 {
-    sAckFrame.mLength    = IEEE802154_ACK_LENGTH;
-    sAckMessage.mPsdu[0] = IEEE802154_FRAME_TYPE_ACK;
-
     if (
 #if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
+        // Determine if frame pending should be set
         (otMacFrameIsData(&sReceiveFrame) || otMacFrameIsDataRequest(&sReceiveFrame))
 #else
         otMacFrameIsDataRequest(&sReceiveFrame)
 #endif
         && HasFramePending(&sReceiveFrame))
     {
-        sAckMessage.mPsdu[0] |= IEEE802154_FRAME_PENDING;
         sReceiveFrame.mInfo.mRxInfo.mAckedWithFramePending = true;
     }
 
-    sAckMessage.mPsdu[1] = 0;
-    sAckMessage.mPsdu[2] = otMacFrameGetSequence(&sReceiveFrame);
+#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
+    // Use enh-ack for 802.15.4-2015 frames
+    if (otMacFrameIsVersion2015(&sReceiveFrame))
+    {
+        otEXPECT(otMacFrameGenerateEnhAck(&sReceiveFrame, sReceiveFrame.mInfo.mRxInfo.mAckedWithFramePending, NULL, 0,
+                                          &sAckFrame) == OT_ERROR_NONE);
+        otEXPECT(radioProcessTransmitSecurity(&sAckFrame) == OT_ERROR_NONE);
+    }
+    else
+#endif
+    {
+        otMacFrameGenerateImmAck(&sReceiveFrame, sReceiveFrame.mInfo.mRxInfo.mAckedWithFramePending, &sAckFrame);
+    }
 
     sAckMessage.mChannel = sReceiveFrame.mChannel;
 
     radioComputeCrc(&sAckMessage, sAckFrame.mLength);
     radioTransmit(&sAckMessage, &sAckFrame);
+
+#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
+exit:
+#endif
+    return;
 }
 
 void radioProcessFrame(otInstance *aInstance)
@@ -743,6 +841,7 @@ void radioProcessFrame(otInstance *aInstance)
     sReceiveFrame.mInfo.mRxInfo.mLqi  = OT_RADIO_LQI_NONE;
 
     sReceiveFrame.mInfo.mRxInfo.mAckedWithFramePending = false;
+    sReceiveFrame.mInfo.mRxInfo.mAckedWithSecEnhAck    = false;
 
     otEXPECT(sPromiscuous == false);
 
@@ -753,6 +852,13 @@ void radioProcessFrame(otInstance *aInstance)
     if (otMacFrameIsAckRequested(&sReceiveFrame))
     {
         radioSendAck();
+#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
+        if (otMacFrameIsSecurityEnabled(&sAckFrame))
+        {
+            sReceiveFrame.mInfo.mRxInfo.mAckedWithSecEnhAck = true;
+            sReceiveFrame.mInfo.mRxInfo.mAckFrameCounter    = otMacFrameGetFrameCounter(&sAckFrame);
+        }
+#endif // OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
     }
 
 exit:
@@ -774,6 +880,8 @@ exit:
 
 void otPlatRadioEnableSrcMatch(otInstance *aInstance, bool aEnable)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     sSrcMatchEnabled = aEnable;
@@ -781,6 +889,10 @@ void otPlatRadioEnableSrcMatch(otInstance *aInstance, bool aEnable)
 
 otError otPlatRadioEnergyScan(otInstance *aInstance, uint8_t aScanChannel, uint16_t aScanDuration)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+    OT_UNUSED_VARIABLE(aScanChannel);
+    OT_UNUSED_VARIABLE(aScanDuration);
+
     assert(aInstance != NULL);
     assert(aScanChannel >= SIM_RADIO_CHANNEL_MIN && aScanChannel <= SIM_RADIO_CHANNEL_MAX);
     assert(aScanDuration > 0);
@@ -790,6 +902,8 @@ otError otPlatRadioEnergyScan(otInstance *aInstance, uint8_t aScanChannel, uint1
 
 otError otPlatRadioGetTransmitPower(otInstance *aInstance, int8_t *aPower)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     *aPower = sTxPower;
@@ -799,6 +913,8 @@ otError otPlatRadioGetTransmitPower(otInstance *aInstance, int8_t *aPower)
 
 otError otPlatRadioSetTransmitPower(otInstance *aInstance, int8_t aPower)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     sTxPower = aPower;
@@ -808,6 +924,8 @@ otError otPlatRadioSetTransmitPower(otInstance *aInstance, int8_t aPower)
 
 otError otPlatRadioGetCcaEnergyDetectThreshold(otInstance *aInstance, int8_t *aThreshold)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     *aThreshold = sCcaEdThresh;
@@ -817,6 +935,8 @@ otError otPlatRadioGetCcaEnergyDetectThreshold(otInstance *aInstance, int8_t *aT
 
 otError otPlatRadioSetCcaEnergyDetectThreshold(otInstance *aInstance, int8_t aThreshold)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     sCcaEdThresh = aThreshold;
@@ -826,6 +946,8 @@ otError otPlatRadioSetCcaEnergyDetectThreshold(otInstance *aInstance, int8_t aTh
 
 int8_t otPlatRadioGetReceiveSensitivity(otInstance *aInstance)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     return SIM_RECEIVE_SENSITIVITY;
@@ -841,6 +963,8 @@ otRadioState otPlatRadioGetState(otInstance *aInstance)
 #if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 otError otPlatRadioSetCoexEnabled(otInstance *aInstance, bool aEnabled)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     sRadioCoexEnabled = aEnabled;
@@ -849,6 +973,8 @@ otError otPlatRadioSetCoexEnabled(otInstance *aInstance, bool aEnabled)
 
 bool otPlatRadioIsCoexEnabled(otInstance *aInstance)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     assert(aInstance != NULL);
 
     return sRadioCoexEnabled;
@@ -856,6 +982,8 @@ bool otPlatRadioIsCoexEnabled(otInstance *aInstance)
 
 otError otPlatRadioGetCoexMetrics(otInstance *aInstance, otRadioCoexMetrics *aCoexMetrics)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     otError error = OT_ERROR_NONE;
 
     assert(aInstance != NULL);
@@ -887,3 +1015,31 @@ exit:
     return error;
 }
 #endif
+
+void otPlatRadioSetMacKey(otInstance *    aInstance,
+                          uint8_t         aKeyIdMode,
+                          uint8_t         aKeyId,
+                          const otMacKey *aPrevKey,
+                          const otMacKey *aCurrKey,
+                          const otMacKey *aNextKey)
+{
+    OT_UNUSED_VARIABLE(aInstance);
+    OT_UNUSED_VARIABLE(aKeyIdMode);
+
+    otEXPECT(aPrevKey != NULL && aCurrKey != NULL && aNextKey != NULL);
+
+    sKeyId = aKeyId;
+    memcpy(sPrevKey.m8, aPrevKey->m8, OT_MAC_KEY_SIZE);
+    memcpy(sCurrKey.m8, aCurrKey->m8, OT_MAC_KEY_SIZE);
+    memcpy(sNextKey.m8, aNextKey->m8, OT_MAC_KEY_SIZE);
+
+exit:
+    return;
+}
+
+void otPlatRadioSetMacFrameCounter(otInstance *aInstance, uint32_t aMacFrameCounter)
+{
+    OT_UNUSED_VARIABLE(aInstance);
+
+    sMacFrameCounter = aMacFrameCounter;
+}

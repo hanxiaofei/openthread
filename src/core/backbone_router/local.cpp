@@ -62,6 +62,7 @@ Local::Local(Instance &aInstance)
     mBackboneRouterPrimaryAloc.Clear();
 
     mBackboneRouterPrimaryAloc.mPrefixLength       = Mle::MeshLocalPrefix::kLength;
+    mBackboneRouterPrimaryAloc.mAddressOrigin      = OT_ADDRESS_ORIGIN_THREAD;
     mBackboneRouterPrimaryAloc.mPreferred          = true;
     mBackboneRouterPrimaryAloc.mValid              = true;
     mBackboneRouterPrimaryAloc.mScopeOverride      = Ip6::Address::kRealmLocalScope;
@@ -121,7 +122,7 @@ void Local::Reset(void)
     {
         // Increase sequence number when changing from Primary to Secondary.
         mSequenceNumber++;
-        Get<Notifier>().Signal(OT_CHANGED_THREAD_BACKBONE_ROUTER_LOCAL);
+        Get<Notifier>().Signal(kEventThreadBackboneRouterLocalChanged);
         SetState(OT_BACKBONE_ROUTER_STATE_SECONDARY);
     }
 
@@ -160,7 +161,7 @@ void Local::SetConfig(const BackboneRouterConfig &aConfig)
 
     if (update)
     {
-        Get<Notifier>().Signal(OT_CHANGED_THREAD_BACKBONE_ROUTER_LOCAL);
+        Get<Notifier>().Signal(kEventThreadBackboneRouterLocalChanged);
 
         if (AddService() == OT_ERROR_NONE)
         {
@@ -224,27 +225,27 @@ void Local::SetState(BackboneRouterState aState)
     {
         // Subscribe All Network Backbone Routers Multicast Address for both Secondary and Primary state.
         mAllNetworkBackboneRouters.GetAddress().SetMulticastNetworkPrefix(Get<Mle::MleRouter>().GetMeshLocalPrefix());
-        IgnoreError(Get<ThreadNetif>().SubscribeMulticast(mAllNetworkBackboneRouters));
+        Get<ThreadNetif>().SubscribeMulticast(mAllNetworkBackboneRouters);
     }
     else if (aState == OT_BACKBONE_ROUTER_STATE_DISABLED)
     {
-        IgnoreError(Get<ThreadNetif>().UnsubscribeMulticast(mAllNetworkBackboneRouters));
+        Get<ThreadNetif>().UnsubscribeMulticast(mAllNetworkBackboneRouters);
     }
 
     if (mState == OT_BACKBONE_ROUTER_STATE_PRIMARY)
     {
-        IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mBackboneRouterPrimaryAloc));
+        Get<ThreadNetif>().RemoveUnicastAddress(mBackboneRouterPrimaryAloc);
     }
     else if (aState == OT_BACKBONE_ROUTER_STATE_PRIMARY)
     {
         // Add Primary Backbone Router Aloc for Primary Backbone Router.
         mBackboneRouterPrimaryAloc.GetAddress().SetPrefix(Get<Mle::MleRouter>().GetMeshLocalPrefix());
-        IgnoreError(Get<ThreadNetif>().AddUnicastAddress(mBackboneRouterPrimaryAloc));
+        Get<ThreadNetif>().AddUnicastAddress(mBackboneRouterPrimaryAloc);
     }
 
     mState = aState;
 
-    Get<Notifier>().Signal(OT_CHANGED_THREAD_BACKBONE_ROUTER_STATE);
+    Get<Notifier>().Signal(kEventThreadBackboneRouterStateChanged);
 
 exit:
     return;
@@ -281,7 +282,7 @@ void Local::UpdateBackboneRouterPrimary(Leader::State aState, const BackboneRout
         mSequenceNumber      = aConfig.mSequenceNumber + 1;
         mReregistrationDelay = aConfig.mReregistrationDelay;
         mMlrTimeout          = aConfig.mMlrTimeout;
-        Get<Notifier>().Signal(OT_CHANGED_THREAD_BACKBONE_ROUTER_LOCAL);
+        Get<Notifier>().Signal(kEventThreadBackboneRouterLocalChanged);
         if (AddService(true /* Force registration to refresh and restore Primary state */) == OT_ERROR_NONE)
         {
             Get<NetworkData::Notifier>().HandleServerDataUpdated();
@@ -351,15 +352,15 @@ void Local::ApplyMeshLocalPrefix(void)
 {
     VerifyOrExit(IsEnabled(), OT_NOOP);
 
-    IgnoreError(Get<ThreadNetif>().UnsubscribeMulticast(mAllNetworkBackboneRouters));
+    Get<ThreadNetif>().UnsubscribeMulticast(mAllNetworkBackboneRouters);
     mAllNetworkBackboneRouters.GetAddress().SetMulticastNetworkPrefix(Get<Mle::MleRouter>().GetMeshLocalPrefix());
-    IgnoreError(Get<ThreadNetif>().SubscribeMulticast(mAllNetworkBackboneRouters));
+    Get<ThreadNetif>().SubscribeMulticast(mAllNetworkBackboneRouters);
 
     if (IsPrimary())
     {
-        IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mBackboneRouterPrimaryAloc));
+        Get<ThreadNetif>().RemoveUnicastAddress(mBackboneRouterPrimaryAloc);
         mBackboneRouterPrimaryAloc.GetAddress().SetPrefix(Get<Mle::MleRouter>().GetMeshLocalPrefix());
-        IgnoreError(Get<ThreadNetif>().AddUnicastAddress(mBackboneRouterPrimaryAloc));
+        Get<ThreadNetif>().AddUnicastAddress(mBackboneRouterPrimaryAloc);
     }
 
 exit:
@@ -370,19 +371,19 @@ void Local::UpdateAllDomainBackboneRouters(Leader::DomainPrefixState aState)
 {
     if (!IsEnabled())
     {
-        IgnoreError(Get<ThreadNetif>().UnsubscribeMulticast(mAllDomainBackboneRouters));
+        Get<ThreadNetif>().UnsubscribeMulticast(mAllDomainBackboneRouters);
         ExitNow();
     }
 
     if (aState == Leader::kDomainPrefixRemoved || aState == Leader::kDomainPrefixRefreshed)
     {
-        IgnoreError(Get<ThreadNetif>().UnsubscribeMulticast(mAllDomainBackboneRouters));
+        Get<ThreadNetif>().UnsubscribeMulticast(mAllDomainBackboneRouters);
     }
 
     if (aState == Leader::kDomainPrefixAdded || aState == Leader::kDomainPrefixRefreshed)
     {
         mAllDomainBackboneRouters.GetAddress().SetMulticastNetworkPrefix(*Get<Leader>().GetDomainPrefix());
-        IgnoreError(Get<ThreadNetif>().SubscribeMulticast(mAllDomainBackboneRouters));
+        Get<ThreadNetif>().SubscribeMulticast(mAllDomainBackboneRouters);
     }
 
 exit:

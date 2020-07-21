@@ -45,9 +45,23 @@ using ot::Encoding::BigEndian::HostSwap32;
 namespace ot {
 namespace Ip6 {
 
-void Address::Clear(void)
+bool InterfaceIdentifier::IsUnspecified(void) const
 {
-    memset(mFields.m8, 0, sizeof(mFields));
+    return (m8[0] == 0 && m8[1] == 0 && m8[2] == 0 && m8[3] == 0 && m8[4] == 0 && m8[5] == 0 && m8[6] == 0 &&
+            m8[7] == 0);
+}
+
+bool InterfaceIdentifier::IsReserved(void) const
+{
+    Address addr;
+
+    addr.SetIid(this->m8);
+    return addr.IsIidReserved();
+}
+
+InterfaceIdentifier::InfoString InterfaceIdentifier::ToString(void) const
+{
+    return InfoString("%02x%02x%02x%02x%02x%02x%02x%02x", m8[0], m8[1], m8[2], m8[3], m8[4], m8[5], m8[6], m8[7]);
 }
 
 bool Address::IsUnspecified(void) const
@@ -218,6 +232,11 @@ void Address::SetMulticastNetworkPrefix(const uint8_t *aPrefix, uint8_t aPrefixL
     mFields.m8[kMulticastNetworkPrefixLengthOffset] = aPrefixLength;
 }
 
+bool Address::HasIid(const uint8_t *aIid) const
+{
+    return (memcmp(mFields.m8 + kInterfaceIdentifierOffset, aIid, kInterfaceIdentifierSize) == 0);
+}
+
 void Address::SetIid(const uint8_t *aIid)
 {
     memcpy(mFields.m8 + kInterfaceIdentifierOffset, aIid, kInterfaceIdentifierSize);
@@ -320,18 +339,13 @@ uint8_t Address::PrefixMatch(const otIp6Address &aOther) const
     return PrefixMatch(mFields.m8, aOther.mFields.m8, sizeof(Address));
 }
 
-bool Address::operator==(const Address &aOther) const
-{
-    return memcmp(mFields.m8, aOther.mFields.m8, sizeof(mFields.m8)) == 0;
-}
-
 otError Address::FromString(const char *aBuf)
 {
     otError     error  = OT_ERROR_NONE;
     uint8_t *   dst    = reinterpret_cast<uint8_t *>(mFields.m8);
     uint8_t *   endp   = reinterpret_cast<uint8_t *>(mFields.m8 + 15);
-    uint8_t *   colonp = NULL;
-    const char *colonc = NULL;
+    uint8_t *   colonp = nullptr;
+    const char *colonc = nullptr;
     uint16_t    val    = 0;
     uint8_t     count  = 0;
     bool        first  = true;
@@ -365,7 +379,7 @@ otError Address::FromString(const char *aBuf)
             }
             else if (ch == ':')
             {
-                VerifyOrExit(colonp == NULL || first, error = OT_ERROR_PARSE);
+                VerifyOrExit(colonp == nullptr || first, error = OT_ERROR_PARSE);
                 colonp = dst;
             }
 

@@ -63,10 +63,10 @@ uint16_t otMessageGetOffset(const otMessage *aMessage)
     return message.GetOffset();
 }
 
-otError otMessageSetOffset(otMessage *aMessage, uint16_t aOffset)
+void otMessageSetOffset(otMessage *aMessage, uint16_t aOffset)
 {
     Message &message = *static_cast<Message *>(aMessage);
-    return message.SetOffset(aOffset);
+    message.SetOffset(aOffset);
 }
 
 bool otMessageIsLinkSecurityEnabled(const otMessage *aMessage)
@@ -115,28 +115,31 @@ int otMessageWrite(otMessage *aMessage, uint16_t aOffset, const void *aBuf, uint
 
 void otMessageQueueInit(otMessageQueue *aQueue)
 {
-    aQueue->mData = NULL;
+    aQueue->mData = nullptr;
 }
 
-otError otMessageQueueEnqueue(otMessageQueue *aQueue, otMessage *aMessage)
+void otMessageQueueEnqueue(otMessageQueue *aQueue, otMessage *aMessage)
 {
     Message &     message = *static_cast<Message *>(aMessage);
     MessageQueue &queue   = *static_cast<MessageQueue *>(aQueue);
-    return queue.Enqueue(message);
+
+    queue.Enqueue(message);
 }
 
-otError otMessageQueueEnqueueAtHead(otMessageQueue *aQueue, otMessage *aMessage)
+void otMessageQueueEnqueueAtHead(otMessageQueue *aQueue, otMessage *aMessage)
 {
     Message &     message = *static_cast<Message *>(aMessage);
     MessageQueue &queue   = *static_cast<MessageQueue *>(aQueue);
-    return queue.Enqueue(message, MessageQueue::kQueuePositionHead);
+
+    queue.Enqueue(message, MessageQueue::kQueuePositionHead);
 }
 
-otError otMessageQueueDequeue(otMessageQueue *aQueue, otMessage *aMessage)
+void otMessageQueueDequeue(otMessageQueue *aQueue, otMessage *aMessage)
 {
     Message &     message = *static_cast<Message *>(aMessage);
     MessageQueue &queue   = *static_cast<MessageQueue *>(aQueue);
-    return queue.Dequeue(message);
+
+    queue.Dequeue(message);
 }
 
 otMessage *otMessageQueueGetHead(otMessageQueue *aQueue)
@@ -149,13 +152,13 @@ otMessage *otMessageQueueGetNext(otMessageQueue *aQueue, const otMessage *aMessa
 {
     Message *next;
 
-    VerifyOrExit(aMessage != NULL, next = NULL);
+    VerifyOrExit(aMessage != nullptr, next = nullptr);
 
     {
         const Message &message = *static_cast<const Message *>(aMessage);
         MessageQueue & queue   = *static_cast<MessageQueue *>(aQueue);
 
-        VerifyOrExit(message.GetMessageQueue() == &queue, next = NULL);
+        VerifyOrExit(message.GetMessageQueue() == &queue, next = nullptr);
         next = message.GetNext();
     }
 

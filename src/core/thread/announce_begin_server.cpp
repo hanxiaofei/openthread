@@ -48,20 +48,15 @@
 namespace ot {
 
 AnnounceBeginServer::AnnounceBeginServer(Instance &aInstance)
-    : AnnounceSenderBase(aInstance, &AnnounceBeginServer::HandleTimer)
+    : AnnounceSenderBase(aInstance, AnnounceBeginServer::HandleTimer)
     , mAnnounceBegin(OT_URI_PATH_ANNOUNCE_BEGIN, &AnnounceBeginServer::HandleRequest, this)
 {
-    IgnoreError(Get<Coap::Coap>().AddResource(mAnnounceBegin));
+    Get<Coap::Coap>().AddResource(mAnnounceBegin);
 }
 
-otError AnnounceBeginServer::SendAnnounce(uint32_t aChannelMask)
+void AnnounceBeginServer::SendAnnounce(uint32_t aChannelMask, uint8_t aCount, uint16_t aPeriod)
 {
-    return SendAnnounce(aChannelMask, kDefaultCount, kDefaultPeriod);
-}
-
-otError AnnounceBeginServer::SendAnnounce(uint32_t aChannelMask, uint8_t aCount, uint16_t aPeriod)
-{
-    return AnnounceSenderBase::SendAnnounce(Mac::ChannelMask(aChannelMask), aCount, aPeriod, kDefaultJitter);
+    AnnounceSenderBase::SendAnnounce(Mac::ChannelMask(aChannelMask), aCount, aPeriod, kDefaultJitter);
 }
 
 void AnnounceBeginServer::HandleRequest(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo)
@@ -80,10 +75,10 @@ void AnnounceBeginServer::HandleRequest(Coap::Message &aMessage, const Ip6::Mess
     VerifyOrExit(aMessage.GetCode() == OT_COAP_CODE_POST, OT_NOOP);
     VerifyOrExit((mask = MeshCoP::ChannelMaskTlv::GetChannelMask(aMessage)) != 0, OT_NOOP);
 
-    SuccessOrExit(Tlv::ReadUint8Tlv(aMessage, MeshCoP::Tlv::kCount, count));
-    SuccessOrExit(Tlv::ReadUint16Tlv(aMessage, MeshCoP::Tlv::kPeriod, period));
+    SuccessOrExit(Tlv::FindUint8Tlv(aMessage, MeshCoP::Tlv::kCount, count));
+    SuccessOrExit(Tlv::FindUint16Tlv(aMessage, MeshCoP::Tlv::kPeriod, period));
 
-    IgnoreError(SendAnnounce(mask, count, period));
+    SendAnnounce(mask, count, period);
 
     if (aMessage.IsConfirmable() && !aMessageInfo.GetSockAddr().IsMulticast())
     {

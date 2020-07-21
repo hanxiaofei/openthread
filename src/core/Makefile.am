@@ -214,6 +214,7 @@ SOURCES_COMMON                             = \
     thread/announce_begin_server.cpp         \
     thread/announce_sender.cpp               \
     thread/child_table.cpp                   \
+    thread/discover_scanner.cpp              \
     thread/dua_manager.cpp                   \
     thread/energy_scan_server.cpp            \
     thread/indirect_sender.cpp               \
@@ -267,6 +268,8 @@ libopenthread_radio_a_SOURCES              = \
     common/string.cpp                        \
     common/tasklet.cpp                       \
     common/timer.cpp                         \
+    crypto/aes_ccm.cpp                       \
+    crypto/aes_ecb.cpp                       \
     diags/factory_diags.cpp                  \
     mac/link_raw.cpp                         \
     mac/mac_frame.cpp                        \
@@ -317,10 +320,12 @@ HEADERS_COMMON                             = \
     coap/coap.hpp                            \
     coap/coap_message.hpp                    \
     coap/coap_secure.hpp                     \
+    common/clearable.hpp                     \
     common/code_utils.hpp                    \
     common/crc16.hpp                         \
     common/debug.hpp                         \
     common/encoding.hpp                      \
+    common/equatable.hpp                     \
     common/extension.hpp                     \
     common/instance.hpp                      \
     common/linked_list.hpp                   \
@@ -329,6 +334,7 @@ HEADERS_COMMON                             = \
     common/logging.hpp                       \
     common/message.hpp                       \
     common/new.hpp                           \
+    common/non_copyable.hpp                  \
     common/notifier.hpp                      \
     common/random.hpp                        \
     common/random_manager.hpp                \
@@ -418,6 +424,7 @@ HEADERS_COMMON                             = \
     thread/announce_begin_server.hpp         \
     thread/announce_sender.hpp               \
     thread/child_table.hpp                   \
+    thread/discover_scanner.hpp              \
     thread/dua_manager.hpp                   \
     thread/energy_scan_server.hpp            \
     thread/indirect_sender.hpp               \
@@ -455,7 +462,6 @@ HEADERS_COMMON                             = \
     utils/otns.hpp                           \
     utils/parse_cmdline.hpp                  \
     utils/slaac_address.hpp                  \
-    utils/static_assert.hpp                  \
     $(NULL)
 
 noinst_HEADERS                             = \

@@ -45,23 +45,20 @@ Tasklet::Tasklet(Instance &aInstance, Handler aHandler, void *aOwner)
     : InstanceLocator(aInstance)
     , OwnerLocator(aOwner)
     , mHandler(aHandler)
-    , mNext(NULL)
+    , mNext(nullptr)
 {
 }
 
-otError Tasklet::Post(void)
+void Tasklet::Post(void)
 {
-    otError error = OT_ERROR_NONE;
-
-    VerifyOrExit(!IsPosted(), error = OT_ERROR_ALREADY);
-    Get<TaskletScheduler>().PostTasklet(*this);
-
-exit:
-    return error;
+    if (!IsPosted())
+    {
+        Get<TaskletScheduler>().PostTasklet(*this);
+    }
 }
 
 TaskletScheduler::TaskletScheduler(void)
-    : mTail(NULL)
+    : mTail(nullptr)
 {
 }
 
@@ -69,7 +66,7 @@ void TaskletScheduler::PostTasklet(Tasklet &aTasklet)
 {
     // Tasklets are saved in a circular singly linked list.
 
-    if (mTail == NULL)
+    if (mTail == nullptr)
     {
         mTail        = &aTasklet;
         mTail->mNext = mTail;
@@ -89,26 +86,26 @@ void TaskletScheduler::ProcessQueuedTasklets(void)
 
     // This method processes all tasklets queued when this is called. We
     // keep a copy the current list and then clear the main list by
-    // setting `mTail` to NULL. A newly posted tasklet while processing
+    // setting `mTail` to nullptr. A newly posted tasklet while processing
     // the currently queued tasklets will then trigger a call to
     // `otTaskletsSignalPending()`.
 
-    mTail = NULL;
+    mTail = nullptr;
 
-    while (tail != NULL)
+    while (tail != nullptr)
     {
         Tasklet *tasklet = tail->mNext;
 
         if (tasklet == tail)
         {
-            tail = NULL;
+            tail = nullptr;
         }
         else
         {
             tail->mNext = tasklet->mNext;
         }
 
-        tasklet->mNext = NULL;
+        tasklet->mNext = nullptr;
         tasklet->RunTask();
     }
 }

@@ -46,6 +46,7 @@
 #include <openthread/platform/memory.h>
 #endif
 
+#include "common/non_copyable.hpp"
 #include "common/random_manager.hpp"
 #include "common/tasklet.hpp"
 #include "common/timer.hpp"
@@ -119,7 +120,7 @@ namespace ot {
  * This class contains all the components used by OpenThread.
  *
  */
-class Instance : public otInstance
+class Instance : public otInstance, private NonCopyable
 {
 public:
 #if OPENTHREAD_CONFIG_MULTIPLE_INSTANCE_ENABLE
@@ -236,14 +237,14 @@ public:
 #if OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE
     void HeapFree(void *aPointer)
     {
-        OT_ASSERT(mFree != NULL);
+        OT_ASSERT(mFree != nullptr);
 
         mFree(aPointer);
     }
 
     void *HeapCAlloc(size_t aCount, size_t aSize)
     {
-        OT_ASSERT(mCAlloc != NULL);
+        OT_ASSERT(mCAlloc != nullptr);
 
         return mCAlloc(aCount, aSize);
     }
@@ -435,6 +436,11 @@ template <> inline Mle::Mle &Instance::Get(void)
 template <> inline Mle::MleRouter &Instance::Get(void)
 {
     return mThreadNetif.mMleRouter;
+}
+
+template <> inline Mle::DiscoverScanner &Instance::Get(void)
+{
+    return mThreadNetif.mDiscoverScanner;
 }
 
 #if OPENTHREAD_FTD

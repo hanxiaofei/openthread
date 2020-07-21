@@ -73,13 +73,13 @@ public:
          * @retval FALSE  The iterator currently points to a valid entry.
          *
          */
-        bool IsDone(void) const { return (mRouter == NULL); }
+        bool IsDone(void) const { return (mRouter == nullptr); }
 
         /**
          * This method advances the iterator.
          *
          * The iterator is moved to point to the next entry.  If there are no more entries matching the iterator
-         * becomes empty (i.e., `GetRouter()` returns `NULL` and `IsDone()` returns `true`).
+         * becomes empty (i.e., `GetRouter()` returns `nullptr` and `IsDone()` returns `true`).
          *
          */
         void Advance(void);
@@ -88,7 +88,7 @@ public:
          * This method overloads `++` operator (pre-increment) to advance the iterator.
          *
          * The iterator is moved to point to the next entry.  If there are no more entries matching the iterator
-         * becomes empty (i.e., `GetRouter()` returns `NULL` and `IsDone()` returns `true`).
+         * becomes empty (i.e., `GetRouter()` returns `nullptr` and `IsDone()` returns `true`).
          *
          */
         void operator++(void) { Advance(); }
@@ -97,7 +97,7 @@ public:
          * This method overloads `++` operator (post-increment) to advance the iterator.
          *
          * The iterator is moved to point to the next entry.  If there are no more entries matching the iterator
-         * becomes empty (i.e., `GetRouter()` returns `NULL` and `IsDone()` returns `true`).
+         * becomes empty (i.e., `GetRouter()` returns `nullptr` and `IsDone()` returns `true`).
          *
          */
         void operator++(int) { Advance(); }
@@ -105,7 +105,7 @@ public:
         /**
          * This method gets the entry to which the iterator is currently pointing.
          *
-         * @returns A pointer to the current entry, or `NULL` if the iterator is done/empty.
+         * @returns A pointer to the current entry, or `nullptr` if the iterator is done/empty.
          *
          */
         Router *GetRouter(void) { return mRouter; }
@@ -137,7 +137,7 @@ public:
     /**
      * This method allocates a router with a random router id.
      *
-     * @returns A pointer to the allocated router or NULL if a router ID is not available.
+     * @returns A pointer to the allocated router or nullptr if a router ID is not available.
      *
      */
     Router *Allocate(void);
@@ -145,7 +145,7 @@ public:
     /**
      * This method allocates a router with a specified router id.
      *
-     * @returns A pointer to the allocated router or NULL if the router id could not be allocated.
+     * @returns A pointer to the allocated router or nullptr if the router id could not be allocated.
      *
      */
     Router *Allocate(uint8_t aRouterId);
@@ -217,7 +217,7 @@ public:
      *
      * @param[in]  aRloc16  The RLOC16 value.
      *
-     * @returns A pointer to the router or NULL if the router could not be found.
+     * @returns A pointer to the router or nullptr if the router could not be found.
      *
      */
     Router *GetNeighbor(uint16_t aRloc16);
@@ -227,7 +227,7 @@ public:
      *
      * @param[in]  aExtAddress  A reference to the IEEE Extended Address.
      *
-     * @returns A pointer to the router or NULL if the router could not be found.
+     * @returns A pointer to the router or nullptr if the router could not be found.
      *
      */
     Router *GetNeighbor(const Mac::ExtAddress &aExtAddress);
@@ -237,7 +237,7 @@ public:
      *
      * @param[in]  aRouterId  The router id.
      *
-     * @returns A pointer to the router or NULL if the router could not be found.
+     * @returns A pointer to the router or nullptr if the router could not be found.
      *
      */
     Router *GetRouter(uint8_t aRouterId)
@@ -250,7 +250,7 @@ public:
      *
      * @param[in]  aRouterId  The router id.
      *
-     * @returns A pointer to the router or NULL if the router could not be found.
+     * @returns A pointer to the router or nullptr if the router could not be found.
      *
      */
     const Router *GetRouter(uint8_t aRouterId) const;
@@ -260,10 +260,26 @@ public:
      *
      * @param[in]  aExtAddress  A reference to the IEEE Extended Address.
      *
-     * @returns A pointer to the router or NULL if the router could not be found.
+     * @returns A pointer to the router or nullptr if the router could not be found.
      *
      */
     Router *GetRouter(const Mac::ExtAddress &aExtAddress);
+
+    /**
+     * This method returns if the router table contains a given `Neighbor` instance.
+     *
+     * @param[in]  aNeighbor  A reference to a `Neighbor`.
+     *
+     * @retval TRUE  if @p aNeighbor is a `Router` in the router table.
+     * @retval FALSE if @p aNeighbor is not a `Router` in the router table
+     *               (i.e. mParent, mParentCandidate, a `Child` of the child table).
+     *
+     */
+    bool Contains(const Neighbor &aNeighbor) const
+    {
+        return mRouters <= &static_cast<const Router &>(aNeighbor) &&
+               &static_cast<const Router &>(aNeighbor) < mRouters + Mle::kMaxRouters;
+    }
 
     /**
      * This method retains diagnostic information for a given router.

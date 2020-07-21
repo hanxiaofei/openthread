@@ -102,7 +102,7 @@ public:
         /**
          * This method notifies user of `SubMac` of a received frame.
          *
-         * @param[in]  aFrame    A pointer to the received frame or NULL if the receive operation failed.
+         * @param[in]  aFrame    A pointer to the received frame or nullptr if the receive operation failed.
          * @param[in]  aError    OT_ERROR_NONE when successfully received a frame,
          *                       OT_ERROR_ABORT when reception was aborted and a frame was not received,
          *                       OT_ERROR_NO_BUFS when a frame could not be received due to lack of rx buffer space.
@@ -130,7 +130,7 @@ public:
          * of a frame transmission, this method is invoked on all frame transmission attempts.
          *
          * @param[in] aFrame      The transmitted frame.
-         * @param[in] aAckFrame   A pointer to the ACK frame, or NULL if no ACK was received.
+         * @param[in] aAckFrame   A pointer to the ACK frame, or nullptr if no ACK was received.
          * @param[in] aError      OT_ERROR_NONE when the frame was transmitted successfully,
          *                        OT_ERROR_NO_ACK when the frame was transmitted but no ACK was received,
          *                        OT_ERROR_CHANNEL_ACCESS_FAILURE tx failed due to activity on the channel,
@@ -151,7 +151,7 @@ public:
          * the received ACK frame.
          *
          * @param[in]  aFrame     The transmitted frame.
-         * @param[in]  aAckFrame  A pointer to the ACK frame, NULL if no ACK was received.
+         * @param[in]  aAckFrame  A pointer to the ACK frame, nullptr if no ACK was received.
          * @param[in]  aError     OT_ERROR_NONE when the frame was transmitted,
          *                        OT_ERROR_NO_ACK when the frame was transmitted but no ACK was received,
          *                        OT_ERROR_CHANNEL_ACCESS_FAILURE tx failed due to activity on the channel,
@@ -167,6 +167,14 @@ public:
          *
          */
         void EnergyScanDone(int8_t aMaxRssi);
+
+        /**
+         * This method notifies user of `SubMac` that MAC frame counter is updated.
+         *
+         * @param[in]  aFrameCounter  The MAC frame counter value.
+         *
+         */
+        void FrameCounterUpdated(uint32_t aFrameCounter);
     };
 
     /**
@@ -237,7 +245,7 @@ public:
      * This method registers a callback to provide received packet capture for IEEE 802.15.4 frames.
      *
      * @param[in]  aPcapCallback     A pointer to a function that is called when receiving an IEEE 802.15.4 link frame
-     *                                or NULL to disable the callback.
+     *                                or nullptr to disable the callback.
      * @param[in]  aCallbackContext  A pointer to application-specific context.
      *
      */
@@ -347,6 +355,58 @@ public:
      */
     int8_t GetNoiseFloor(void);
 
+    /**
+     * This method sets MAC keys and key index.
+     *
+     * @param[in] aKeyIdMode  MAC key ID mode.
+     * @param[in] aKeyId      The key ID.
+     * @param[in] aPrevKey    The previous MAC key.
+     * @param[in] aCurrKey    The current MAC key.
+     * @param[in] aNextKey    The next MAC key.
+     *
+     */
+    void SetMacKey(uint8_t aKeyIdMode, uint8_t aKeyId, const Key &aPrevKey, const Key &aCurrKey, const Key &aNextKey);
+
+    /**
+     * This method returns a reference to the current MAC key.
+     *
+     * @returns A reference to the current MAC key.
+     *
+     */
+    const Key &GetCurrentMacKey(void) const { return mCurrKey; }
+
+    /**
+     * This method returns a reference to the previous MAC key.
+     *
+     * @returns A reference to the previous MAC key.
+     *
+     */
+    const Key &GetPreviousMacKey(void) const { return mPrevKey; }
+
+    /**
+     * This method returns a reference to the next MAC key.
+     *
+     * @returns A reference to the next MAC key.
+     *
+     */
+    const Key &GetNextMacKey(void) const { return mNextKey; }
+
+    /**
+     * This method returns the current MAC frame counter value.
+     *
+     * @returns The current MAC frame counter value.
+     *
+     */
+    uint32_t GetFrameCounter(void) const { return mFrameCounter; };
+
+    /**
+     * This method sets the current MAC Frame Counter value.
+     *
+     * @param[in] aFrameCounter  The MAC Frame Counter value.
+     *
+     */
+    void SetFrameCounter(uint32_t aFrameCounter);
+
 private:
     enum
     {
@@ -378,15 +438,19 @@ private:
         return ((mRadioCaps & (OT_RADIO_CAPS_CSMA_BACKOFF | OT_RADIO_CAPS_TRANSMIT_RETRIES)) != 0);
     }
 
+    bool RadioSupportsTransmitSecurity(void) const { return ((mRadioCaps & OT_RADIO_CAPS_TRANSMIT_SEC) != 0); }
     bool RadioSupportsRetries(void) const { return ((mRadioCaps & OT_RADIO_CAPS_TRANSMIT_RETRIES) != 0); }
     bool RadioSupportsAckTimeout(void) const { return ((mRadioCaps & OT_RADIO_CAPS_ACK_TIMEOUT) != 0); }
     bool RadioSupportsEnergyScan(void) const { return ((mRadioCaps & OT_RADIO_CAPS_ENERGY_SCAN) != 0); }
 
+    bool ShouldHandleTransmitSecurity(void) const;
     bool ShouldHandleCsmaBackOff(void) const;
     bool ShouldHandleAckTimeout(void) const;
     bool ShouldHandleRetries(void) const;
     bool ShouldHandleEnergyScan(void) const;
 
+    void ProcessTransmitSecurity(void);
+    void UpdateFrameCounter(uint32_t aFrameCounter);
     void StartCsmaBackoff(void);
     void BeginTransmit(void);
     void SampleRssi(void);
@@ -415,6 +479,11 @@ private:
     Callbacks          mCallbacks;
     otLinkPcapCallback mPcapCallback;
     void *             mPcapCallbackContext;
+    Key                mPrevKey;
+    Key                mCurrKey;
+    Key                mNextKey;
+    uint32_t           mFrameCounter;
+    uint8_t            mKeyId;
 #if OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
     TimerMicro mTimer;
 #else

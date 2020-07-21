@@ -38,8 +38,7 @@ list(APPEND OT_PLATFORM_DEFINES
 )
 set(OT_PLATFORM_DEFINES ${OT_PLATFORM_DEFINES} PARENT_SCOPE)
 
-list(APPEND OT_PRIVATE_DEFINES "MBEDTLS_USER_CONFIG_FILE=\"cc1352-mbedtls-config.h\"")
-set(OT_PRIVATE_DEFINES ${OT_PRIVATE_DEFINES} PARENT_SCOPE)
+target_compile_definitions(ot-config INTERFACE "MBEDTLS_USER_CONFIG_FILE=\"cc1352-mbedtls-config.h\"")
 
 list(APPEND OT_PUBLIC_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/crypto"
@@ -65,13 +64,19 @@ add_library(openthread-cc1352
     cxx_helpers.c
 )
 
-set_property(TARGET openthread-cc1352 PROPERTY C_STANDARD 99)
+set_target_properties(
+    openthread-cc1352
+    PROPERTIES
+        C_STANDARD 99
+        CXX_STANDARD 11
+)
 
 target_link_libraries(openthread-cc1352
     PUBLIC
         cc13x2-cc26x2-driver
     PRIVATE
         ${OT_MBEDTLS}
+        ot-config
 )
 
 target_link_options(openthread-cc1352
@@ -83,8 +88,6 @@ target_link_options(openthread-cc1352
 target_compile_definitions(openthread-cc1352
     PUBLIC
         ${OT_PLATFORM_DEFINES}
-    PRIVATE
-        ${OT_PRIVATE_DEFINES}
 )
 
 target_compile_options(openthread-cc1352 PRIVATE ${OT_CFLAGS})
@@ -92,7 +95,6 @@ target_compile_options(openthread-cc1352 PRIVATE ${OT_CFLAGS})
 target_include_directories(openthread-cc1352
     PRIVATE
         ${OT_PUBLIC_INCLUDES}
-        ${OT_PRIVATE_INCLUDES}
         ${PROJECT_SOURCE_DIR}/src/core
         ${PROJECT_SOURCE_DIR}/examples/platforms
 )

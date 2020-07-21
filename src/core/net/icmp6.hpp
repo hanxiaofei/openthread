@@ -84,11 +84,12 @@ public:
      */
     enum Type
     {
-        kTypeDstUnreach   = OT_ICMP6_TYPE_DST_UNREACH,   ///< Destination Unreachable
-        kTypePacketToBig  = OT_ICMP6_TYPE_PACKET_TO_BIG, ///< Packet To Big
-        kTypeTimeExceeded = OT_ICMP6_TYPE_TIME_EXCEEDED, ///< Time Exceeded
-        kTypeEchoRequest  = OT_ICMP6_TYPE_ECHO_REQUEST,  ///< Echo Request
-        kTypeEchoReply    = OT_ICMP6_TYPE_ECHO_REPLY,    ///< Echo Reply
+        kTypeDstUnreach       = OT_ICMP6_TYPE_DST_UNREACH,       ///< Destination Unreachable
+        kTypePacketToBig      = OT_ICMP6_TYPE_PACKET_TO_BIG,     ///< Packet To Big
+        kTypeTimeExceeded     = OT_ICMP6_TYPE_TIME_EXCEEDED,     ///< Time Exceeded
+        kTypeParameterProblem = OT_ICMP6_TYPE_PARAMETER_PROBLEM, ///< Parameter Problem
+        kTypeEchoRequest      = OT_ICMP6_TYPE_ECHO_REQUEST,      ///< Echo Request
+        kTypeEchoReply        = OT_ICMP6_TYPE_ECHO_REPLY,        ///< Echo Reply
     };
 
     /**
@@ -227,7 +228,7 @@ public:
     {
         mReceiveCallback = aCallback;
         mContext         = aContext;
-        mNext            = NULL;
+        mNext            = nullptr;
     }
 
 private:
@@ -257,7 +258,7 @@ public:
      *
      * @param[in]  aReserved  The number of header bytes to reserve after the ICMP header.
      *
-     * @returns A pointer to the message or NULL if no buffers are available.
+     * @returns A pointer to the message or nullptr if no buffers are available.
      *
      */
     Message *NewMessage(uint16_t aReserved);

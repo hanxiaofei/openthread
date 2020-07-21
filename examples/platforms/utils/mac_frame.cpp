@@ -28,6 +28,7 @@
 
 #include "mac_frame.h"
 
+#include <assert.h>
 #include "mac/mac_frame.hpp"
 
 using namespace ot;
@@ -124,4 +125,80 @@ uint8_t otMacFrameGetSequence(const otRadioFrame *aFrame)
 void otMacFrameProcessTransmitAesCcm(otRadioFrame *aFrame, const otExtAddress *aExtAddress)
 {
     static_cast<Mac::TxFrame *>(aFrame)->ProcessTransmitAesCcm(*static_cast<const Mac::ExtAddress *>(aExtAddress));
+}
+
+bool otMacFrameIsVersion2015(const otRadioFrame *aFrame)
+{
+    return static_cast<const Mac::Frame *>(aFrame)->IsVersion2015();
+}
+
+void otMacFrameGenerateImmAck(const otRadioFrame *aFrame, bool aIsFramePending, otRadioFrame *aAckFrame)
+{
+    assert(aFrame != nullptr && aAckFrame != nullptr);
+
+    static_cast<Mac::TxFrame *>(aAckFrame)->GenerateImmAck(*static_cast<const Mac::RxFrame *>(aFrame), aIsFramePending);
+}
+
+#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
+otError otMacFrameGenerateEnhAck(const otRadioFrame *aFrame,
+                                 bool                aIsFramePending,
+                                 const uint8_t *     aIeData,
+                                 uint8_t             aIeLength,
+                                 otRadioFrame *      aAckFrame)
+{
+    assert(aFrame != nullptr && aAckFrame != nullptr);
+
+    return static_cast<Mac::TxFrame *>(aAckFrame)->GenerateEnhAck(*static_cast<const Mac::RxFrame *>(aFrame),
+                                                                  aIsFramePending, aIeData, aIeLength);
+}
+#endif
+
+#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
+void otMacFrameSetCslIe(otRadioFrame *aFrame, uint16_t aCslPeriod, uint16_t aCslPhase)
+{
+    static_cast<Mac::Frame *>(aFrame)->SetCslIe(aCslPeriod, aCslPhase);
+}
+#endif // OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
+
+bool otMacFrameIsSecurityEnabled(otRadioFrame *aFrame)
+{
+    return static_cast<const Mac::Frame *>(aFrame)->GetSecurityEnabled();
+}
+
+bool otMacFrameIsKeyIdMode1(otRadioFrame *aFrame)
+{
+    uint8_t keyIdMode;
+    otError error;
+
+    error = static_cast<const Mac::Frame *>(aFrame)->GetKeyIdMode(keyIdMode);
+
+    return (error == OT_ERROR_NONE) ? (keyIdMode == Mac::Frame::kKeyIdMode1) : false;
+}
+
+uint8_t otMacFrameGetKeyId(otRadioFrame *aFrame)
+{
+    uint8_t keyId = 0;
+
+    IgnoreError(static_cast<const Mac::Frame *>(aFrame)->GetKeyId(keyId));
+
+    return keyId;
+}
+
+void otMacFrameSetKeyId(otRadioFrame *aFrame, uint8_t aKeyId)
+{
+    static_cast<Mac::Frame *>(aFrame)->SetKeyId(aKeyId);
+}
+
+uint32_t otMacFrameGetFrameCounter(otRadioFrame *aFrame)
+{
+    uint32_t frameCounter = UINT32_MAX;
+
+    IgnoreError(static_cast<Mac::Frame *>(aFrame)->GetFrameCounter(frameCounter));
+
+    return frameCounter;
+}
+
+void otMacFrameSetFrameCounter(otRadioFrame *aFrame, uint32_t aFrameCounter)
+{
+    static_cast<Mac::Frame *>(aFrame)->SetFrameCounter(aFrameCounter);
 }

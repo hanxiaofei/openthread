@@ -38,10 +38,10 @@
 
 #include <openthread/coap.h>
 
+#include "common/clearable.hpp"
 #include "common/code_utils.hpp"
 #include "common/encoding.hpp"
 #include "common/message.hpp"
-#include "utils/static_assert.hpp"
 
 namespace ot {
 
@@ -132,7 +132,7 @@ public:
      *
      * @param[in]  aType              The Type value.
      * @param[in]  aCode              The Code value.
-     * @param[in]  aUriPath           A pointer to a NULL-terminated string.
+     * @param[in]  aUriPath           A pointer to a null-terminated string.
      *
      * @retval OT_ERROR_NONE          Successfully appended the option.
      * @retval OT_ERROR_NO_BUFS       The option length exceeds the buffer size.
@@ -341,7 +341,7 @@ public:
     /**
      * This method appends a Uri-Path option.
      *
-     * @param[in]  aUriPath           A pointer to a NULL-terminated string.
+     * @param[in]  aUriPath           A pointer to a null-terminated string.
      *
      * @retval OT_ERROR_NONE          Successfully appended the option.
      * @retval OT_ERROR_INVALID_ARGS  The option type is not equal or greater than the last option type.
@@ -368,7 +368,7 @@ public:
     /**
      * This method appends a Proxy-Uri option.
      *
-     * @param[in]  aProxyUri          A pointer to a NULL-terminated string.
+     * @param[in]  aProxyUri          A pointer to a null-terminated string.
      *
      * @retval OT_ERROR_NONE          Successfully appended the option.
      * @retval OT_ERROR_INVALID_ARGS  The option type is not equal or greater than the last option type.
@@ -403,7 +403,7 @@ public:
     /**
      * This method appends a single Uri-Query option.
      *
-     * @param[in]  aUriQuery  A pointer to NULL-terminated string, which should contain a single key=value pair.
+     * @param[in]  aUriQuery  A pointer to null-terminated string, which should contain a single key=value pair.
      *
      * @retval OT_ERROR_NONE          Successfully appended the option.
      * @retval OT_ERROR_INVALID_ARGS  The option type is not equal or greater than the last option type.
@@ -522,7 +522,7 @@ public:
      *
      * @param[in] aLength  Number of payload bytes to copy.
      *
-     * @returns A pointer to the message or NULL if insufficient message buffers are available.
+     * @returns A pointer to the message or nullptr if insufficient message buffers are available.
      *
      */
     Message *Clone(uint16_t aLength) const;
@@ -534,7 +534,7 @@ public:
      * `Type`, `SubType`, `LinkSecurity`, `Offset`, `InterfaceId`, and `Priority` fields on the cloned message are also
      * copied from the original one.
      *
-     * @returns A pointer to the message or NULL if insufficient message buffers are available.
+     * @returns A pointer to the message or nullptr if insufficient message buffers are available.
      *
      */
     Message *Clone(void) const { return Clone(GetLength()); }
@@ -551,7 +551,7 @@ public:
      * This method should be used when the message is in a `Coap::MessageQueue` (i.e., a queue containing only CoAP
      * messages).
      *
-     * @returns A pointer to the next message in the queue or NULL if at the end of the queue.
+     * @returns A pointer to the next message in the queue or nullptr if at the end of the queue.
      *
      */
     Message *GetNextCoapMessage(void) { return static_cast<Message *>(GetNext()); }
@@ -562,7 +562,7 @@ public:
      * This method should be used when the message is in a `Coap::MessageQueue` (i.e., a queue containing only CoAP
      * messages).
      *
-     * @returns A pointer to the next message in the queue or NULL if at the end of the queue.
+     * @returns A pointer to the next message in the queue or nullptr if at the end of the queue.
      *
      */
     const Message *GetNextCoapMessage(void) const { return static_cast<const Message *>(GetNext()); }
@@ -628,10 +628,8 @@ private:
      * This structure represents a HelpData used by this CoAP message.
      *
      */
-    struct HelpData
+    struct HelpData : public Clearable<HelpData>
     {
-        void Clear(void) { memset(this, 0, sizeof(*this)); }
-
         Header   mHeader;
         uint16_t mOptionLast;
         uint16_t mHeaderOffset; ///< The byte offset for the CoAP Header
@@ -640,8 +638,8 @@ private:
 
     const HelpData &GetHelpData(void) const
     {
-        OT_STATIC_ASSERT(sizeof(mBuffer.mHead.mInfo) + sizeof(HelpData) + kHelpDataAlignment <= sizeof(mBuffer),
-                         "Insufficient buffer size for CoAP processing!");
+        static_assert(sizeof(mBuffer.mHead.mMetadata) + sizeof(HelpData) + kHelpDataAlignment <= sizeof(mBuffer),
+                      "Insufficient buffer size for CoAP processing!");
 
         return *static_cast<const HelpData *>(OT_ALIGN(mBuffer.mHead.mData, kHelpDataAlignment));
     }
@@ -678,11 +676,8 @@ public:
      *
      * @param[in]  aMessage  The message to add.
      *
-     * @retval OT_ERROR_NONE     Successfully added the message to the queue.
-     * @retval OT_ERROR_ALREADY  The message is already enqueued in a queue.
-     *
      */
-    otError Enqueue(Message &aMessage) { return Enqueue(aMessage, kQueuePositionTail); }
+    void Enqueue(Message &aMessage) { Enqueue(aMessage, kQueuePositionTail); }
 
     /**
      * This method adds a message at a given position (head/tail) of the queue.
@@ -690,25 +685,16 @@ public:
      * @param[in]  aMessage  The message to add.
      * @param[in]  aPosition The position (head or tail) where to add the message.
      *
-     * @retval OT_ERROR_NONE     Successfully added the message to the queue.
-     * @retval OT_ERROR_ALREADY  The message is already enqueued in a queue.
-     *
      */
-    otError Enqueue(Message &aMessage, QueuePosition aPosition)
-    {
-        return ot::MessageQueue::Enqueue(aMessage, aPosition);
-    }
+    void Enqueue(Message &aMessage, QueuePosition aPosition) { ot::MessageQueue::Enqueue(aMessage, aPosition); }
 
     /**
      * This method removes a message from the queue.
      *
      * @param[in]  aMessage  The message to remove.
      *
-     * @retval OT_ERROR_NONE       Successfully removed the message from the queue.
-     * @retval OT_ERROR_NOT_FOUND  The message is not enqueued in a queue.
-     *
      */
-    otError Dequeue(Message &aMessage) { return ot::MessageQueue::Dequeue(aMessage); }
+    void Dequeue(Message &aMessage) { ot::MessageQueue::Dequeue(aMessage); }
 };
 
 /**
@@ -735,7 +721,7 @@ public:
      *
      * @param[in]   aOption         Option number to look for.
      *
-     * @returns A pointer to the first matching option. If no option matching @p aOption is seen, NULL pointer is
+     * @returns A pointer to the first matching option. If no option matching @p aOption is seen, nullptr pointer is
      *          returned.
      */
     const otCoapOption *GetFirstOptionMatching(uint16_t aOption);
@@ -743,7 +729,7 @@ public:
     /**
      * This method returns a pointer to the first option.
      *
-     * @returns A pointer to the first option. If no option is present NULL pointer is returned.
+     * @returns A pointer to the first option. If no option is present nullptr pointer is returned.
      */
     const otCoapOption *GetFirstOption(void);
 
@@ -756,14 +742,14 @@ public:
      * @param[in]   aOption         Option number to look for.
      *
      * @returns A pointer to the next matching option (relative to current iterator position). If no option matching @p
-     *          aOption is seen, NULL pointer is returned.
+     *          aOption is seen, nullptr pointer is returned.
      */
     const otCoapOption *GetNextOptionMatching(uint16_t aOption);
 
     /**
      * This method returns a pointer to the next option.
      *
-     * @returns A pointer to the next option. If no more options are present NULL pointer is returned.
+     * @returns A pointer to the next option. If no more options are present nullptr pointer is returned.
      */
     const otCoapOption *GetNextOption(void);
 
