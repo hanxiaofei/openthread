@@ -336,6 +336,7 @@ HEADERS_COMMON                             = \
     common/new.hpp                           \
     common/non_copyable.hpp                  \
     common/notifier.hpp                      \
+    common/pool.hpp                          \
     common/random.hpp                        \
     common/random_manager.hpp                \
     common/settings.hpp                      \
@@ -423,6 +424,7 @@ HEADERS_COMMON                             = \
     thread/address_resolver.hpp              \
     thread/announce_begin_server.hpp         \
     thread/announce_sender.hpp               \
+    thread/child_mask.hpp                    \
     thread/child_table.hpp                   \
     thread/discover_scanner.hpp              \
     thread/dua_manager.hpp                   \
