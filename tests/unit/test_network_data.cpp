@@ -53,9 +53,9 @@ void PrintExternalRouteConfig(const ExternalRouteConfig &aConfig)
 {
     printf("\nprefix:");
 
-    for (uint8_t i = 0; i < 16; i++)
+    for (uint8_t b : aConfig.mPrefix.mPrefix.mFields.m8)
     {
-        printf("%02x", aConfig.mPrefix.mPrefix.mFields.m8[i]);
+        printf("%02x", b);
     }
 
     printf(", length:%d, rloc16:%04x, preference:%d, stable:%d, nexthop:%d", aConfig.mPrefix.mLength, aConfig.mRloc16,
@@ -63,7 +63,7 @@ void PrintExternalRouteConfig(const ExternalRouteConfig &aConfig)
 }
 
 // Returns true if the two given ExternalRouteConfig match (intentionally ignoring mNextHopIsThisDevice).
-bool CompareExternalRouteConfig(const ExternalRouteConfig &aConfig1, const ExternalRouteConfig &aConfig2)
+bool CompareExternalRouteConfig(const otExternalRouteConfig &aConfig1, const otExternalRouteConfig &aConfig2)
 {
     return (memcmp(aConfig1.mPrefix.mPrefix.mFields.m8, aConfig2.mPrefix.mPrefix.mFields.m8,
                    sizeof(aConfig1.mPrefix.mPrefix)) == 0) &&
@@ -85,7 +85,7 @@ void TestNetworkDataIterator(void)
                                         0xFD, 0x00, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03,
                                         0xC8, 0x00, 0x40, 0x01, 0x03, 0x54, 0x00, 0x00};
 
-        ExternalRouteConfig routes[] = {
+        otExternalRouteConfig routes[] = {
             {
                 {{{{0xfd, 0x00, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}},
                  64},
@@ -110,11 +110,11 @@ void TestNetworkDataIterator(void)
         printf("\nTest #1: Network data 1");
         printf("\n-------------------------------------------------");
 
-        for (uint8_t i = 0; i < OT_ARRAY_LENGTH(routes); i++)
+        for (const auto &route : routes)
         {
             SuccessOrQuit(netData.GetNextExternalRoute(iter, config), "GetNextExternalRoute() failed");
             PrintExternalRouteConfig(config);
-            VerifyOrQuit(CompareExternalRouteConfig(config, routes[i]) == true,
+            VerifyOrQuit(CompareExternalRouteConfig(config, route) == true,
                          "external route config does not match expectation");
         }
     }
@@ -126,7 +126,7 @@ void TestNetworkDataIterator(void)
             0x31, 0x00, 0x02, 0x0F, 0x00, 0x40, 0xFD, 0x00, 0xAB, 0xBA, 0xCD, 0xDC, 0x00, 0x00, 0x00, 0x03, 0x10, 0x00,
             0x00, 0x03, 0x0E, 0x00, 0x20, 0xFD, 0x00, 0xAB, 0xBA, 0x01, 0x06, 0x54, 0x00, 0x00, 0x04, 0x00, 0x00};
 
-        ExternalRouteConfig routes[] = {
+        otExternalRouteConfig routes[] = {
             {{{{{0xfd, 0x00, 0x12, 0x34, 0x56, 0x78, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}}, 64},
              0x1000,
              1,
@@ -160,11 +160,11 @@ void TestNetworkDataIterator(void)
         printf("\nTest #2: Network data 2");
         printf("\n-------------------------------------------------");
 
-        for (uint8_t i = 0; i < OT_ARRAY_LENGTH(routes); i++)
+        for (const auto &route : routes)
         {
             SuccessOrQuit(netData.GetNextExternalRoute(iter, config), "GetNextExternalRoute() failed");
             PrintExternalRouteConfig(config);
-            VerifyOrQuit(CompareExternalRouteConfig(config, routes[i]) == true,
+            VerifyOrQuit(CompareExternalRouteConfig(config, route) == true,
                          "external route config does not match expectation");
         }
     }

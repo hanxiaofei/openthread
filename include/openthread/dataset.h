@@ -99,23 +99,13 @@ struct otExtendedPanId
  */
 typedef struct otExtendedPanId otExtendedPanId;
 
-#define OT_MESH_LOCAL_PREFIX_SIZE 8 ///< Size of the Mesh Local Prefix (bytes)
+#define OT_MESH_LOCAL_PREFIX_SIZE OT_IP6_PREFIX_SIZE ///< Size of the Mesh Local Prefix (bytes)
 
 /**
  * This structure represents a Mesh Local Prefix.
  *
  */
-OT_TOOL_PACKED_BEGIN
-struct otMeshLocalPrefix
-{
-    uint8_t m8[OT_MESH_LOCAL_PREFIX_SIZE]; ///< Byte values
-} OT_TOOL_PACKED_END;
-
-/**
- * This structure represents a Mesh Local Prefix.
- *
- */
-typedef struct otMeshLocalPrefix otMeshLocalPrefix;
+typedef otIp6NetworkPrefix otMeshLocalPrefix;
 
 #define OT_PSKC_MAX_SIZE 16 ///< Maximum size of the PSKc (bytes)
 
@@ -297,6 +287,7 @@ typedef enum otMeshcopTlvType
     OT_MESHCOP_TLV_ENERGY_LIST              = 57,  ///< meshcop Energy List TLV
     OT_MESHCOP_TLV_DISCOVERYREQUEST         = 128, ///< meshcop Discovery Request TLV
     OT_MESHCOP_TLV_DISCOVERYRESPONSE        = 129, ///< meshcop Discovery Response TLV
+    OT_MESHCOP_TLV_JOINERADVERTISEMENT      = 241, ///< meshcop Joiner Advertisement TLV
 } otMeshcopTlvType;
 
 /**

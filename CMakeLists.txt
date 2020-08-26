@@ -40,7 +40,11 @@ set(OT_EXTERNAL_MBEDTLS "" CACHE STRING "Specify external mbedtls library")
 
 add_library(ot-config INTERFACE)
 
-target_include_directories(ot-config INTERFACE ${PROJECT_SOURCE_DIR}/src/core)
+target_include_directories(ot-config INTERFACE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/src/core
+)
 
 include(TestBigEndian)
 TEST_BIG_ENDIAN(OT_BIG_ENDIAN)
@@ -60,8 +64,8 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "(Apple)?[Cc]lang")
 
     if(OT_COVERAGE)
         target_compile_definitions(ot-config INTERFACE "OPENTHREAD_ENABLE_COVERAGE=1")
-        add_compile_options(-g -O0 --coverage)
-        add_link_options(--coverage)
+        target_compile_options(ot-config INTERFACE -g -O0 --coverage)
+        target_link_libraries(ot-config INTERFACE --coverage)
     endif()
 
     set(OT_CFLAGS
@@ -99,6 +103,20 @@ if(NOT OT_PLATFORM IN_LIST OT_PLATFORMS)
     message(FATAL_ERROR "Platform unknown: ${OT_PLATFORM}")
 endif()
 
+set(OT_LOG_LEVEL "" CACHE STRING "set OpenThread log level")
+set(OT_LOG_LEVEL_VALUES
+    "NONE"
+    "CRIT"
+    "WARN"
+    "NOTE"
+    "INFO"
+    "DEBG"
+)
+set_property(CACHE OT_LOG_LEVEL PROPERTY STRINGS ${OT_LOG_LEVEL_VALUES})
+if(OT_LOG_LEVEL)
+    target_compile_definitions(ot-config INTERFACE "OPENTHREAD_CONFIG_LOG_LEVEL=OT_LOG_LEVEL_${OT_LOG_LEVEL}")
+endif()
+
 set(OT_LOG_OUTPUT_VALUES
     "APP"
     "DEBUG_UART"
@@ -119,10 +137,10 @@ if(OT_LOG_OUTPUT)
     message(STATUS "Log output: ${OT_LOG_OUTPUT}")
 endif()
 
-# OT_CONFIG allows users to specify the path to OpenThread project core
+# OT_CONFIG allows users to specify the path to a customized OpenThread
 # config header file. The default value of this parameter is empty string.
 # When not specified by user (value is ""), a platform cmake file may
-# choose to change this variable to provide its own core config header
+# choose to change this variable to provide its own OpenThread config header
 # file instead.
 
 set(OT_CONFIG "" CACHE STRING "OpenThread project-specific config header file chosen by user at configure time")
@@ -140,8 +158,8 @@ elseif(OT_PLATFORM)
 endif()
 
 if(OT_CONFIG)
-    target_compile_definitions(ot-config INTERFACE "OPENTHREAD_PROJECT_CORE_CONFIG_FILE=\"${OT_CONFIG}\"")
-    message(STATUS "Project core config: \"${OT_CONFIG}\"")
+    target_compile_definitions(ot-config INTERFACE "OPENTHREAD_CONFIG_FILE=\"${OT_CONFIG}\"")
+    message(STATUS "OpenThread Config File: \"${OT_CONFIG}\"")
 endif()
 
 target_compile_definitions(ot-config INTERFACE ${OT_PLATFORM_DEFINES})

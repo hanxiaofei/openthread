@@ -65,6 +65,9 @@ IndirectSender::IndirectSender(Instance &aInstance)
     , mEnabled(false)
     , mSourceMatchController(aInstance)
     , mDataPollHandler(aInstance)
+#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+    , mCslTxScheduler(aInstance)
+#endif
 {
 }
 
@@ -72,13 +75,16 @@ void IndirectSender::Stop(void)
 {
     VerifyOrExit(mEnabled, OT_NOOP);
 
-    for (ChildTable::Iterator iter(GetInstance(), Child::kInStateAnyExceptInvalid); !iter.IsDone(); iter++)
+    for (Child &child : Get<ChildTable>().Iterate(Child::kInStateAnyExceptInvalid))
     {
-        iter.GetChild()->SetIndirectMessage(nullptr);
-        mSourceMatchController.ResetMessageCount(*iter.GetChild());
+        child.SetIndirectMessage(nullptr);
+        mSourceMatchController.ResetMessageCount(child);
     }
 
     mDataPollHandler.Clear();
+#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+    mCslTxScheduler.Clear();
+#endif
 
 exit:
     mEnabled = false;
@@ -147,6 +153,9 @@ void IndirectSender::ClearAllMessagesForSleepyChild(Child &aChild)
     mSourceMatchController.ResetMessageCount(aChild);
 
     mDataPollHandler.RequestFrameChange(DataPollHandler::kPurgeFrame, aChild);
+#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+    mCslTxScheduler.Update();
+#endif
 
 exit:
     return;
@@ -189,6 +198,9 @@ void IndirectSender::HandleChildModeChange(Child &aChild, Mle::DeviceMode aOldMo
         mSourceMatchController.ResetMessageCount(aChild);
 
         mDataPollHandler.RequestFrameChange(DataPollHandler::kPurgeFrame, aChild);
+#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+        mCslTxScheduler.Update();
+#endif
     }
 
     // Since the queuing delays for direct transmissions are expected to
@@ -255,6 +267,9 @@ void IndirectSender::RequestMessageUpdate(Child &aChild)
 
         aChild.SetWaitingForMessageUpdate(true);
         mDataPollHandler.RequestFrameChange(DataPollHandler::kPurgeFrame, aChild);
+#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+        mCslTxScheduler.Update();
+#endif
 
         ExitNow();
     }
@@ -284,6 +299,9 @@ void IndirectSender::RequestMessageUpdate(Child &aChild)
 
     aChild.SetWaitingForMessageUpdate(true);
     mDataPollHandler.RequestFrameChange(DataPollHandler::kReplaceFrame, aChild);
+#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+    mCslTxScheduler.Update();
+#endif
 
 exit:
     return;
@@ -312,6 +330,9 @@ void IndirectSender::UpdateIndirectMessage(Child &aChild)
         Mac::Address childAddress;
 
         mDataPollHandler.HandleNewFrame(aChild);
+#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+        mCslTxScheduler.Update();
+#endif
 
         aChild.GetMacAddress(childAddress);
         Get<MeshForwarder>().LogMessage(MeshForwarder::kMessagePrepareIndirect, *message, &childAddress, OT_ERROR_NONE);
@@ -473,6 +494,9 @@ void IndirectSender::HandleSentFrameToChild(const Mac::TxFrame &aFrame,
     {
         aChild.SetIndirectFragmentOffset(nextOffset);
         mDataPollHandler.HandleNewFrame(aChild);
+#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+        mCslTxScheduler.Update();
+#endif
         ExitNow();
     }
 
@@ -556,14 +580,14 @@ exit:
 
 void IndirectSender::ClearMessagesForRemovedChildren(void)
 {
-    for (ChildTable::Iterator iter(GetInstance(), Child::kInStateAnyExceptValidOrRestoring); !iter.IsDone(); iter++)
+    for (Child &child : Get<ChildTable>().Iterate(Child::kInStateAnyExceptValidOrRestoring))
     {
-        if (iter.GetChild()->GetIndirectMessageCount() == 0)
+        if (child.GetIndirectMessageCount() == 0)
         {
             continue;
         }
 
-        ClearAllMessagesForSleepyChild(*iter.GetChild());
+        ClearAllMessagesForSleepyChild(child);
     }
 }
 

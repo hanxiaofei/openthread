@@ -40,30 +40,17 @@
 
 namespace ot {
 
-Notifier::Receiver::Receiver(Instance &aInstance, Handler aHandler)
-    : mHandler(aHandler)
-    , mNext(nullptr)
-{
-    aInstance.Get<Notifier>().RegisterReceiver(*this);
-}
-
 Notifier::Notifier(Instance &aInstance)
     : InstanceLocator(aInstance)
     , mEventsToSignal()
     , mSignaledEvents()
     , mTask(aInstance, Notifier::EmitEvents, this)
-    , mReceivers()
 {
-    for (unsigned int i = 0; i < kMaxExternalHandlers; i++)
+    for (ExternalCallback &callback : mExternalCallbacks)
     {
-        mExternalCallbacks[i].mHandler = nullptr;
-        mExternalCallbacks[i].mContext = nullptr;
+        callback.mHandler = nullptr;
+        callback.mContext = nullptr;
     }
-}
-
-void Notifier::RegisterReceiver(Receiver &aReceiver)
-{
-    mReceivers.Push(aReceiver);
 }
 
 otError Notifier::RegisterCallback(otStateChangedCallback aCallback, void *aContext)
@@ -73,10 +60,8 @@ otError Notifier::RegisterCallback(otStateChangedCallback aCallback, void *aCont
 
     VerifyOrExit(aCallback != nullptr, OT_NOOP);
 
-    for (unsigned int i = 0; i < kMaxExternalHandlers; i++)
+    for (ExternalCallback &callback : mExternalCallbacks)
     {
-        ExternalCallback &callback = mExternalCallbacks[i];
-
         if (callback.mHandler == nullptr)
         {
             if (unusedCallback == nullptr)
@@ -103,10 +88,8 @@ void Notifier::RemoveCallback(otStateChangedCallback aCallback, void *aContext)
 {
     VerifyOrExit(aCallback != nullptr, OT_NOOP);
 
-    for (unsigned int i = 0; i < kMaxExternalHandlers; i++)
+    for (ExternalCallback &callback : mExternalCallbacks)
     {
-        ExternalCallback &callback = mExternalCallbacks[i];
-
         if ((callback.mHandler == aCallback) && (callback.mContext == aContext))
         {
             callback.mHandler = nullptr;
@@ -152,15 +135,55 @@ void Notifier::EmitEvents(void)
 
     LogEvents(events);
 
-    for (Receiver *receiver = mReceivers.GetHead(); receiver != nullptr; receiver = receiver->GetNext())
-    {
-        receiver->Emit(events);
-    }
+    // Emit events to core internal modules
 
-    for (unsigned int i = 0; i < kMaxExternalHandlers; i++)
-    {
-        ExternalCallback &callback = mExternalCallbacks[i];
+    Get<Mle::Mle>().HandleNotifierEvents(events);
+    Get<EnergyScanServer>().HandleNotifierEvents(events);
+#if OPENTHREAD_FTD
+    Get<MeshCoP::JoinerRouter>().HandleNotifierEvents(events);
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+    Get<BackboneRouter::Manager>().HandleNotifierEvents(events);
+#endif
+#if OPENTHREAD_CONFIG_CHILD_SUPERVISION_ENABLE
+    Get<Utils::ChildSupervisor>().HandleNotifierEvents(events);
+#endif
+#if OPENTHREAD_CONFIG_CHANNEL_MANAGER_ENABLE
+    Get<Utils::ChannelManager>().HandleNotifierEvents(events);
+#endif
+#endif // OPENTHREAD_FTD
+#if OPENTHREAD_FTD || OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE || OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
+    Get<NetworkData::Notifier>().HandleNotifierEvents(events);
+#endif
+#if OPENTHREAD_CONFIG_ANNOUNCE_SENDER_ENABLE
+    Get<AnnounceSender>().HandleNotifierEvents(events);
+#endif
+#if OPENTHREAD_CONFIG_BORDER_AGENT_ENABLE
+    Get<MeshCoP::BorderAgent>().HandleNotifierEvents(events);
+#endif
+#if OPENTHREAD_CONFIG_MLR_ENABLE || OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
+    Get<MlrManager>().HandleNotifierEvents(events);
+#endif
+#if OPENTHREAD_CONFIG_DUA_ENABLE || OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
+    Get<DuaManager>().HandleNotifierEvents(events);
+#endif
+#if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
+    Get<TimeSync>().HandleNotifierEvents(events);
+#endif
+#if OPENTHREAD_CONFIG_IP6_SLAAC_ENABLE
+    Get<Utils::Slaac>().HandleNotifierEvents(events);
+#endif
+#if OPENTHREAD_CONFIG_JAM_DETECTION_ENABLE
+    Get<Utils::JamDetector>().HandleNotifierEvents(events);
+#endif
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+    Get<Utils::Otns>().HandleNotifierEvents(events);
+#endif
+#if OPENTHREAD_ENABLE_VENDOR_EXTENSION
+    Get<Extension::ExtensionBase>().HandleNotifierEvents(events);
+#endif
 
+    for (ExternalCallback &callback : mExternalCallbacks)
+    {
         if (callback.mHandler != nullptr)
         {
             callback.mHandler(events.GetAsFlags(), callback.mContext);

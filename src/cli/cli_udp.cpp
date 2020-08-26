@@ -37,7 +37,6 @@
 #include <openthread/udp.h>
 
 #include "cli/cli.hpp"
-#include "cli/cli_server.hpp"
 #include "common/encoding.hpp"
 
 using ot::Encoding::BigEndian::HostSwap16;
@@ -45,12 +44,17 @@ using ot::Encoding::BigEndian::HostSwap16;
 namespace ot {
 namespace Cli {
 
-const struct UdpExample::Command UdpExample::sCommands[] = {
-    {"help", &UdpExample::ProcessHelp},       {"bind", &UdpExample::ProcessBind}, {"close", &UdpExample::ProcessClose},
-    {"connect", &UdpExample::ProcessConnect}, {"open", &UdpExample::ProcessOpen}, {"send", &UdpExample::ProcessSend}};
+const struct UdpExample::Command UdpExample::sCommands[] = {{"help", &UdpExample::ProcessHelp},
+                                                            {"bind", &UdpExample::ProcessBind},
+                                                            {"close", &UdpExample::ProcessClose},
+                                                            {"connect", &UdpExample::ProcessConnect},
+                                                            {"linksecurity", &UdpExample::ProcessLinkSecurity},
+                                                            {"open", &UdpExample::ProcessOpen},
+                                                            {"send", &UdpExample::ProcessSend}};
 
 UdpExample::UdpExample(Interpreter &aInterpreter)
     : mInterpreter(aInterpreter)
+    , mLinkSecurityEnabled(true)
 {
     memset(&mSocket, 0, sizeof(mSocket));
 }
@@ -60,9 +64,9 @@ otError UdpExample::ProcessHelp(uint8_t aArgsLength, char *aArgs[])
     OT_UNUSED_VARIABLE(aArgsLength);
     OT_UNUSED_VARIABLE(aArgs);
 
-    for (size_t i = 0; i < OT_ARRAY_LENGTH(sCommands); i++)
+    for (const Command &command : sCommands)
     {
-        mInterpreter.mServer->OutputFormat("%s\r\n", sCommands[i].mName);
+        mInterpreter.OutputFormat("%s\r\n", command.mName);
     }
 
     return OT_ERROR_NONE;
@@ -86,7 +90,7 @@ otError UdpExample::ProcessBind(uint8_t aArgsLength, char *aArgs[])
 
     sockaddr.mPort = static_cast<uint16_t>(value);
 
-    error = otUdpBind(&mSocket, &sockaddr);
+    error = otUdpBind(mInterpreter.mInstance, &mSocket, &sockaddr);
 
 exit:
     return error;
@@ -110,7 +114,7 @@ otError UdpExample::ProcessConnect(uint8_t aArgsLength, char *aArgs[])
 
     sockaddr.mPort = static_cast<uint16_t>(value);
 
-    error = otUdpConnect(&mSocket, &sockaddr);
+    error = otUdpConnect(mInterpreter.mInstance, &mSocket, &sockaddr);
 
 exit:
     return error;
@@ -121,7 +125,7 @@ otError UdpExample::ProcessClose(uint8_t aArgsLength, char *aArgs[])
     OT_UNUSED_VARIABLE(aArgsLength);
     OT_UNUSED_VARIABLE(aArgs);
 
-    return otUdpClose(&mSocket);
+    return otUdpClose(mInterpreter.mInstance, &mSocket);
 }
 
 otError UdpExample::ProcessOpen(uint8_t aArgsLength, char *aArgs[])
@@ -134,12 +138,13 @@ otError UdpExample::ProcessOpen(uint8_t aArgsLength, char *aArgs[])
 
 otError UdpExample::ProcessSend(uint8_t aArgsLength, char *aArgs[])
 {
-    otError       error = OT_ERROR_NONE;
-    otMessageInfo messageInfo;
-    otMessage *   message       = nullptr;
-    uint8_t       curArg        = 0;
-    uint16_t      payloadLength = 0;
-    PayloadType   payloadType   = kTypeText;
+    otError           error = OT_ERROR_NONE;
+    otMessageInfo     messageInfo;
+    otMessage *       message         = nullptr;
+    uint8_t           curArg          = 0;
+    uint16_t          payloadLength   = 0;
+    PayloadType       payloadType     = kTypeText;
+    otMessageSettings messageSettings = {mLinkSecurityEnabled, OT_MESSAGE_PRIORITY_NORMAL};
 
     memset(&messageInfo, 0, sizeof(messageInfo));
 
@@ -179,7 +184,7 @@ otError UdpExample::ProcessSend(uint8_t aArgsLength, char *aArgs[])
         }
     }
 
-    message = otUdpNewMessage(mInterpreter.mInstance, nullptr);
+    message = otUdpNewMessage(mInterpreter.mInstance, &messageSettings);
     VerifyOrExit(message != nullptr, error = OT_ERROR_NO_BUFS);
 
     switch (payloadType)
@@ -218,13 +223,37 @@ otError UdpExample::ProcessSend(uint8_t aArgsLength, char *aArgs[])
     }
     }
 
-    error = otUdpSend(&mSocket, message, &messageInfo);
+    error = otUdpSend(mInterpreter.mInstance, &mSocket, message, &messageInfo);
 
 exit:
 
     if (error != OT_ERROR_NONE && message != nullptr)
     {
         otMessageFree(message);
+    }
+
+    return error;
+}
+
+otError UdpExample::ProcessLinkSecurity(uint8_t aArgsLength, char *aArgs[])
+{
+    otError error = OT_ERROR_NONE;
+
+    if (aArgsLength == 0)
+    {
+        mInterpreter.OutputFormat("%s\r\n", mLinkSecurityEnabled ? "Enabled" : "Disabled");
+    }
+    else if (strcmp(aArgs[0], "enable") == 0)
+    {
+        mLinkSecurityEnabled = true;
+    }
+    else if (strcmp(aArgs[0], "disable") == 0)
+    {
+        mLinkSecurityEnabled = false;
+    }
+    else
+    {
+        error = OT_ERROR_INVALID_COMMAND;
     }
 
     return error;
@@ -269,11 +298,11 @@ otError UdpExample::Process(uint8_t aArgsLength, char *aArgs[])
     }
     else
     {
-        for (size_t i = 0; i < OT_ARRAY_LENGTH(sCommands); i++)
+        for (const Command &command : sCommands)
         {
-            if (strcmp(aArgs[0], sCommands[i].mName) == 0)
+            if (strcmp(aArgs[0], command.mName) == 0)
             {
-                error = (this->*sCommands[i].mCommand)(aArgsLength - 1, aArgs + 1);
+                error = (this->*command.mCommand)(aArgsLength - 1, aArgs + 1);
                 break;
             }
         }
@@ -291,14 +320,14 @@ void UdpExample::HandleUdpReceive(otMessage *aMessage, const otMessageInfo *aMes
     uint8_t buf[1500];
     int     length;
 
-    mInterpreter.mServer->OutputFormat("%d bytes from ", otMessageGetLength(aMessage) - otMessageGetOffset(aMessage));
+    mInterpreter.OutputFormat("%d bytes from ", otMessageGetLength(aMessage) - otMessageGetOffset(aMessage));
     mInterpreter.OutputIp6Address(aMessageInfo->mPeerAddr);
-    mInterpreter.mServer->OutputFormat(" %d ", aMessageInfo->mPeerPort);
+    mInterpreter.OutputFormat(" %d ", aMessageInfo->mPeerPort);
 
     length      = otMessageRead(aMessage, otMessageGetOffset(aMessage), buf, sizeof(buf) - 1);
     buf[length] = '\0';
 
-    mInterpreter.mServer->OutputFormat("%s\r\n", buf);
+    mInterpreter.OutputFormat("%s\r\n", buf);
 }
 
 } // namespace Cli

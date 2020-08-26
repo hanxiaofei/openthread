@@ -89,6 +89,9 @@ public:
     class ChildInfo
     {
         friend class DataPollHandler;
+#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+        friend class CslTxScheduler;
+#endif
 
     private:
         bool IsDataPollPending(void) const { return mDataPollPending; }
@@ -146,7 +149,7 @@ public:
         typedef IndirectSenderBase::FrameContext FrameContext;
 
         /**
-         * This constructor initializes the data poll handler object.
+         * This constructor initializes the callbacks object.
          *
          * @param[in]  aInstance   A reference to the OpenThread instance.
          *

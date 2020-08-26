@@ -29,8 +29,6 @@
 
 source "tests/scripts/expect/_common.exp"
 
-set timeout 3
-
 spawn $env(OT_COMMAND) "spinel+hdlc+uart://$env(RCP_COMMAND)?forkpty-arg=--sleep-to-tx 1"
 set node_1 $spawn_id
 expect_after {
@@ -65,6 +63,7 @@ expect "extpanid"
 expect -re {([0-9a-f]{16})}
 set extpan $expect_out(1,string)
 expect "Done"
+expect "> "
 send "networkname\n"
 expect "networkname"
 expect -re {[\r\n]([^\r\n]+)[\r\n]}

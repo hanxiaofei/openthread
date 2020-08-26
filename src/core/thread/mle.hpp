@@ -45,6 +45,7 @@
 #include "net/udp6.hpp"
 #include "thread/mle_tlvs.hpp"
 #include "thread/mle_types.hpp"
+#include "thread/neighbor_table.hpp"
 #include "thread/topology.hpp"
 
 namespace ot {
@@ -305,9 +306,10 @@ private:
  * This class implements MLE functionality required by the Thread EndDevices, Router, and Leader roles.
  *
  */
-class Mle : public InstanceLocator, public Notifier::Receiver
+class Mle : public InstanceLocator
 {
     friend class DiscoverScanner;
+    friend class ot::Notifier;
 
 public:
     /**
@@ -554,7 +556,7 @@ public:
      */
     const MeshLocalPrefix &GetMeshLocalPrefix(void) const
     {
-        return reinterpret_cast<const MeshLocalPrefix &>(mMeshLocal16.GetAddress());
+        return static_cast<const MeshLocalPrefix &>(mMeshLocal16.GetAddress().GetPrefix());
     }
 
     /**
@@ -914,6 +916,22 @@ public:
      *
      */
     otError GetLocatorAddress(Ip6::Address &aAddress, uint16_t aLocator) const;
+
+    /**
+     * This method schedules a Child Update Request.
+     *
+     */
+    void ScheduleChildUpdateRequest(void);
+
+    /*
+     * This method indicates whether or not the device has restored the network information from
+     * non-volatile settings after boot.
+     *
+     * @retval true  Sucessfully restored the network information.
+     * @retval false No valid network information was found.
+     *
+     */
+    bool HasRestored(void) const { return mHasRestored; }
 
 protected:
     /**
@@ -1337,6 +1355,30 @@ protected:
     otError AppendXtalAccuracy(Message &aMessage);
 #endif // OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
 
+#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE || OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
+    /**
+     * This method appends a CSL Channel TLV to a message.
+     *
+     * @param[in]  aMessage  A reference to the message.
+     *
+     * @retval OT_ERROR_NONE     Successfully appended the CSL Channel TLV.
+     * @retval OT_ERROR_NO_BUFS  Insufficient buffers available to append the CSL Channel TLV.
+     *
+     */
+    otError AppendCslChannel(Message &aMessage);
+
+    /**
+     * This method appends a CSL Sync Timeout TLV to a message.
+     *
+     * @param[in]  aMessage  A reference to the message.
+     *
+     * @retval OT_ERROR_NONE     Successfully appended the CSL Timeout TLV.
+     * @retval OT_ERROR_NO_BUFS  Insufficient buffers available to append the CSL Timeout TLV.
+     *
+     */
+    otError AppendCslTimeout(Message &aMessage);
+#endif // OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE || OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
+
     /**
      * This method appends a Active Timestamp TLV to a message.
      *
@@ -1370,50 +1412,6 @@ protected:
      *
      */
     otError CheckReachability(uint16_t aMeshDest, Ip6::Header &aIp6Header);
-
-    /**
-     * This method returns a pointer to the neighbor object.
-     *
-     * @param[in]  aAddress  A reference to the MAC address.
-     *
-     * @returns A pointer to the neighbor object.
-     *
-     */
-    Neighbor *GetNeighbor(const Mac::Address &aAddress);
-
-    /**
-     * This method returns a pointer to the neighbor object.
-     *
-     * @param[in]  aAddress  A reference to the MAC short address.
-     *
-     * @returns A pointer to the neighbor object.
-     *
-     */
-    Neighbor *GetNeighbor(Mac::ShortAddress aAddress);
-
-    /**
-     * This method returns a pointer to the neighbor object.
-     *
-     * @param[in]  aAddress  A reference to the MAC extended address.
-     *
-     * @returns A pointer to the neighbor object.
-     *
-     */
-    Neighbor *GetNeighbor(const Mac::ExtAddress &aAddress);
-
-    /**
-     * This method returns a pointer to the neighbor object.
-     *
-     * @param[in]  aAddress  A reference to the IPv6 address.
-     *
-     * @returns A pointer to the neighbor object.
-     *
-     */
-    Neighbor *GetNeighbor(const Ip6::Address &aAddress)
-    {
-        OT_UNUSED_VARIABLE(aAddress);
-        return nullptr;
-    }
 
     /**
      * This method returns the next hop towards an RLOC16 destination.
@@ -1595,6 +1593,7 @@ protected:
     DeviceRole    mRole;                     ///< Current Thread role.
     Router        mParent;                   ///< Parent information.
     Router        mParentCandidate;          ///< Parent candidate information.
+    NeighborTable mNeighborTable;            ///< The neighbor table.
     DeviceMode    mDeviceMode;               ///< Device mode setting.
     AttachState   mAttachState;              ///< The parent request state.
     ReattachState mReattachState;            ///< Reattach state
@@ -1653,7 +1652,6 @@ private:
         TimeMilli    mSendTime;    // Time when the message shall be sent.
     };
 
-    static void HandleNotifierEvents(Notifier::Receiver &aReceiver, Events aEvents);
     void        HandleNotifierEvents(Events aEvents);
     static void HandleAttachTimer(Timer &aTimer);
     void        HandleAttachTimer(void);
@@ -1734,6 +1732,7 @@ private:
 
     AddressRegistrationMode mAddressRegistrationMode;
 
+    bool       mHasRestored;
     uint8_t    mParentLinkMargin;
     bool       mParentIsSingleton;
     bool       mReceivedResponseFromParent;

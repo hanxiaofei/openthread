@@ -464,12 +464,10 @@ public:
      *
      * @param[in]  aMessage  A reference to the message.
      *
-     * @returns The number of bytes updated.
-     *
      */
-    int UpdateIn(Message &aMessage) const
+    void UpdateIn(Message &aMessage) const
     {
-        return aMessage.Write(aMessage.GetLength() - sizeof(*this), sizeof(*this), this);
+        aMessage.Write(aMessage.GetLength() - sizeof(*this), sizeof(*this), this);
     }
 
 private:
@@ -493,10 +491,10 @@ public:
     /**
      * This constructor initializes the object.
      *
-     * @param[in]  aNetif    A reference to the network interface that SNTP client should be assigned to.
+     * @param[in]  aInstance     A reference to the OpenThread instance.
      *
      */
-    explicit Client(Ip6::Netif &aNetif);
+    explicit Client(Instance &aInstance);
 
     /**
      * This method starts the SNTP client.

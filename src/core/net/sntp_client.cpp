@@ -89,20 +89,19 @@ QueryMetadata::QueryMetadata(otSntpResponseHandler aHandler, void *aContext)
     mDestinationAddress.Clear();
 }
 
-Client::Client(Ip6::Netif &aNetif)
-    : mSocket(aNetif.Get<Ip6::Udp>())
-    , mRetransmissionTimer(aNetif.GetInstance(), Client::HandleRetransmissionTimer, this)
+Client::Client(Instance &aInstance)
+    : mSocket(aInstance)
+    , mRetransmissionTimer(aInstance, Client::HandleRetransmissionTimer, this)
     , mUnixEra(0)
 {
 }
 
 otError Client::Start(void)
 {
-    otError       error;
-    Ip6::SockAddr addr;
+    otError error;
 
     SuccessOrExit(error = mSocket.Open(&Client::HandleUdpReceive, this));
-    SuccessOrExit(error = mSocket.Bind(addr));
+    SuccessOrExit(error = mSocket.Bind());
 
 exit:
     return error;

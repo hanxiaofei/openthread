@@ -53,6 +53,8 @@
 
 namespace ot {
 
+class ThreadLinkInfo;
+
 /**
  * @addtogroup core-message
  *
@@ -359,6 +361,7 @@ public:
      * This method returns the number of bytes in the message.
      *
      * @returns The number of bytes in the message.
+     *
      */
     uint16_t GetLength(void) const { return GetMetadata().mLength; }
 
@@ -516,14 +519,15 @@ public:
     /**
      * This method writes bytes to the message.
      *
+     * This method will not resize the message. The given data to write (with @p aLength bytes) MUST fit within the
+     * existing message buffer (from the given offset @p aOffset up to the message's length).
+     *
      * @param[in]  aOffset  Byte offset within the message to begin writing.
      * @param[in]  aLength  Number of bytes to write.
      * @param[in]  aBuf     A pointer to a data buffer.
      *
-     * @returns The number of bytes written.
-     *
      */
-    int Write(uint16_t aOffset, uint16_t aLength, const void *aBuf);
+    void Write(uint16_t aOffset, uint16_t aLength, const void *aBuf);
 
     /**
      * This method copies bytes from one message to another.
@@ -536,7 +540,7 @@ public:
      * @returns The number of bytes copied.
      *
      */
-    int CopyTo(uint16_t aSourceOffset, uint16_t aDestinationOffset, uint16_t aLength, Message &aMessage) const;
+    uint16_t CopyTo(uint16_t aSourceOffset, uint16_t aDestinationOffset, uint16_t aLength, Message &aMessage) const;
 
     /**
      * This method creates a copy of the message.
@@ -799,6 +803,14 @@ public:
     const RssAverager &GetRssAverager(void) const { return GetMetadata().mRssAverager; }
 
     /**
+     * This method sets the message's link info properties (PAN ID, link security, RSS) from a given `ThreadLinkInfo`.
+     *
+     * @param[in] aLinkInfo   The `ThreadLinkInfo` instance from which to set message's related properties.
+     *
+     */
+    void SetLinkInfo(const ThreadLinkInfo &aLinkInfo);
+
+    /**
      * This static method updates a checksum.
      *
      * @param[in]  aChecksum  The checksum value to update.
@@ -1000,6 +1012,35 @@ private:
      *
      */
     otError ResizeMessage(uint16_t aLength);
+
+private:
+    struct Chunk
+    {
+        const uint8_t *GetData(void) const { return mData; }
+        uint16_t       GetLength(void) const { return mLength; }
+
+        const uint8_t *mData;   // Pointer to start of chunk data buffer.
+        uint16_t       mLength; // Length of chunk data (in bytes).
+        const Buffer * mBuffer; // Buffer containing the chunk
+    };
+
+    struct WritableChunk : public Chunk
+    {
+        uint8_t *GetData(void) const { return const_cast<uint8_t *>(mData); }
+    };
+
+    void GetFirstChunk(uint16_t aOffset, uint16_t &aLength, Chunk &chunk) const;
+    void GetNextChunk(uint16_t &aLength, Chunk &aChunk) const;
+
+    void GetFirstChunk(uint16_t aOffset, uint16_t &aLength, WritableChunk &aChunk)
+    {
+        const_cast<const Message *>(this)->GetFirstChunk(aOffset, aLength, static_cast<Chunk &>(aChunk));
+    }
+
+    void GetNextChunk(uint16_t &aLength, WritableChunk &aChunk)
+    {
+        const_cast<const Message *>(this)->GetNextChunk(aLength, static_cast<Chunk &>(aChunk));
+    }
 };
 
 /**

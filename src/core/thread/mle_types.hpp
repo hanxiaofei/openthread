@@ -47,6 +47,7 @@
 #include "common/equatable.hpp"
 #include "common/string.hpp"
 #include "mac/mac_types.hpp"
+#include "net/ip6_address.hpp"
 
 namespace ot {
 namespace Mle {
@@ -248,20 +249,45 @@ enum
     kServiceMaxId = 0x0f, ///< Maximal Service ID.
 };
 
-#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
 
 /**
- * Backbone Router constants
+ * Backbone Router / MLR constants
  *
  */
 enum
 {
-    kRegistrationDelayDefault         = 1200, //< In seconds.
-    kMlrTimeoutDefault                = 3600, //< In seconds.
-    kBackboneRouterRegistrationJitter = 5,    //< In seconds.
+    kRegistrationDelayDefault         = 1200,              ///< In seconds.
+    kMlrTimeoutDefault                = 3600,              ///< In seconds.
+    kMlrTimeoutMin                    = 300,               ///< In seconds.
+    kMlrTimeoutMax                    = 0x7fffffff / 1000, ///< In seconds (about 24 days).
+    kBackboneRouterRegistrationJitter = 5,                 ///< In seconds.
+    kParentAggregateDelay             = 5,                 ///< In seconds.
+    kNoBufDelay                       = 5,                 ///< In seconds.
+    kImmediateReRegisterDelay         = 1,                 ///< In seconds.
+    KResponseTimeoutDelay             = 30,                ///< In seconds.
+    kDuaDadPeriod                     = 100,               ///< In seconds. Time period after which the address
+                                                           ///< becomes "Preferred" if no duplicate address error.
 };
 
-#endif
+static_assert(kMlrTimeoutDefault >= kMlrTimeoutMin && kMlrTimeoutDefault <= kMlrTimeoutMax,
+              "kMlrTimeoutDefault must be larger than or equal to kMlrTimeoutMin");
+
+static_assert(Mle::kParentAggregateDelay > 1, "kParentAggregateDelay should be larger than 1 second");
+static_assert(kMlrTimeoutMax * 1000 > kMlrTimeoutMax, "SecToMsec(kMlrTimeoutMax) will overflow");
+
+/**
+ * State change of Child's DUA
+ *
+ */
+enum class ChildDuaState : uint8_t
+{
+    kAdded,   ///< A new DUA registered by the Child via Address Registration.
+    kChanged, ///< A different DUA registered by the Child via Address Registration.
+    kRemoved, ///< DUA registered by the Child is removed and not in Address Registration.
+};
+
+#endif // OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
 
 /**
  * This type represents a MLE device mode.
@@ -426,15 +452,9 @@ private:
  *
  */
 OT_TOOL_PACKED_BEGIN
-class MeshLocalPrefix : public otMeshLocalPrefix, public Equatable<MeshLocalPrefix>
+class MeshLocalPrefix : public Ip6::NetworkPrefix
 {
 public:
-    enum
-    {
-        kSize   = OT_MESH_LOCAL_PREFIX_SIZE,            ///< Size in bytes.
-        kLength = OT_MESH_LOCAL_PREFIX_SIZE * CHAR_BIT, ///< Length of Mesh Local Prefix in bits.
-    };
-
     /**
      * This method derives and sets the Mesh Local Prefix from an Extended PAN ID.
      *

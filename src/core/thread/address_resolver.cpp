@@ -42,6 +42,7 @@
 #include "common/instance.hpp"
 #include "common/locator-getters.hpp"
 #include "common/logging.hpp"
+#include "common/time.hpp"
 #include "mac/mac_types.hpp"
 #include "thread/mesh_forwarder.hpp"
 #include "thread/mle_router.hpp"
@@ -63,7 +64,6 @@ AddressResolver::AddressResolver(Instance &aInstance)
     , mQueryList()
     , mQueryRetryList()
     , mIcmpHandler(&AddressResolver::HandleIcmpReceive, this)
-    , mTimer(aInstance, AddressResolver::HandleTimer, this)
 {
     Get<Coap::Coap>().AddResource(mAddressError);
     Get<Coap::Coap>().AddResource(mAddressQuery);
@@ -76,10 +76,9 @@ void AddressResolver::Clear(void)
 {
     CacheEntryList *lists[] = {&mCachedList, &mSnoopedList, &mQueryList, &mQueryRetryList};
 
-    for (size_t index = 0; index < OT_ARRAY_LENGTH(lists); index++)
+    for (CacheEntryList *list : lists)
     {
-        CacheEntryList *list = lists[index];
-        CacheEntry *    entry;
+        CacheEntry *entry;
 
         while ((entry = list->Pop()) != nullptr)
         {
@@ -192,11 +191,10 @@ void AddressResolver::Remove(Mac::ShortAddress aRloc16, bool aMatchRouterId)
 {
     CacheEntryList *lists[] = {&mCachedList, &mSnoopedList};
 
-    for (size_t index = 0; index < OT_ARRAY_LENGTH(lists); index++)
+    for (CacheEntryList *list : lists)
     {
-        CacheEntryList *list = lists[index];
-        CacheEntry *    prev = nullptr;
-        CacheEntry *    entry;
+        CacheEntry *prev = nullptr;
+        CacheEntry *entry;
 
         while ((entry = GetEntryAfter(prev, *list)) != nullptr)
         {
@@ -224,9 +222,9 @@ AddressResolver::CacheEntry *AddressResolver::FindCacheEntry(const Ip6::Address 
     CacheEntry *    entry   = nullptr;
     CacheEntryList *lists[] = {&mCachedList, &mSnoopedList, &mQueryList, &mQueryRetryList};
 
-    for (size_t index = 0; index < OT_ARRAY_LENGTH(lists); index++)
+    for (CacheEntryList *list : lists)
     {
-        aList = lists[index];
+        aList = list;
         entry = aList->FindMatching(aEid, aPrevEntry);
         VerifyOrExit(entry == nullptr, OT_NOOP);
     }
@@ -276,12 +274,11 @@ AddressResolver::CacheEntry *AddressResolver::NewCacheEntry(bool aSnoopedEntry)
     newEntry = mCacheEntryPool.Allocate();
     VerifyOrExit(newEntry == nullptr, OT_NOOP);
 
-    for (size_t index = 0; index < OT_ARRAY_LENGTH(lists); index++)
+    for (CacheEntryList *list : lists)
     {
-        CacheEntryList *list = lists[index];
-        CacheEntry *    prev;
-        CacheEntry *    entry;
-        uint16_t        numNonEvictable = 0;
+        CacheEntry *prev;
+        CacheEntry *entry;
+        uint16_t    numNonEvictable = 0;
 
         for (prev = nullptr; (entry = GetEntryAfter(prev, *list)) != nullptr; prev = entry)
         {
@@ -398,10 +395,7 @@ void AddressResolver::AddSnoopedCacheEntry(const Ip6::Address &aEid, Mac::ShortA
         entry->SetCanEvict(false);
         entry->SetTimeout(kSnoopBlockEvictionTimeout);
 
-        if (!mTimer.IsRunning())
-        {
-            mTimer.Start(kStateUpdatePeriod);
-        }
+        Get<TimeTicker>().RegisterReceiver(TimeTicker::kAddressResolver);
     }
     else
     {
@@ -548,10 +542,7 @@ otError AddressResolver::SendAddressQuery(const Ip6::Address &aEid)
 
 exit:
 
-    if (!mTimer.IsRunning())
-    {
-        mTimer.Start(kStateUpdatePeriod);
-    }
+    Get<TimeTicker>().RegisterReceiver(TimeTicker::kAddressResolver);
 
     if (error != OT_ERROR_NONE && message != nullptr)
     {
@@ -723,10 +714,8 @@ void AddressResolver::HandleAddressError(Coap::Message &aMessage, const Ip6::Mes
 
     meshLocalIid.ConvertToExtAddress(extAddr);
 
-    for (ChildTable::Iterator iter(GetInstance(), Child::kInStateValid); !iter.IsDone(); iter++)
+    for (Child &child : Get<ChildTable>().Iterate(Child::kInStateValid))
     {
-        Child &child = *iter.GetChild();
-
         if (child.IsFullThreadDevice())
         {
             continue;
@@ -780,10 +769,8 @@ void AddressResolver::HandleAddressQuery(Coap::Message &aMessage, const Ip6::Mes
         ExitNow();
     }
 
-    for (ChildTable::Iterator iter(GetInstance(), Child::kInStateValid); !iter.IsDone(); iter++)
+    for (Child &child : Get<ChildTable>().Iterate(Child::kInStateValid))
     {
-        Child &child = *iter.GetChild();
-
         if (child.IsFullThreadDevice() || child.GetLinkFailures() >= Mle::kFailedChildTransmissions)
         {
             continue;
@@ -791,7 +778,7 @@ void AddressResolver::HandleAddressQuery(Coap::Message &aMessage, const Ip6::Mes
 
         if (child.HasIp6Address(target))
         {
-            lastTransactionTime = TimerMilli::GetNow() - child.GetLastHeard();
+            lastTransactionTime = Time::MsecToSec(TimerMilli::GetNow() - child.GetLastHeard());
             SendAddressQueryResponse(target, child.GetMeshLocalIid(), &lastTransactionTime, aMessageInfo.GetPeerAddr());
             ExitNow();
         }
@@ -841,14 +828,9 @@ exit:
     }
 }
 
-void AddressResolver::HandleTimer(Timer &aTimer)
+void AddressResolver::HandleTimeTick(void)
 {
-    aTimer.GetOwner<AddressResolver>().HandleTimer();
-}
-
-void AddressResolver::HandleTimer(void)
-{
-    bool        continueTimer = false;
+    bool        continueRxingTicks = false;
     CacheEntry *prev;
     CacheEntry *entry;
 
@@ -859,7 +841,7 @@ void AddressResolver::HandleTimer(void)
             continue;
         }
 
-        continueTimer = true;
+        continueRxingTicks = true;
         entry->DecrementTimeout();
 
         if (entry->IsTimeoutZero())
@@ -875,7 +857,7 @@ void AddressResolver::HandleTimer(void)
             continue;
         }
 
-        continueTimer = true;
+        continueRxingTicks = true;
         entry->DecrementTimeout();
     }
 
@@ -885,7 +867,7 @@ void AddressResolver::HandleTimer(void)
     {
         OT_ASSERT(!entry->IsTimeoutZero());
 
-        continueTimer = true;
+        continueRxingTicks = true;
         entry->DecrementTimeout();
 
         if (entry->IsTimeoutZero())
@@ -922,9 +904,9 @@ void AddressResolver::HandleTimer(void)
         }
     }
 
-    if (continueTimer)
+    if (!continueRxingTicks)
     {
-        mTimer.Start(kStateUpdatePeriod);
+        Get<TimeTicker>().UnregisterReceiver(TimeTicker::kAddressResolver);
     }
 }
 

@@ -33,6 +33,7 @@ Done
 - [commissioner](README_COMMISSIONER.md)
 - [contextreusedelay](#contextreusedelay)
 - [counters](#counters)
+- [csl](#csl)
 - [dataset](README_DATASET.md)
 - [delaytimermin](#delaytimermin)
 - [diag](#diag)
@@ -61,6 +62,7 @@ Done
 - [masterkey](#masterkey)
 - [mode](#mode)
 - [neighbor](#neighbor-list)
+- [netdata](#netdata-steeringdata-check-eui64discerner)
 - [netdataregister](#netdataregister)
 - [netdatashow](#netdatashow)
 - [netstat](#netstat)
@@ -94,6 +96,7 @@ Done
 - [state](#state)
 - [thread](#thread-start)
 - [txpower](#txpower)
+- [unsecureport](#unsecureport-add-port)
 - [version](#version)
 
 ## OpenThread Command Details
@@ -115,6 +118,70 @@ Done
 ```bash
 > bbr
 BBR Primary: None
+Done
+```
+
+### bbr mgmt dua \<status\> [meshLocalIid]
+
+Configure the response status for DUA.req with meshLocalIid in payload. Without meshLocalIid, simply respond any coming DUA.req next with the specified status.
+
+Only for testing/reference device.
+
+known status value:
+
+- 0: ST_DUA_SUCCESS
+- 1: ST_DUA_REREGISTER
+- 2: ST_DUA_INVALID
+- 3: ST_DUA_DUPLICATE
+- 4: ST_DUA_NO_RESOURCES
+- 5: ST_DUA_BBR_NOT_PRIMARY
+- 6: ST_DUA_GENERAL_FAILURE
+
+```bash
+> bbr mgmt dua 1 2f7c235e5025a2fd
+Done
+```
+
+### bbr mgmt mlr listener
+
+Show the Multicast Listeners.
+
+Only for testing/reference Backbone Router device.
+
+```bash
+> bbr mgmt mlr listener
+ff04:0:0:0:0:0:0:abcd 3534000
+ff04:0:0:0:0:0:0:eeee 3537610
+Done
+```
+
+### bbr mgmt mlr listener add \<ipaddr\> \[\<timeout\>\]
+
+Add a Multicast Listener with a given Ip6 multicast address and timeout (in seconds).
+
+Only for testing/reference Backbone Router device.
+
+```bash
+> bbr mgmt mlr listener add ff04::1
+Done
+> bbr mgmt mlr listener add ff04::2 300
+Done
+> bbr mgmt mlr listener
+ff04:0:0:0:0:0:0:2 261
+ff04:0:0:0:0:0:0:1 3522
+Done
+```
+
+### bbr mgmt mlr listener clear
+
+Removes all the Multicast Listeners.
+
+Only for testing/reference Backbone Router device.
+
+```bash
+> bbr mgmt mlr listener clear
+Done
+> bbr mgmt mlr listener
 Done
 ```
 
@@ -473,6 +540,45 @@ Reset the counter value.
 > counters mac reset
 Done
 > counters mle reset
+Done
+```
+
+### csl
+
+Get the CSL configuration.
+
+```bash
+> csl
+Channel: 11
+Period: 1000 (in units of 10 symbols), 160ms
+Timeout: 1000s
+Done
+```
+
+### csl channel \<channel\>
+
+Set CSL channel.
+
+```bash
+> csl channel 20
+Done
+```
+
+### csl period \<period\>
+
+Set CSL period in units of 10 symbols. Disable CSL by setting this parameter to `0`.
+
+```bash
+> csl period 3000
+Done
+```
+
+### csl timeout \<timeout\>
+
+Set the CSL timeout in seconds.
+
+```bash
+> csl timeout 10
 Done
 ```
 
@@ -1022,6 +1128,22 @@ Print table of neighbors.
 |   R  | 0xc800 |   2 |      -29 |       -29 |1|0|1|1| 9a91556102c39ddb |
 |   R  | 0xf000 |   3 |      -28 |       -28 |1|0|1|1| 0ad7ed6beaa6016d |
 Done
+```
+
+### netdata steeringdata check \<eui64\>|\<discerner\>
+
+Check whether the steering data includes a joiner.
+
+- eui64: The IEEE EUI-64 of the Joiner.
+- discerner: The Joiner discerner in format `number/length`.
+
+```bash
+> netdata steeeringdata check d45e64fa83f81cf7
+Done
+> netdata steeeringdata check 0xabc/12
+Done
+> netdata steeeringdata check 0xdef/12
+Error: NotFound
 ```
 
 ### netdataregister
@@ -1677,6 +1799,43 @@ Set the transmit power.
 
 ```bash
 > txpower -10
+Done
+```
+
+### unsecureport add \<port\>
+
+Add a port to the allowed unsecured port list.
+
+```bash
+> unsecureport add 1234
+Done
+```
+
+### unsecureport remove \<port\>
+
+Remove a port from the allowed unsecured port list.
+
+```bash
+> unsecureport remove 1234
+Done
+```
+
+### unsecureport remove all
+
+Remove all ports from the allowed unsecured port list.
+
+```bash
+> unsecureport remove all
+Done
+```
+
+### unsecureport get
+
+Print all ports from the allowed unsecured port list.
+
+```bash
+> unsecureport get
+1234
 Done
 ```
 

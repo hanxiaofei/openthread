@@ -49,6 +49,7 @@
 #include "common/non_copyable.hpp"
 #include "common/random_manager.hpp"
 #include "common/tasklet.hpp"
+#include "common/time_ticker.hpp"
 #include "common/timer.hpp"
 #include "diags/factory_diags.hpp"
 #include "radio/radio.hpp"
@@ -79,10 +80,10 @@
 #endif
 
 #if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
-#include "backbone_router/leader.hpp"
+#include "backbone_router/bbr_leader.hpp"
 
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
-#include "backbone_router/local.hpp"
+#include "backbone_router/bbr_local.hpp"
 #endif
 
 #endif // (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
@@ -343,10 +344,11 @@ private:
     Radio mRadio;
 
 #if OPENTHREAD_MTD || OPENTHREAD_FTD
-    // Notifier, Settings, and MessagePool are initialized  before
-    // other member variables since other classes/objects from their
-    // constructor may use them.
+    // Notifier, TimeTicker, Settings, and MessagePool are initialized
+    // before other member variables since other classes/objects from
+    // their constructor may use them.
     Notifier       mNotifier;
+    TimeTicker     mTimeTicker;
     Settings       mSettings;
     SettingsDriver mSettingsDriver;
     MessagePool    mMessagePool;
@@ -413,6 +415,11 @@ template <> inline Notifier &Instance::Get(void)
     return mNotifier;
 }
 
+template <> inline TimeTicker &Instance::Get(void)
+{
+    return mTimeTicker;
+}
+
 template <> inline Settings &Instance::Get(void)
 {
     return mSettings;
@@ -441,6 +448,11 @@ template <> inline Mle::MleRouter &Instance::Get(void)
 template <> inline Mle::DiscoverScanner &Instance::Get(void)
 {
     return mThreadNetif.mDiscoverScanner;
+}
+
+template <> inline NeighborTable &Instance::Get(void)
+{
+    return mThreadNetif.mMleRouter.mNeighborTable;
 }
 
 #if OPENTHREAD_FTD
@@ -518,6 +530,13 @@ template <> inline DataPollHandler &Instance::Get(void)
 {
     return mThreadNetif.mMeshForwarder.mIndirectSender.mDataPollHandler;
 }
+
+#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+template <> inline CslTxScheduler &Instance::Get(void)
+{
+    return mThreadNetif.mMeshForwarder.mIndirectSender.mCslTxScheduler;
+}
+#endif
 
 template <> inline AddressResolver &Instance::Get(void)
 {
@@ -647,14 +666,14 @@ template <> inline NetworkDiagnostic::NetworkDiagnostic &Instance::Get(void)
 #endif
 
 #if OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
-template <> inline Dhcp6::Dhcp6Client &Instance::Get(void)
+template <> inline Dhcp6::Client &Instance::Get(void)
 {
     return mThreadNetif.mDhcp6Client;
 }
 #endif
 
 #if OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
-template <> inline Dhcp6::Dhcp6Server &Instance::Get(void)
+template <> inline Dhcp6::Server &Instance::Get(void)
 {
     return mThreadNetif.mDhcp6Server;
 }
@@ -736,9 +755,24 @@ template <> inline BackboneRouter::Local &Instance::Get(void)
 {
     return mThreadNetif.mBackboneRouterLocal;
 }
+template <> inline BackboneRouter::Manager &Instance::Get(void)
+{
+    return mThreadNetif.mBackboneRouterManager;
+}
+template <> inline BackboneRouter::MulticastListenersTable &Instance::Get(void)
+{
+    return mThreadNetif.mBackboneRouterManager.GetMulticastListenersTable();
+}
 #endif
 
-#if OPENTHREAD_CONFIG_DUA_ENABLE
+#if OPENTHREAD_CONFIG_MLR_ENABLE || OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
+template <> inline MlrManager &Instance::Get(void)
+{
+    return mThreadNetif.mMlrManager;
+}
+#endif
+
+#if OPENTHREAD_CONFIG_DUA_ENABLE || OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
 template <> inline DuaManager &Instance::Get(void)
 {
     return mThreadNetif.mDuaManager;

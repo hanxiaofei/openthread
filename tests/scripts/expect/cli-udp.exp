@@ -27,9 +27,9 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
+source "tests/scripts/expect/_common.exp"
 source "tests/scripts/expect/_multinode.exp"
 
-set timeout 3
 setup_nodes
 
 set spawn_id $spawn_2
@@ -75,5 +75,22 @@ send "udp send -x something_invalid\n"
 expect "Error 7: InvalidArgs"
 send "udp\n"
 expect "Error 7: InvalidArgs"
+
+send "udp linksecurity\n"
+expect "Enabled"
+expect "Done"
+send "udp linksecurity disable\n"
+expect "Done"
+send "udp linksecurity\n"
+expect "Disabled"
+expect "Done"
+send "udp linksecurity enable\n"
+expect "Done"
+send "udp linksecurity\n"
+expect "Enabled"
+expect "Done"
+
+send "udp linksecurity something_invalid\n"
+expect "Error 35: InvalidCommand"
 
 dispose_nodes
