@@ -40,25 +40,24 @@
 #include <openthread-core-config.h>
 #include <openthread/tasklet.h>
 #include <openthread/platform/alarm-milli.h>
+#include <openthread/platform/otns.h>
 #include <openthread/platform/radio.h>
 #include <openthread/platform/uart.h>
 
 #include "common/code_utils.hpp"
 
-uint64_t gNodeId = 0;
-
 otInstance *otSysInit(otPlatformConfig *aPlatformConfig)
 {
-    otInstance *         instance = nullptr;
-    ot::Posix::Arguments args(aPlatformConfig->mRadioUrl);
+    otInstance *        instance = nullptr;
+    ot::Posix::RadioUrl radioUrl(aPlatformConfig->mRadioUrl);
 
 #if OPENTHREAD_POSIX_VIRTUAL_TIME
-    virtualTimeInit(static_cast<uint16_t>(atoi(args.GetValue("forkpty-arg"))));
+    virtualTimeInit(static_cast<uint16_t>(atoi(radioUrl.GetValue("forkpty-arg"))));
 #endif
 
-    VerifyOrDie(args.GetPath() != nullptr, OT_EXIT_INVALID_ARGUMENTS);
+    VerifyOrDie(radioUrl.GetPath() != nullptr, OT_EXIT_INVALID_ARGUMENTS);
     platformAlarmInit(aPlatformConfig->mSpeedUpFactor, aPlatformConfig->mRealTimeSignal);
-    platformRadioInit(&args);
+    platformRadioInit(&radioUrl);
     platformRandomInit();
 
     instance = otInstanceInitSingle();
@@ -203,3 +202,12 @@ void otSysMainloopProcess(otInstance *aInstance, const otSysMainloopContext *aMa
     platformUdpProcess(aInstance, &aMainloop->mReadFdSet);
 #endif
 }
+
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+
+void otPlatOtnsStatus(const char *aStatus)
+{
+    otLogOtns("[OTNS] %s", aStatus);
+}
+
+#endif

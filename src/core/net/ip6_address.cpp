@@ -47,6 +47,79 @@ namespace ot {
 namespace Ip6 {
 
 //---------------------------------------------------------------------------------------------------------------------
+// NetworkPrefix methods
+
+otError NetworkPrefix::GenerateRandomUla(void)
+{
+    m8[0] = 0xfd;
+
+    return Random::Crypto::FillBuffer(&m8[1], kSize - 1);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+// Prefix methods
+
+void Prefix::Set(const uint8_t *aPrefix, uint8_t aLength)
+{
+    memcpy(mPrefix.mFields.m8, aPrefix, SizeForLength(aLength));
+    mLength = aLength;
+}
+
+bool Prefix::IsEqual(const uint8_t *aPrefixBytes, uint8_t aPrefixLength) const
+{
+    return (mLength == aPrefixLength) && (MatchLength(GetBytes(), aPrefixBytes, GetBytesSize()) >= mLength);
+}
+
+uint8_t Prefix::MatchLength(const uint8_t *aPrefixA, const uint8_t *aPrefixB, uint8_t aMaxSize)
+{
+    uint8_t matchedLength = 0;
+
+    OT_ASSERT(aMaxSize <= Address::kSize);
+
+    for (uint8_t i = 0; i < aMaxSize; i++)
+    {
+        uint8_t diff = aPrefixA[i] ^ aPrefixB[i];
+
+        if (diff == 0)
+        {
+            matchedLength += CHAR_BIT;
+        }
+        else
+        {
+            while ((diff & 0x80) == 0)
+            {
+                matchedLength++;
+                diff <<= 1;
+            }
+
+            break;
+        }
+    }
+
+    return matchedLength;
+}
+
+Prefix::InfoString Prefix::ToString(void) const
+{
+    InfoString string;
+    uint8_t    sizeInUint16 = (GetBytesSize() + sizeof(uint16_t) - 1) / sizeof(uint16_t);
+
+    for (uint16_t i = 0; i < sizeInUint16; i++)
+    {
+        IgnoreError(string.Append("%s%x", (i > 0) ? ":" : "", HostSwap16(mPrefix.mFields.m16[i])));
+    }
+
+    if (GetBytesSize() < Address::kSize - 1)
+    {
+        IgnoreError(string.Append("::"));
+    }
+
+    IgnoreError(string.Append("/%d", mLength));
+
+    return string;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 // InterfaceIdentifier methods
 
 bool InterfaceIdentifier::IsUnspecified(void) const
@@ -252,9 +325,24 @@ void Address::SetToRealmLocalAllMplForwarders(void)
     *this = GetRealmLocalAllMplForwarders();
 }
 
-void Address::SetPrefix(const uint8_t *aPrefix, uint8_t aPrefixLength)
+bool Address::MatchesPrefix(const Prefix &aPrefix) const
 {
-    SetPrefix(0, aPrefix, aPrefixLength);
+    return Prefix::MatchLength(mFields.m8, aPrefix.GetBytes(), aPrefix.GetBytesSize()) >= aPrefix.GetLength();
+}
+
+bool Address::MatchesPrefix(const uint8_t *aPrefix, uint8_t aPrefixLength) const
+{
+    return Prefix::MatchLength(mFields.m8, aPrefix, Prefix::SizeForLength(aPrefixLength)) >= aPrefixLength;
+}
+
+void Address::SetPrefix(const NetworkPrefix &aNetworkPrefix)
+{
+    mFields.mComponents.mNetworkPrefix = aNetworkPrefix;
+}
+
+void Address::SetPrefix(const Prefix &aPrefix)
+{
+    SetPrefix(0, aPrefix.GetBytes(), aPrefix.GetLength());
 }
 
 void Address::SetPrefix(uint8_t aOffset, const uint8_t *aPrefix, uint8_t aPrefixLength)
@@ -286,9 +374,9 @@ void Address::SetMulticastNetworkPrefix(const uint8_t *aPrefix, uint8_t aPrefixL
     mFields.m8[kMulticastNetworkPrefixLengthOffset] = aPrefixLength;
 }
 
-void Address::SetToLocator(const Mle::MeshLocalPrefix &aMeshLocalPrefix, uint16_t aLocator)
+void Address::SetToLocator(const NetworkPrefix &aNetworkPrefix, uint16_t aLocator)
 {
-    SetPrefix(aMeshLocalPrefix);
+    SetPrefix(aNetworkPrefix);
     GetIid().SetToLocator(aLocator);
 }
 
@@ -316,42 +404,34 @@ uint8_t Address::GetScope(void) const
     return rval;
 }
 
-uint8_t Address::PrefixMatch(const uint8_t *aPrefixA, const uint8_t *aPrefixB, uint8_t aMaxLength)
+uint8_t Address::PrefixMatch(const Address &aOther) const
 {
-    uint8_t rval = 0;
-    uint8_t diff;
-
-    if (aMaxLength > sizeof(Address))
-    {
-        aMaxLength = sizeof(Address);
-    }
-
-    for (uint8_t i = 0; i < aMaxLength; i++)
-    {
-        diff = aPrefixA[i] ^ aPrefixB[i];
-
-        if (diff == 0)
-        {
-            rval += 8;
-        }
-        else
-        {
-            while ((diff & 0x80) == 0)
-            {
-                rval++;
-                diff <<= 1;
-            }
-
-            break;
-        }
-    }
-
-    return rval;
+    return Prefix::MatchLength(mFields.m8, aOther.mFields.m8, sizeof(Address));
 }
 
-uint8_t Address::PrefixMatch(const otIp6Address &aOther) const
+bool Address::MatchesFilter(TypeFilter aFilter) const
 {
-    return PrefixMatch(mFields.m8, aOther.mFields.m8, sizeof(Address));
+    bool matches = true;
+
+    switch (aFilter)
+    {
+    case kTypeAny:
+        break;
+
+    case kTypeUnicast:
+        matches = !IsUnspecified() && !IsMulticast();
+        break;
+
+    case kTypeMulticast:
+        matches = IsMulticast();
+        break;
+
+    case kTypeMulticastLargerThanRealmLocal:
+        matches = IsMulticastLargerThanRealmLocal();
+        break;
+    }
+
+    return matches;
 }
 
 otError Address::FromString(const char *aBuf)

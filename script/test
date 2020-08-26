@@ -44,15 +44,15 @@ readonly NODE_TYPE="${NODE_TYPE:-sim}"
 readonly OT_NATIVE_IP="${OT_NATIVE_IP:-0}"
 readonly THREAD_VERSION="${THREAD_VERSION:-1.1}"
 readonly VERBOSE="${VERBOSE:-0}"
-readonly VIRTUAL_TIME="${VIRTUAL_TIME:-1}"
 
 build_simulation()
 {
     local version="$1"
-    local options=("-DOT_THREAD_VERSION=${version}" "-DBUILD_TESTING=ON")
+    local options=("-DOT_THREAD_VERSION=${version}" "-DBUILD_TESTING=ON" "-DOT_REFERENCE_DEVICE=ON")
 
     if [[ ${version} == "1.2" ]]; then
         options+=("-DOT_DUA=ON")
+        options+=("-DOT_MLR=ON")
     fi
 
     if [[ ${VIRTUAL_TIME} == 1 ]]; then
@@ -90,6 +90,7 @@ build_posix()
 
     if [[ ${version} == "1.2" ]]; then
         options+=("-DOT_DUA=ON")
+        options+=("-DOT_MLR=ON")
     fi
 
     if [[ ${VIRTUAL_TIME} == 1 ]]; then
@@ -137,16 +138,30 @@ do_clean()
     rm -rfv "${OT_BUILDDIR}" || sudo rm -rfv "${OT_BUILDDIR}"
 }
 
-do_unit()
+do_unit_version()
 {
-    local builddir="${OT_BUILDDIR}/cmake/openthread-simulation-${THREAD_VERSION}"
+    local version=$1
+    local builddir="${OT_BUILDDIR}/cmake/openthread-simulation-${version}"
+
     if [[ ! -d ${builddir} ]]; then
-        echo "Cannot find build directory!"
+        echo "Cannot find build directory: ${builddir}"
         exit 1
     fi
 
-    cd "${builddir}"
-    ninja test
+    (
+        cd "${builddir}"
+        ninja test
+    )
+}
+
+do_unit()
+{
+    do_unit_version "${THREAD_VERSION}"
+
+    if [[ ${THREAD_VERSION} == "1.2" ]]; then
+        do_unit_version "1.2-bbr"
+        do_unit_version "1.1"
+    fi
 }
 
 do_cert()
@@ -312,7 +327,7 @@ EXAMPLES:
 do_package()
 {
     local builddir
-    local options=("-DCMAKE_BUILD_TYPE=Release")
+    local options=("-DCMAKE_BUILD_TYPE=Release" "-DOT_LOG_LEVEL=INFO")
 
     if [[ ${ot_extra_options[*]+x} ]]; then
         options+=("${ot_extra_options[@]}")
@@ -331,6 +346,23 @@ do_package()
     ls "${builddir}"/openthread-daemon-*.deb
 }
 
+do_tar()
+{
+    local target_name="openthread-$1-$2"
+    local build_dir="${OT_BUILDDIR}/cmake"
+    tar -cf "${target_name}.tar" -C "${build_dir}" "${target_name}"
+    mv "${target_name}.tar" "${build_dir}/"
+    rm -rf "${build_dir:?}/${target_name}"
+}
+
+do_untar()
+{
+    local target_name="openthread-$1-$2"
+    local build_dir="${OT_BUILDDIR}/cmake"
+    tar -xf "${build_dir}/${target_name}.tar" -C "${build_dir}"
+    rm "${build_dir:?}/${target_name}.tar"
+}
+
 envsetup()
 {
     if [[ ${NODE_MODE} == 'rcp' ]]; then
@@ -347,6 +379,18 @@ envsetup()
         fi
     fi
 
+    if [[ ! ${VIRTUAL_TIME+x} ]]; then
+        # All expect tests only works in real time mode.
+        VIRTUAL_TIME=1
+        for arg in "$@"; do
+            if [[ $arg == expect ]]; then
+                VIRTUAL_TIME=0
+                break
+            fi
+        done
+    fi
+
+    readonly VIRTUAL_TIME
     export NODE_TYPE VIRTUAL_TIME
 
     # CMake always works in verbose mode if VERBOSE exists in environments.
@@ -365,7 +409,7 @@ envsetup()
 
 main()
 {
-    envsetup
+    envsetup "$@"
 
     if [[ -z $1 ]]; then
         print_usage 1
@@ -404,6 +448,14 @@ main()
             expect)
                 shift
                 do_expect "$@"
+                ;;
+            tar)
+                shift
+                do_tar "$@"
+                ;;
+            untar)
+                shift
+                do_untar "$@"
                 ;;
         esac
         shift

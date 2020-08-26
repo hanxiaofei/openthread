@@ -115,13 +115,16 @@ void otBackboneRouterGetConfig(otInstance *aInstance, otBackboneRouterConfig *aC
  * @param[in]  aInstance             A pointer to an OpenThread instance.
  * @param[in]  aConfig               A pointer to the Backbone Router configuration to take effect.
  *
+ * @retval OT_ERROR_NONE          Successfully updated configuration.
+ * @retval OT_ERROR_INVALID_ARGS  The configuration in @p aConfig is invalid.
+ *
  * @sa otBackboneRouterSetEnabled
  * @sa otBackboneRouterGetState
  * @sa otBackboneRouterGetConfig
  * @sa otBackboneRouterRegister
  *
  */
-void otBackboneRouterSetConfig(otInstance *aInstance, const otBackboneRouterConfig *aConfig);
+otError otBackboneRouterSetConfig(otInstance *aInstance, const otBackboneRouterConfig *aConfig);
 
 /**
  * This function explicitly registers local Backbone Router configuration.
@@ -170,6 +173,133 @@ void otBackboneRouterSetRegistrationJitter(otInstance *aInstance, uint8_t aJitte
  *
  */
 otError otBackboneRouterGetDomainPrefix(otInstance *aInstance, otBorderRouterConfig *aConfig);
+
+/**
+ * This method configures response status for next DUA registration.
+ *
+ * Note: available only when `OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE` is enabled.
+ *       Only used for test and certification.
+ *
+ * TODO: (DUA) support coap error code and corresponding process for certification purpose.
+ *
+ * @param[in] aInstance A pointer to an OpenThread instance.
+ * @param[in] aMlIid    A pointer to the Mesh Local IID. If NULL, respond with @p aStatus for any
+ *                      coming DUA.req, otherwise only respond the one with matching @p aMlIid.
+ * @param[in] aStatus   The status to respond.
+ *
+ *
+ */
+void otBackboneRouterConfigNextDuaRegistrationResponse(otInstance *                    aInstance,
+                                                       const otIp6InterfaceIdentifier *aMlIid,
+                                                       uint8_t                         aStatus);
+
+/**
+ * Represents the Multicast Listener events.
+ *
+ */
+typedef enum
+{
+    OT_BACKBONE_ROUTER_MULTICAST_LISTENER_ADDED   = 0, ///< Multicast Listener was added.
+    OT_BACKBONE_ROUTER_MULTICAST_LISTENER_REMOVED = 1, ///< Multicast Listener was removed or expired.
+} otBackboneRouterMulticastListenerEvent;
+
+/**
+ * This function pointer is called whenever the Multicast Listeners change.
+ *
+ * @param[in] aContext  The user context pointer.
+ * @param[in] aEvent    The Multicast Listener event.
+ * @param[in] aAddress  The Ip6 multicast address of the Multicast Listener.
+ *
+ */
+typedef void (*otBackboneRouterMulticastListenerCallback)(void *                                 aContext,
+                                                          otBackboneRouterMulticastListenerEvent aEvent,
+                                                          const otIp6Address *                   aAddress);
+
+/**
+ * This method sets the Backbone Router Multicast Listener callback.
+ *
+ * @param[in] aInstance  A pointer to an OpenThread instance.
+ * @param[in] aCallback  A pointer to the Multicast Listener callback.
+ * @param[in] aContext   A user context pointer.
+ *
+ */
+void otBackboneRouterSetMulticastListenerCallback(otInstance *                              aInstance,
+                                                  otBackboneRouterMulticastListenerCallback aCallback,
+                                                  void *                                    aContext);
+
+/**
+ * This method clears the Multicast Listeners.
+ *
+ * Note: available only when `OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE` is enabled.
+ *       Only used for test and certification.
+ *
+ * @param[in] aInstance A pointer to an OpenThread instance.
+ *
+ * @sa otBackboneRouterMulticastListenerAdd
+ * @sa otBackboneRouterMulticastListenerGetNext
+ *
+ */
+void otBackboneRouterMulticastListenerClear(otInstance *aInstance);
+
+/**
+ * This method adds a Multicast Listener.
+ *
+ * Note: available only when `OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE` is enabled.
+ *       Only used for test and certification.
+ *
+ * @param[in] aInstance  A pointer to an OpenThread instance.
+ * @param[in] aAddress   The Multicast Listener address.
+ * @param[in] aTimeout   The timeout (in seconds) of the Multicast Listener, or 0 to use the default MLR timeout.
+ *
+ * @retval OT_ERROR_NONE          If the Multicast Listener was successfully added.
+ * @retval OT_ERROR_INVALID_ARGS  If the Multicast Listener address was invalid.
+ * @retval OT_ERROR_NO_BUFS       No space available to save the Multicast Listener.
+ *
+ * @sa otBackboneRouterMulticastListenerClear
+ * @sa otBackboneRouterMulticastListenerGetNext
+ *
+ */
+otError otBackboneRouterMulticastListenerAdd(otInstance *aInstance, const otIp6Address *aAddress, uint32_t aTimeout);
+
+#define OT_BACKBONE_ROUTER_MULTICAST_LISTENER_ITERATOR_INIT \
+    0 ///< Initializer for otBackboneRouterMulticastListenerIterator
+
+typedef uint16_t otBackboneRouterMulticastListenerIterator; ///< Used to iterate through Multicast Listeners.
+
+/**
+ * This structure represents a Backbone Router Multicast Listener info.
+ *
+ */
+typedef struct otBackboneRouterMulticastListenerInfo
+{
+    otIp6Address mAddress; // Multicast Listener address.
+    uint32_t     mTimeout; // Timeout (in seconds).
+} otBackboneRouterMulticastListenerInfo;
+
+/**
+ * This function gets the next Multicast Listener info (using an iterator).
+ *
+ * Note: available only when `OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE` is enabled.
+ *       Only used for test and certification.
+ *
+ * @param[in]     aInstance    A pointer to an OpenThread instance.
+ * @param[inout]  aIterator    A pointer to the iterator. On success the iterator will be updated to point to next
+ *                             Multicast Listener. To get the first entry the iterator should be set to
+ *                             OT_BACKBONE_ROUTER_MULTICAST_LISTENER_ITERATOR_INIT.
+ * @param[out]    aListenerInfo  A pointer to an `otBackboneRouterMulticastListenerInfo` where information of next
+ *                               Multicast Listener is placed (on success).
+ *
+ * @retval OT_ERROR_NONE       Successfully found the next Multicast Listener info (@p aListenerInfo was successfully
+ *                             updated).
+ * @retval OT_ERROR_NOT_FOUND  No subsequent Multicast Listener info was found.
+ *
+ * @sa otBackboneRouterMulticastListenerClear
+ * @sa otBackboneRouterMulticastListenerAdd
+ *
+ */
+otError otBackboneRouterMulticastListenerGetNext(otInstance *                               aInstance,
+                                                 otBackboneRouterMulticastListenerIterator *aIterator,
+                                                 otBackboneRouterMulticastListenerInfo *    aListenerInfo);
 
 /**
  * @}

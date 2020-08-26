@@ -1014,8 +1014,6 @@ NL_RESTORE_WERROR
 AC_CONFIG_FILES([
 Makefile
 include/Makefile
-include/openthread/Makefile
-include/openthread/platform/Makefile
 src/Makefile
 src/cli/Makefile
 src/ncp/Makefile
@@ -1026,6 +1024,7 @@ src/lib/Makefile
 src/lib/hdlc/Makefile
 src/lib/platform/Makefile
 src/lib/spinel/Makefile
+src/lib/url/Makefile
 third_party/Makefile
 third_party/jlink/Makefile
 third_party/mbedtls/Makefile

@@ -43,7 +43,6 @@
 #include "common/equatable.hpp"
 #include "common/string.hpp"
 #include "mac/mac_types.hpp"
-#include "thread/mle_types.hpp"
 
 using ot::Encoding::BigEndian::HostSwap16;
 
@@ -56,6 +55,215 @@ namespace Ip6 {
  * @{
  *
  */
+
+/**
+ * This class represents the Network Prefix of an IPv6 address (most significant 64 bits of the address).
+ *
+ */
+OT_TOOL_PACKED_BEGIN
+class NetworkPrefix : public otIp6NetworkPrefix, public Equatable<NetworkPrefix>, public Clearable<NetworkPrefix>
+{
+public:
+    enum
+    {
+        kSize   = OT_IP6_PREFIX_SIZE,            ///< Size in bytes.
+        kLength = OT_IP6_PREFIX_SIZE * CHAR_BIT, ///< Length of Network Prefix in bits.
+    };
+
+    /**
+     * This method generates and sets the Network Prefix to a crypto-secure random Unique Local Address (ULA) based
+     * on the pattern `fdxx:xxxx:xxxx:` (RFC 4193).
+     *
+     * @retval OT_ERROR_NONE     Successfully generated a random ULA Network Prefix
+     * @retval OT_ERROR_FAILED   Failed to generate random ULA Network Prefix.
+     *
+     */
+    otError GenerateRandomUla(void);
+
+} OT_TOOL_PACKED_END;
+
+/**
+ * This class represents an IPv6 Prefix.
+ *
+ */
+OT_TOOL_PACKED_BEGIN
+class Prefix : public otIp6Prefix
+{
+public:
+    enum : uint8_t
+    {
+        kMaxLength = OT_IP6_ADDRESS_SIZE * CHAR_BIT, ///< Max length of a prefix in bits.
+        kMaxSize   = OT_IP6_ADDRESS_SIZE,            ///< Max (byte) size of a prefix.
+    };
+
+    enum : uint16_t
+    {
+        kInfoStringSize = 45, ///< Max chars for the info string (`ToString()`).
+    };
+
+    /**
+     * This type defines the fixed-length `String` object returned from `ToString()`.
+     *
+     */
+    typedef String<kInfoStringSize> InfoString;
+
+    /**
+     * This method gets the prefix as a pointer to a byte array.
+     *
+     * @returns A pointer to a byte array containing the Prefix.
+     *
+     */
+    const uint8_t *GetBytes(void) const { return mPrefix.mFields.m8; }
+
+    /**
+     * This method gets the prefix length (in bits).
+     *
+     * @returns The prefix length (in bits).
+     *
+     */
+    uint8_t GetLength(void) const { return mLength; }
+
+    /**
+     * This method returns the size (in bytes) of the prefix.
+     *
+     * @returns The size (in bytes) of the prefix array.
+     *
+     */
+    uint8_t GetBytesSize(void) const { return SizeForLength(mLength); }
+
+    /**
+     * This method sets the prefix.
+     *
+     * @param[in] aPrefix  A pointer to buffer containing the prefix bytes.
+     * @param[in] aLength  The length or prefix in bits.
+     *
+     */
+    void Set(const uint8_t *aPrefix, uint8_t aLength);
+
+    /**
+     * This method sets the prefix from a given Network Prefix.
+     *
+     * @param[in] aNetworkPrefix    A Network Prefix.
+     *
+     */
+    void Set(const NetworkPrefix &aNetworkPrefix) { Set(aNetworkPrefix.m8, NetworkPrefix::kLength); }
+
+    /**
+     * This method set the prefix length.
+     *
+     * @param[in] aLength  The new prefix length (in bits).
+     *
+     */
+    void SetLength(uint8_t aLength) { mLength = aLength; }
+
+    /**
+     * This method indicates whether prefix length is valid (smaller or equal to max length).
+     *
+     * @retval TRUE   The prefix length is valid.
+     * @retval FALSE  The prefix length is not valid.
+     *
+     */
+    bool IsValid(void) const { return (mLength <= kMaxLength); }
+
+    /**
+     * This method indicates whether the prefix is equal to a given prefix.
+     *
+     * @param[in] aPrefixBytes   A pointer to buffer containing the prefix bytes to compare with.
+     * @param[in] aPrefixLength  The length of prefix (in bits) specified by @p aPrefixBytes.
+     *
+     * @retval TRUE   If the prefix is equal to the specified prefix by @p aPrefixBytes and @p aPrefixLength.
+     * @retval FALSE  If the prefix is not equal to the specified prefix by @p aPrefixBytes and @p aPrefixLength.
+     *
+     */
+    bool IsEqual(const uint8_t *aPrefixBytes, uint8_t aPrefixLength) const;
+
+    /**
+     * This method indicates whether the prefix contains a sub-prefix.
+     *
+     * @param[in] aSubPrefix  A sub-prefix.
+     *
+     * @retval TRUE   The prefix contains the @p aSubPrefix
+     * @retval FALSE  The prefix does not contains the @p aSubPrefix.
+     *
+     */
+    bool ContainsPrefix(const Prefix &aSubPrefix) const
+    {
+        return (mLength >= aSubPrefix.mLength) &&
+               (MatchLength(GetBytes(), aSubPrefix.GetBytes(), aSubPrefix.GetBytesSize()) >= aSubPrefix.GetLength());
+    }
+
+    /**
+     * This method indicates whether the prefix contains a sub-prefix (given as a `NetworkPrefix`).
+     *
+     * @param[in] aSubPrefix  A sub-prefix (as a `NetworkPrefix`).
+     *
+     * @retval TRUE   The prefix contains the @p aSubPrefix
+     * @retval FALSE  The prefix does not contains the @p aSubPrefix.
+     *
+     */
+    bool ContainsPrefix(const NetworkPrefix &aSubPrefix) const
+    {
+        return (mLength >= NetworkPrefix::kLength) &&
+               (MatchLength(GetBytes(), aSubPrefix.m8, NetworkPrefix::kSize) >= NetworkPrefix::kLength);
+    }
+
+    /**
+     * This method overloads operator `==` to evaluate whether or not two prefixes are equal.
+     *
+     * @param[in]  aOther  The other prefix to compare with.
+     *
+     * @retval TRUE   If the two prefixes are equal.
+     * @retval FALSE  If the two prefixes are not equal.
+     *
+     */
+    bool operator==(const Prefix &aOther) const
+    {
+        return (mLength == aOther.mLength) &&
+               (MatchLength(GetBytes(), aOther.GetBytes(), GetBytesSize()) >= GetLength());
+    }
+
+    /**
+     * This method overloads operator `==` to evaluate whether or not two prefixes are unequal.
+     *
+     * @param[in]  aOther  The other prefix to compare with.
+     *
+     * @retval TRUE   If the two prefixes are unequal.
+     * @retval FALSE  If the two prefixes are not unequal.
+     *
+     */
+    bool operator!=(const Prefix &aOther) const { return !(*this == aOther); }
+
+    /**
+     * This static method converts a prefix length (in bits) to size (number of bytes).
+     *
+     * @param[in] aLength   A prefix length (in bits).
+     *
+     * @returns The size (in bytes) of the prefix.
+     *
+     */
+    static uint8_t SizeForLength(uint8_t aLength) { return BitVectorBytes(aLength); }
+
+    /**
+     * This static method returns the number of IPv6 prefix bits that match.
+     *
+     * @param[in]  aPrefixA     A pointer to a byte array containing a first prefix.
+     * @param[in]  aPrefixB     A pointer to a byte array containing a second prefix.
+     * @param[in]  aMaxSize     Number of bytes of the two prefixes.
+     *
+     * @returns The number of prefix bits that match.
+     *
+     */
+    static uint8_t MatchLength(const uint8_t *aPrefixA, const uint8_t *aPrefixB, uint8_t aMaxSize);
+
+    /**
+     * This method converts the prefix to a string.
+     *
+     * @returns An `InfoString` containing the string representation of the Prefix.
+     *
+     */
+    InfoString ToString(void) const;
+
+} OT_TOOL_PACKED_END;
 
 /**
  * This class represents the Interface Identifier of an IPv6 address.
@@ -300,6 +508,18 @@ public:
     };
 
     /**
+     * This enumeration defines IPv6 address type filter.
+     *
+     */
+    enum TypeFilter : uint8_t
+    {
+        kTypeAny,                           ///< Accept any IPv6 address (unicast or multicast).
+        kTypeUnicast,                       ///< Accept unicast IPv6 addresses only.
+        kTypeMulticast,                     ///< Accept multicast IPv6 addresses only.
+        kTypeMulticastLargerThanRealmLocal, ///< Accept multicast IPv6 addresses with scope larger than Realm Local.
+    };
+
+    /**
      * This type defines the fixed-length `String` object returned from `ToString()`.
      *
      */
@@ -461,30 +681,64 @@ public:
     bool IsMulticastLargerThanRealmLocal(void) const;
 
     /**
-     * This method sets the IPv6 address to a Routing Locator (RLOC) IPv6 address with a given Mesh-local prefix and
+     * This method sets the IPv6 address to a Routing Locator (RLOC) IPv6 address with a given Network Prefix and
      * RLOC16 value.
      *
-     * @param[in]  aMeshLocalPrefix  A Mesh Local Prefix.
+     * @param[in]  aNetworkPrefix    A Network Prefix.
      * @param[in]  aRloc16           A RLOC16 value.
      *
      */
-    void SetToRoutingLocator(const Mle::MeshLocalPrefix &aMeshLocalPrefix, uint16_t aRloc16)
+    void SetToRoutingLocator(const NetworkPrefix &aNetworkPrefix, uint16_t aRloc16)
     {
-        SetToLocator(aMeshLocalPrefix, aRloc16);
+        SetToLocator(aNetworkPrefix, aRloc16);
     }
 
     /**
-     * This method sets the IPv6 address to a Anycast Locator (ALOC) IPv6 address with a given Mesh-local prefix and
+     * This method sets the IPv6 address to a Anycast Locator (ALOC) IPv6 address with a given Network Prefix and
      * ALOC16 value.
      *
-     * @param[in]  aMeshLocalPrefix  A Mesh Local Prefix.
+     * @param[in]  aNetworkPrefix    A Network Prefix.
      * @param[in]  aAloc16           A ALOC16 value.
      *
      */
-    void SetToAnycastLocator(const Mle::MeshLocalPrefix &aMeshLocalPrefix, uint16_t aAloc16)
+    void SetToAnycastLocator(const NetworkPrefix &aNetworkPrefix, uint16_t aAloc16)
     {
-        SetToLocator(aMeshLocalPrefix, aAloc16);
+        SetToLocator(aNetworkPrefix, aAloc16);
     }
+
+    /**
+     * This method returns the Network Prefix of the IPv6 address (most significant 64 bits of the address).
+     *
+     * @returns A reference to the Network Prefix.
+     *
+     */
+    const NetworkPrefix &GetPrefix(void) const
+    {
+        return static_cast<const NetworkPrefix &>(mFields.mComponents.mNetworkPrefix);
+    }
+
+    /**
+     * This method indicates whether the IPv6 address matches a given prefix.
+     *
+     * @param[in] aPrefix  An IPv6 prefix to match with.
+     *
+     * @retval TRUE   The IPv6 address matches the @p aPrefix.
+     * @retval FALSE  The IPv6 address does not match the @p aPrefix.
+     *
+     */
+    bool MatchesPrefix(const Prefix &aPrefix) const;
+
+    /**
+     * This method indicates whether the IPv6 address matches a given prefix.
+     *
+     * @param[in]  aPrefix         A buffer containing the prefix.
+     * @param[in]  aPrefixLength   The prefix length (in bits).
+     *
+     * @retval TRUE   The IPv6 address matches the @p aPrefix.
+     * @retval FALSE  The IPv6 address does not match the @p aPrefix.
+     *
+     */
+    bool MatchesPrefix(const uint8_t *aPrefix, uint8_t aPrefixLength) const;
 
     /**
      * This method sets the IPv6 address prefix.
@@ -492,22 +746,30 @@ public:
      * This method only changes the first @p aPrefixLength bits of the address and keeps the rest of the bits in the
      * address as before.
      *
-     * @param[in]  aPrefix         A buffer containing the prefix
+     * @param[in]  aPrefix         A buffer containing the prefix.
      * @param[in]  aPrefixLength   The prefix length (in bits).
      *
      */
-    void SetPrefix(const uint8_t *aPrefix, uint8_t aPrefixLength);
+    void SetPrefix(const uint8_t *aPrefix, uint8_t aPrefixLength) { SetPrefix(0, aPrefix, aPrefixLength); }
 
     /**
-     * This method sets the IPv6 address prefix to the given Mesh Local Prefix.
+     * This method sets the IPv6 address prefix to the given Network Prefix.
      *
-     * @param[in]  aMeshLocalPrefix   A Mesh Local Prefix.
+     * @param[in]  aNetworkPrefix   A Network Prefix.
      *
      */
-    void SetPrefix(const Mle::MeshLocalPrefix &aMeshLocalPrefix)
-    {
-        SetPrefix(aMeshLocalPrefix.m8, Mle::MeshLocalPrefix::kLength);
-    }
+    void SetPrefix(const NetworkPrefix &aNetworkPrefix);
+
+    /**
+     * This method sets the IPv6 address prefix.
+     *
+     * This method only changes the initial prefix length bits of the IPv6 address and keeps the rest of the bits in
+     * the address as before.
+     *
+     * @param[in]  aPrefix         An IPv6 prefix.
+     *
+     */
+    void SetPrefix(const Prefix &aPrefix);
 
     /**
      * This method sets the prefix content of the Prefix-Based Multicast Address.
@@ -519,25 +781,25 @@ public:
     void SetMulticastNetworkPrefix(const uint8_t *aPrefix, uint8_t aPrefixLength);
 
     /**
-     * This method sets the prefix content of Mesh Local Prefix-Based Multicast Address.
+     * This method sets the prefix content of Prefix-Based Multicast Address.
      *
-     * @param[in]  aMeshLocalPrefix   A reference to the Mesh Local Prefix.
+     * @param[in]  aNetworkPrefix   A reference to a Network Prefix.
      *
      */
-    void SetMulticastNetworkPrefix(const Mle::MeshLocalPrefix &aMeshLocalPrefix)
+    void SetMulticastNetworkPrefix(const NetworkPrefix &aNetworkPrefix)
     {
-        SetMulticastNetworkPrefix(aMeshLocalPrefix.m8, Mle::MeshLocalPrefix::kLength);
+        SetMulticastNetworkPrefix(aNetworkPrefix.m8, NetworkPrefix::kLength);
     }
 
     /**
      * This method sets the prefix content of Prefix-Based Multicast Address.
      *
-     * @param[in]  aPrefix A reference to an IPv6 Prefix.
+     * @param[in]  aPrefix  An IPv6 Prefix.
      *
      */
-    void SetMulticastNetworkPrefix(const otIp6Prefix &aPrefix)
+    void SetMulticastNetworkPrefix(const Prefix &aPrefix)
     {
-        SetMulticastNetworkPrefix(aPrefix.mPrefix.mFields.m8, aPrefix.mLength);
+        SetMulticastNetworkPrefix(aPrefix.GetBytes(), aPrefix.GetLength());
     }
 
     /**
@@ -583,7 +845,18 @@ public:
      * @returns The number of IPv6 prefix bits that match.
      *
      */
-    uint8_t PrefixMatch(const otIp6Address &aOther) const;
+    uint8_t PrefixMatch(const Address &aOther) const;
+
+    /**
+     * This method indicates whether address matches a given type filter.
+     *
+     * @param[in] aFilter   An address type filter.
+     *
+     * @retval TRUE   The address matches @p aFilter.
+     * @retval FALSE  The address does not match @p aFilter.
+     *
+     */
+    bool MatchesFilter(TypeFilter aFilter) const;
 
     /**
      * This method converts an IPv6 address string to binary.
@@ -604,21 +877,9 @@ public:
      */
     InfoString ToString(void) const;
 
-    /**
-     * This method returns the number of IPv6 prefix bits that match.
-     *
-     * @param[in]  aPrefixA     A pointer to the prefix to match.
-     * @param[in]  aPrefixB     A pointer to the prefix to match against.
-     * @param[in]  aMaxLength   Number of bytes of the two prefixes.
-     *
-     * @returns The number of prefix bits that match.
-     *
-     */
-    static uint8_t PrefixMatch(const uint8_t *aPrefixA, const uint8_t *aPrefixB, uint8_t aMaxLength);
-
 private:
     void SetPrefix(uint8_t aOffset, const uint8_t *aPrefix, uint8_t aPrefixLength);
-    void SetToLocator(const Mle::MeshLocalPrefix &aMeshLocalPrefix, uint16_t aLocator);
+    void SetToLocator(const NetworkPrefix &aNetworkPrefix, uint16_t aLocator);
 
     static const Address &GetLinkLocalAllNodesMulticast(void);
     static const Address &GetLinkLocalAllRoutersMulticast(void);

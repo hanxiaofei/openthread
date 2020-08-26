@@ -102,8 +102,10 @@ set(COMMON_SOURCES
     api/thread_api.cpp
     api/thread_ftd_api.cpp
     api/udp_api.cpp
-    backbone_router/leader.cpp
-    backbone_router/local.cpp
+    backbone_router/bbr_leader.cpp
+    backbone_router/bbr_local.cpp
+    backbone_router/bbr_manager.cpp
+    backbone_router/multicast_listeners_table.cpp
     coap/coap.cpp
     coap/coap_message.cpp
     coap/coap_secure.cpp
@@ -116,6 +118,7 @@ set(COMMON_SOURCES
     common/settings.cpp
     common/string.cpp
     common/tasklet.cpp
+    common/time_ticker.cpp
     common/timer.cpp
     common/tlvs.cpp
     common/trickle_timer.cpp
@@ -172,6 +175,7 @@ set(COMMON_SOURCES
     thread/announce_begin_server.cpp
     thread/announce_sender.cpp
     thread/child_table.cpp
+    thread/csl_tx_scheduler.cpp
     thread/discover_scanner.cpp
     thread/dua_manager.cpp
     thread/energy_scan_server.cpp
@@ -185,6 +189,8 @@ set(COMMON_SOURCES
     thread/mle.cpp
     thread/mle_router.cpp
     thread/mle_types.cpp
+    thread/mlr_manager.cpp
+    thread/neighbor_table.cpp
     thread/network_data.cpp
     thread/network_data_leader.cpp
     thread/network_data_leader_ftd.cpp
@@ -212,6 +218,11 @@ target_include_directories(openthread-ftd PUBLIC ${OT_PUBLIC_INCLUDES} PRIVATE $
 target_include_directories(openthread-mtd PUBLIC ${OT_PUBLIC_INCLUDES} PRIVATE ${COMMON_INCLUDES})
 target_include_directories(openthread-radio PUBLIC ${OT_PUBLIC_INCLUDES} PRIVATE ${COMMON_INCLUDES})
 
+set(OT_VENDOR_EXTENSION "" CACHE STRING "specify a C++ source file built as part of OpenThread core library")
+if(OT_VENDOR_EXTENSION)
+  target_compile_definitions(ot-config INTERFACE "OPENTHREAD_ENABLE_VENDOR_EXTENSION=1")
+  list(APPEND COMMON_SOURCES ${OT_VENDOR_EXTENSION})
+endif()
 target_sources(openthread-ftd PRIVATE ${COMMON_SOURCES})
 target_sources(openthread-mtd PRIVATE ${COMMON_SOURCES})
 
@@ -242,6 +253,10 @@ target_sources(openthread-radio PRIVATE
     thread/link_quality.cpp
     utils/parse_cmdline.cpp
 )
+
+if(OT_VENDOR_EXTENSION)
+  target_sources(openthread-radio PRIVATE ${OT_VENDOR_EXTENSION})
+endif()
 
 target_link_libraries(openthread-ftd
     PRIVATE
