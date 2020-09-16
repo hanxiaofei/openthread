@@ -117,7 +117,7 @@ public:
      *                                    FALSE otherwise.
      *
      */
-    void Init(bool aResetRadio, bool aRestoreDataSetFromNcp);
+    void Init(bool aResetRadio, bool aRestoreDataSetFromNcp, otPanIndex aPanIndex);
 
     /**
      * Deinitialize this radio transceiver.
@@ -728,6 +728,7 @@ private:
     otError SendReset(void);
     otError SendCommand(uint32_t          command,
                         spinel_prop_key_t key,
+                        spinel_iid_t      iid,
                         spinel_tid_t      tid,
                         const char *      pack_format,
                         va_list           args);
@@ -786,6 +787,7 @@ private:
     otRadioFrame  mAckRadioFrame;
     otRadioFrame *mTransmitFrame; ///< Points to the frame to send
 
+    otPanIndex   mPanIndex;
     otExtAddress mExtendedAddress;
     uint16_t     mShortAddress;
     uint16_t     mPanId;

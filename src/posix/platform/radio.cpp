@@ -123,7 +123,7 @@ void platformRadioInit(const otPlatformConfig *aPlatformConfig)
 #endif
 
     SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(*aPlatformConfig));
-    sRadioSpinel.Init(aPlatformConfig->mResetRadio, aPlatformConfig->mRestoreDatasetFromNcp);
+    sRadioSpinel.Init(aPlatformConfig->mResetRadio, aPlatformConfig->mRestoreDatasetFromNcp, aPlatformConfig->mPanIndex);
 }
 
 void platformRadioDeinit(void)

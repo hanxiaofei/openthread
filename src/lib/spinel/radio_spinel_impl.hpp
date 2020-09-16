@@ -198,7 +198,7 @@ RadioSpinel<InterfaceType, ProcessContextType>::RadioSpinel(void)
 }
 
 template <typename InterfaceType, typename ProcessContextType>
-void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool aRestoreDatasetFromNcp)
+void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool aRestoreDatasetFromNcp, otPanIndex aPanIndex)
 {
     otError error = OT_ERROR_NONE;
 
@@ -223,6 +223,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool
     mRxRadioFrame.mPsdu  = mRxPsdu;
     mTxRadioFrame.mPsdu  = mTxPsdu;
     mAckRadioFrame.mPsdu = mAckPsdu;
+    mPanIndex = aPanIndex;
 
 exit:
     SuccessOrDie(error);
@@ -1329,6 +1330,7 @@ exit:
 template <typename InterfaceType, typename ProcessContextType>
 otError RadioSpinel<InterfaceType, ProcessContextType>::SendCommand(uint32_t          aCommand,
                                                                     spinel_prop_key_t aKey,
+                                                                    spinel_iid_t      iid,
                                                                     spinel_tid_t      tid,
                                                                     const char *      aFormat,
                                                                     va_list           args)
@@ -1338,8 +1340,10 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::SendCommand(uint32_t    
     spinel_ssize_t packed;
     uint16_t       offset;
 
+    otLogDebgPlat("%s: prop:%s, iid:%02x, tid:%02x\n", spinel_command_to_cstr(aCommand), spinel_prop_key_to_cstr(aKey), iid, tid);
+
     // Pack the header, command and key
-    packed = spinel_datatype_pack(buffer, sizeof(buffer), "Cii", SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0 | tid,
+    packed = spinel_datatype_pack(buffer, sizeof(buffer), "Cii", SPINEL_HEADER_FLAG | (iid << SPINEL_HEADER_IID_SHIFT) | tid,
                                   aCommand, aKey);
 
     VerifyOrExit(packed > 0 && static_cast<size_t>(packed) <= sizeof(buffer), error = OT_ERROR_NO_BUFS);
@@ -1369,11 +1373,12 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::RequestV(bool           
                                                                  va_list           aArgs)
 {
     otError      error = OT_ERROR_NONE;
+    spinel_iid_t iid   = (spinel_iid_t)mPanIndex;
     spinel_tid_t tid   = (aWait ? GetNextTid() : 0);
 
     VerifyOrExit(!aWait || tid > 0, error = OT_ERROR_BUSY);
 
-    error = SendCommand(command, aKey, tid, aFormat, aArgs);
+    error = SendCommand(command, aKey, iid, tid, aFormat, aArgs);
     SuccessOrExit(error);
 
     if (aKey == SPINEL_PROP_STREAM_RAW)

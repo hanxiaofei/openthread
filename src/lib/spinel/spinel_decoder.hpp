@@ -74,6 +74,14 @@ public:
     void Init(const uint8_t *aFrame, uint16_t aLength);
 
     /**
+     * This method returns the Header IID.
+     *
+     * @returns IID.
+     *
+     */
+    uint8_t GetIid(void) const { return mIid; }
+
+    /**
      * This method returns the pointer to the start of the frame.
      *
      * @returns A pointer to buffer containing current frame being decoded.
@@ -572,6 +580,7 @@ private:
     void    ClearSavedPosition(void) { mSavedIndex = mLength; }
     bool    IsSavedPositionValid(void) const { return (mSavedIndex < mLength); }
 
+    uint8_t        mIid;            // Header.IID
     const uint8_t *mFrame;          // Frame buffer.
     uint16_t       mLength;         // Frame length (number of bytes).
     uint16_t       mIndex;          // Current read index.

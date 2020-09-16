@@ -122,6 +122,7 @@ static const struct option kOptions[] = {{"debug-level", required_argument, NULL
                                          {"dry-run", no_argument, NULL, 'n'},
                                          {"help", no_argument, NULL, 'h'},
                                          {"interface-name", required_argument, NULL, 'I'},
+                                         {"pan-index", required_argument, NULL, 'i'},
                                          {"no-reset", no_argument, NULL, ARG_NO_RADIO_RESET},
                                          {"radio-version", no_argument, NULL, ARG_PRINT_RADIO_VERSION},
                                          {"ncp-dataset", no_argument, NULL, ARG_RESTORE_NCP_DATASET},
@@ -153,6 +154,7 @@ static void PrintUsage(const char *aProgramName, FILE *aStream, int aExitCode)
             "    -d  --debug-level             Debug level of logging.\n"
             "    -h  --help                    Display this usage information.\n"
             "    -I  --interface-name name     Thread network interface name.\n"
+            "    -i  --pan-index index         Radio PAN index.\n"
             "    -n  --dry-run                 Just verify if arguments is valid and radio spinel is compatible.\n"
             "        --no-reset                Do not send Spinel reset command to RCP on initialization.\n"
             "        --radio-version           Print radio firmware version.\n"
@@ -213,7 +215,7 @@ static void ParseArg(int aArgCount, char *aArgVector[], PosixConfig *aConfig)
     while (true)
     {
         int index  = 0;
-        int option = getopt_long(aArgCount, aArgVector, "d:hI:ns:v", kOptions, &index);
+        int option = getopt_long(aArgCount, aArgVector, "d:hI:i:ns:v", kOptions, &index);
 
         if (option == -1)
         {
@@ -230,6 +232,9 @@ static void ParseArg(int aArgCount, char *aArgVector[], PosixConfig *aConfig)
             break;
         case 'I':
             aConfig->mPlatformConfig.mInterfaceName = optarg;
+            break;
+        case 'i':
+            aConfig->mPlatformConfig.mPanIndex = (otPanIndex)atoi(optarg);
             break;
         case 'n':
             aConfig->mIsDryRun = true;

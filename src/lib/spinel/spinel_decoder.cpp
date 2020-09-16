@@ -39,7 +39,8 @@ namespace ot {
 namespace Spinel {
 
 Decoder::Decoder(void)
-    : mFrame(NULL)
+    : mIid(0)
+    , mFrame(NULL)
     , mLength(0)
     , mIndex(0)
     , mEnd(0)
@@ -52,8 +53,16 @@ Decoder::Decoder(void)
 
 void Decoder::Init(const uint8_t *aFrame, uint16_t aLength)
 {
+    uint8_t header = 0;
+
     mFrame  = aFrame;
     mLength = (mFrame != NULL) ? aLength : 0;
+
+    Reset();
+    ClearSavedPosition();
+
+    IgnoreError(ReadUint8(header));
+    mIid = SPINEL_HEADER_GET_IID(header);
 
     Reset();
     ClearSavedPosition();

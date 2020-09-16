@@ -129,6 +129,12 @@ enum
 #define OT_PANID_BROADCAST 0xffff ///< IEEE 802.15.4 Broadcast PAN ID
 
 /**
+ * This type represents the Index used for by the radio for PAN ID, Extended address, and Short Address.
+ *
+ */
+typedef uint8_t otPanIndex;
+
+/**
  * This type represents the IEEE 802.15.4 PAN ID.
  *
  */
