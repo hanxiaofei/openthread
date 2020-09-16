@@ -46,6 +46,7 @@
 
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
+#include "common/logging.hpp"
 #include "radio/radio.hpp"
 
 namespace ot {
