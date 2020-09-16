@@ -669,6 +669,7 @@ uint8_t NcpBase::GetWrappedResponseQueueIndex(uint8_t aPosition)
 otError NcpBase::EnqueueResponse(uint8_t aHeader, ResponseType aType, unsigned int aPropKeyOrStatus)
 {
     otError        error = OT_ERROR_NONE;
+    spinel_iid_t   iid   = SPINEL_HEADER_GET_IID(aHeader);
     spinel_tid_t   tid   = SPINEL_HEADER_GET_TID(aHeader);
     ResponseEntry *entry;
 
@@ -707,7 +708,7 @@ otError NcpBase::EnqueueResponse(uint8_t aHeader, ResponseType aType, unsigned i
         {
             entry = &mResponseQueue[GetWrappedResponseQueueIndex(cur)];
 
-            if (entry->mIsInUse && (entry->mTid == tid))
+            if (entry->mIsInUse && (entry->mIid == iid) && (entry->mTid == tid))
             {
                 // Entry is just marked here and will be removed
                 // from `SendQueuedResponses()`.
@@ -722,6 +723,7 @@ otError NcpBase::EnqueueResponse(uint8_t aHeader, ResponseType aType, unsigned i
 
     entry = &mResponseQueue[GetWrappedResponseQueueIndex(mResponseQueueTail)];
 
+    entry->mIid             = iid;
     entry->mTid             = tid;
     entry->mIsInUse         = true;
     entry->mType            = aType;
@@ -743,8 +745,9 @@ otError NcpBase::SendQueuedResponses(void)
 
         if (entry.mIsInUse)
         {
-            uint8_t header = SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0;
+            uint8_t header = SPINEL_HEADER_FLAG;
 
+            header |= static_cast<uint8_t>(entry.mIid << SPINEL_HEADER_IID_SHIFT);
             header |= static_cast<uint8_t>(entry.mTid << SPINEL_HEADER_TID_SHIFT);
 
             if (entry.mType == kResponseTypeLastStatus)
