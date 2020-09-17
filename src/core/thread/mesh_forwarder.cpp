@@ -446,7 +446,7 @@ otError MeshForwarder::HandleFrameRequest(Mac::TxFrame &aFrame)
             // value.
             if (mSendMessage->GetPanId() == Mac::kPanIdBroadcast && Get<Mac::Mac>().GetPanId() == Mac::kPanIdBroadcast)
             {
-                Get<Mac::Mac>().SetPanId(Mac::GenerateRandomPanId());
+                Get<Mac::Mac>().SetPanId(Mac::GenerateRandomPanId(), 0);
             }
         }
 
@@ -982,7 +982,7 @@ void MeshForwarder::HandleDiscoverComplete(void)
     OT_ASSERT(mScanning);
 
     Get<Mac::Mac>().ClearTemporaryChannel();
-    Get<Mac::Mac>().SetPanId(mRestorePanId);
+    Get<Mac::Mac>().SetPanId(mRestorePanId, 0);
     mScanning = false;
     Get<Mle::MleRouter>().HandleDiscoverComplete();
     mDiscoverTimer.Stop();

@@ -262,9 +262,10 @@ public:
      * This method sets the IEEE 802.15.4 Extended Address.
      *
      * @param[in]  aExtAddress  A reference to the IEEE 802.15.4 Extended Address.
+     * @param[in]  aIndex  The radio PAN index.
      *
      */
-    void SetExtAddress(const ExtAddress &aExtAddress) { mSubMac.SetExtAddress(aExtAddress); }
+    void SetExtAddress(const ExtAddress &aExtAddress, PanIndex aIndex) { mSubMac.SetExtAddress(aExtAddress, aIndex); }
 
     /**
      * This method returns the IEEE 802.15.4 Short Address.
@@ -278,9 +279,10 @@ public:
      * This method sets the IEEE 802.15.4 Short Address.
      *
      * @param[in]  aShortAddress  The IEEE 802.15.4 Short Address.
+     * @param[in]  aIndex  The radio PAN index.
      *
      */
-    void SetShortAddress(ShortAddress aShortAddress) { mSubMac.SetShortAddress(aShortAddress); }
+    void SetShortAddress(ShortAddress aShortAddress, PanIndex aIndex) { mSubMac.SetShortAddress(aShortAddress, aIndex); }
 
     /**
      * This method returns the IEEE 802.15.4 PAN Channel.
@@ -413,9 +415,10 @@ public:
      * This method sets the IEEE 802.15.4 PAN ID.
      *
      * @param[in]  aPanId  The IEEE 802.15.4 PAN ID.
+     * @param[in]  aIndex  The radio PAN index.
      *
      */
-    void SetPanId(PanId aPanId);
+    void SetPanId(PanId aPanId, PanIndex aIndex);
 
     /**
      * This method returns the IEEE 802.15.4 Extended PAN Identifier.

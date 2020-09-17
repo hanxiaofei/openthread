@@ -102,12 +102,13 @@ otError otLinkRawSetPromiscuous(otInstance *aInstance, bool aEnable);
  *
  * @param[in] aInstance      A pointer to an OpenThread instance.
  * @param[in] aShortAddress  The IEEE 802.15.4 Short Address.
+ * @param[in] aIndex         The radio PAN index.
  *
  * @retval OT_ERROR_NONE             If successful.
  * @retval OT_ERROR_INVALID_STATE    If the raw link-layer isn't enabled.
  *
  */
-otError otLinkRawSetShortAddress(otInstance *aInstance, uint16_t aShortAddress);
+otError otLinkRawSetShortAddress(otInstance *aInstance, uint16_t aShortAddress, uint8_t aIndex);
 
 /**
  * Transition the radio from Receive to Sleep.

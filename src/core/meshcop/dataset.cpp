@@ -466,7 +466,7 @@ otError Dataset::ApplyConfiguration(Instance &aInstance, bool *aIsMasterKeyUpdat
         }
 
         case Tlv::kPanId:
-            mac.SetPanId(static_cast<const PanIdTlv *>(cur)->GetPanId());
+            mac.SetPanId(static_cast<const PanIdTlv *>(cur)->GetPanId(), 0);
             break;
 
         case Tlv::kExtendedPanId:

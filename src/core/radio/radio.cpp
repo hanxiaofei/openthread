@@ -33,18 +33,18 @@
 
 namespace ot {
 
-void Radio::SetExtendedAddress(const Mac::ExtAddress &aExtAddress)
+void Radio::SetExtendedAddress(const Mac::ExtAddress &aExtAddress, Mac::PanIndex aIndex)
 {
-    otPlatRadioSetExtendedAddress(GetInstance(), &aExtAddress);
+    otPlatRadioSetExtendedAddress(GetInstance(), &aExtAddress, aIndex);
 
 #if (OPENTHREAD_MTD || OPENTHREAD_FTD) && OPENTHREAD_CONFIG_OTNS_ENABLE
     Get<Utils::Otns>().EmitExtendedAddress(aExtAddress);
 #endif
 }
 
-void Radio::SetShortAddress(Mac::ShortAddress aShortAddress)
+void Radio::SetShortAddress(Mac::ShortAddress aShortAddress, Mac::PanIndex aIndex)
 {
-    otPlatRadioSetShortAddress(GetInstance(), aShortAddress);
+    otPlatRadioSetShortAddress(GetInstance(), aShortAddress, aIndex);
 
 #if (OPENTHREAD_MTD || OPENTHREAD_FTD) && OPENTHREAD_CONFIG_OTNS_ENABLE
     Get<Utils::Otns>().EmitShortAddress(aShortAddress);

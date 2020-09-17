@@ -229,7 +229,7 @@ public:
      * @param[in] aPanId     The IEEE 802.15.4 PAN ID.
      *
      */
-    void SetPanId(Mac::PanId aPanId) { otPlatRadioSetPanId(GetInstance(), aPanId); }
+    void SetPanId(Mac::PanId aPanId, Mac::PanIndex aIndex) { otPlatRadioSetPanId(GetInstance(), aPanId, aIndex); }
 
     /**
      * This method sets the Extended Address for address filtering.
@@ -237,7 +237,7 @@ public:
      * @param[in] aExtAddress  The IEEE 802.15.4 Extended Address stored in little-endian byte order.
      *
      */
-    void SetExtendedAddress(const Mac::ExtAddress &aExtAddress);
+    void SetExtendedAddress(const Mac::ExtAddress &aExtAddress, Mac::PanIndex aIndex);
 
     /**
      * This method sets the Short Address for address filtering.
@@ -245,7 +245,7 @@ public:
      * @param[in] aShortAddress  The IEEE 802.15.4 Short Address.
      *
      */
-    void SetShortAddress(Mac::ShortAddress aShortAddress);
+    void SetShortAddress(Mac::ShortAddress aShortAddress, Mac::PanIndex aIndex);
 
     /**
      * This method gets the radio's transmit power in dBm.

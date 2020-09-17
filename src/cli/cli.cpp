@@ -1367,7 +1367,7 @@ void Interpreter::ProcessExtAddress(uint8_t aArgsLength, char *aArgs[])
         memset(extAddress.m8, 0x00, sizeof(otExtAddress));
         VerifyOrExit(Hex2Bin(aArgs[0], extAddress.m8, sizeof(otExtAddress)) >= 0, error = OT_ERROR_INVALID_ARGS);
 
-        error = otLinkSetExtendedAddress(mInstance, &extAddress);
+        error = otLinkSetExtendedAddress(mInstance, &extAddress, 0);
     }
 
 exit:
@@ -2160,7 +2160,7 @@ void Interpreter::ProcessPanId(uint8_t aArgsLength, char *aArgs[])
     else
     {
         SuccessOrExit(error = ParseLong(aArgs[0], value));
-        error = otLinkSetPanId(mInstance, static_cast<otPanId>(value));
+        error = otLinkSetPanId(mInstance, static_cast<otPanId>(value), 0);
     }
 
 exit:

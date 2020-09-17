@@ -345,28 +345,31 @@ void otPlatRadioGetIeeeEui64(otInstance *aInstance, uint8_t *aIeeeEui64);
  *
  * @param[in] aInstance  The OpenThread instance structure.
  * @param[in] aPanId     The IEEE 802.15.4 PAN ID.
+ * @param[in] aIndex     The radio PAN index.
  *
  */
-void otPlatRadioSetPanId(otInstance *aInstance, otPanId aPanId);
+void otPlatRadioSetPanId(otInstance *aInstance, otPanId aPanId, otPanIndex aIndex);
 
 /**
  * Set the Extended Address for address filtering.
  *
  * @param[in] aInstance    The OpenThread instance structure.
  * @param[in] aExtAddress  A pointer to the IEEE 802.15.4 Extended Address stored in little-endian byte order.
+ * @param[in] aIndex       The radio PAN index.
  *
  *
  */
-void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aExtAddress);
+void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aExtAddress, otPanIndex aIndex);
 
 /**
  * Set the Short Address for address filtering.
  *
  * @param[in] aInstance      The OpenThread instance structure.
  * @param[in] aShortAddress  The IEEE 802.15.4 Short Address.
+ * @param[in] aIndex         The radio PAN index.
  *
  */
-void otPlatRadioSetShortAddress(otInstance *aInstance, otShortAddress aShortAddress);
+void otPlatRadioSetShortAddress(otInstance *aInstance, otShortAddress aShortAddress, otPanIndex aIndex);
 
 /**
  * Get the radio's transmit power in dBm.

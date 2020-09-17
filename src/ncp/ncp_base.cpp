@@ -46,7 +46,6 @@
 
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
-#include "common/logging.hpp"
 #include "radio/radio.hpp"
 
 namespace ot {
@@ -1412,8 +1411,7 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_MAC_15_4_PANID>(void)
 
     SuccessOrExit(error = mDecoder.ReadUint16(panid));
 
-    otLogDebgPlat("NcpBase::HandlePropertySet<SPINEL_PROP_MAC_15_4_PANID>(%04x@%u)", panid, mDecoder.GetIid());
-    error = otLinkSetPanId(mInstance, panid);
+    error = otLinkSetPanId(mInstance, panid, mDecoder.GetIid());
 
 exit:
     return error;
@@ -1431,10 +1429,7 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_MAC_15_4_LADDR>(void)
 
     SuccessOrExit(error = mDecoder.ReadEui64(extAddress));
 
-    otLogDebgPlat("NcpBase::HandlePropertySet<SPINEL_PROP_MAC_15_4_LADDR>(%02x%02x%02x%02x%02x%02x%02x%02x@%u)",
-            extAddress->m8[0], extAddress->m8[1], extAddress->m8[2], extAddress->m8[3],
-            extAddress->m8[4], extAddress->m8[5], extAddress->m8[6], extAddress->m8[7], mDecoder.GetIid());
-    error = otLinkSetExtendedAddress(mInstance, extAddress);
+    error = otLinkSetExtendedAddress(mInstance, extAddress, mDecoder.GetIid());
 
 exit:
     return error;

@@ -63,15 +63,17 @@ void otPlatRadioGetIeeeEui64(otInstance *aInstance, uint8_t *aIeeeEui64)
     SuccessOrDie(sRadioSpinel.GetIeeeEui64(aIeeeEui64));
 }
 
-void otPlatRadioSetPanId(otInstance *aInstance, uint16_t panid)
+void otPlatRadioSetPanId(otInstance *aInstance, uint16_t panid, otPanIndex aIndex)
 {
     OT_UNUSED_VARIABLE(aInstance);
+    OT_UNUSED_VARIABLE(aIndex);
     SuccessOrDie(sRadioSpinel.SetPanId(panid));
 }
 
-void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aAddress)
+void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aAddress, otPanIndex aIndex)
 {
     OT_UNUSED_VARIABLE(aInstance);
+    OT_UNUSED_VARIABLE(aIndex);
     otExtAddress addr;
 
     for (size_t i = 0; i < sizeof(addr); i++)
@@ -82,9 +84,10 @@ void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aA
     SuccessOrDie(sRadioSpinel.SetExtendedAddress(addr));
 }
 
-void otPlatRadioSetShortAddress(otInstance *aInstance, uint16_t aAddress)
+void otPlatRadioSetShortAddress(otInstance *aInstance, uint16_t aAddress, otPanIndex aIndex)
 {
     OT_UNUSED_VARIABLE(aInstance);
+    OT_UNUSED_VARIABLE(aIndex);
     SuccessOrDie(sRadioSpinel.SetShortAddress(aAddress));
 }
 

@@ -90,12 +90,12 @@ exit:
     return error;
 }
 
-otError LinkRaw::SetPanId(uint16_t aPanId)
+otError LinkRaw::SetPanId(uint16_t aPanId, uint8_t aIndex)
 {
     otError error = OT_ERROR_NONE;
 
     VerifyOrExit(IsEnabled(), error = OT_ERROR_INVALID_STATE);
-    mSubMac.SetPanId(aPanId);
+    mSubMac.SetPanId(aPanId, aIndex);
     mPanId = aPanId;
 
 exit:
@@ -113,23 +113,23 @@ exit:
     return error;
 }
 
-otError LinkRaw::SetExtAddress(const ExtAddress &aExtAddress)
+otError LinkRaw::SetExtAddress(const ExtAddress &aExtAddress, uint8_t aIndex)
 {
     otError error = OT_ERROR_NONE;
 
     VerifyOrExit(IsEnabled(), error = OT_ERROR_INVALID_STATE);
-    mSubMac.SetExtAddress(aExtAddress);
+    mSubMac.SetExtAddress(aExtAddress, aIndex);
 
 exit:
     return error;
 }
 
-otError LinkRaw::SetShortAddress(ShortAddress aShortAddress)
+otError LinkRaw::SetShortAddress(ShortAddress aShortAddress, uint8_t aIndex)
 {
     otError error = OT_ERROR_NONE;
 
     VerifyOrExit(IsEnabled(), error = OT_ERROR_INVALID_STATE);
-    mSubMac.SetShortAddress(aShortAddress);
+    mSubMac.SetShortAddress(aShortAddress, aIndex);
 
 exit:
     return error;

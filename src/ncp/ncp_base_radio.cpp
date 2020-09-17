@@ -345,7 +345,7 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_MAC_15_4_SADDR>(void)
 
     SuccessOrExit(error = mDecoder.ReadUint16(shortAddress));
 
-    error = otLinkRawSetShortAddress(mInstance, shortAddress);
+    error = otLinkRawSetShortAddress(mInstance, shortAddress, mDecoder.GetIid());
 
 exit:
     return error;
