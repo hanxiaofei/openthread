@@ -43,7 +43,7 @@
 #include <openthread/network_time.h>
 #include <openthread/platform/misc.h>
 #include <openthread/platform/radio.h>
-
+#include "common/logging.hpp"
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
 #include "radio/radio.hpp"
@@ -232,6 +232,7 @@ NcpBase::NcpBase(Instance *aInstance)
 #endif
 #if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
     , mCurTransmitTID(0)
+    , mCurTransmitIID(0)
     , mCurScanChannel(kInvalidScanChannel)
     , mSrcMatchEnabled(false)
 #endif // OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE

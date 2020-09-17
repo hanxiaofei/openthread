@@ -195,7 +195,7 @@ protected:
      */
     struct ResponseEntry
     {
-        uint8_t      mIid : 4;              ///< Spinel Interface Identifier.
+        uint8_t      mIid : 2;              ///< Spinel Interface Identifier.
         uint8_t      mTid : 4;              ///< Spinel transaction id.
         bool         mIsInUse : 1;          ///< `true` if this entry is in use, `false` otherwise.
         ResponseType mType : 2;             ///< Response type.
@@ -579,6 +579,7 @@ protected:
 
 #if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
     uint8_t mCurTransmitTID;
+    uint8_t mCurTransmitIID;
     int8_t  mCurScanChannel;
     bool    mSrcMatchEnabled;
 #endif // OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE

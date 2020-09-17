@@ -40,9 +40,12 @@
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
 #include "common/instance.hpp"
+
 #include "mac/mac_frame.hpp"
 
 #if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
+
+extern uint8_t sPanIndex;
 
 namespace ot {
 namespace Ncp {
@@ -115,12 +118,14 @@ void NcpBase::LinkRawTransmitDone(otRadioFrame *aFrame, otRadioFrame *aAckFrame,
 
     if (mCurTransmitTID)
     {
-        uint8_t header       = SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0 | mCurTransmitTID;
+        uint8_t header       = SPINEL_HEADER_FLAG;
+        header |= static_cast<uint8_t>(mCurTransmitIID << SPINEL_HEADER_IID_SHIFT);
+        header |= static_cast<uint8_t>(mCurTransmitTID << SPINEL_HEADER_TID_SHIFT);
+
         bool    framePending = (aAckFrame != NULL && static_cast<Mac::RxFrame *>(aAckFrame)->GetFramePending());
 
         // Clear cached transmit TID
         mCurTransmitTID = 0;
-
         SuccessOrExit(mEncoder.BeginFrame(header, SPINEL_CMD_PROP_VALUE_IS, SPINEL_PROP_LAST_STATUS));
         SuccessOrExit(mEncoder.WriteUintPacked(ThreadErrorToSpinelStatus(aError)));
         SuccessOrExit(mEncoder.WriteBool(framePending));
@@ -344,6 +349,7 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_MAC_15_4_SADDR>(void)
     otError  error = OT_ERROR_NONE;
 
     SuccessOrExit(error = mDecoder.ReadUint16(shortAddress));
+    //sPanIndex = mDecoder.GetIid();
 
     error = otLinkRawSetShortAddress(mInstance, shortAddress, mDecoder.GetIid());
 
@@ -400,9 +406,6 @@ otError NcpBase::HandlePropertySet_SPINEL_PROP_STREAM_RAW(uint8_t aHeader)
 
     SuccessOrExit(error = DecodeStreamRawTxRequest(*frame));
 
-    // Cache the transaction ID for async response
-    mCurTransmitTID = SPINEL_HEADER_GET_TID(aHeader);
-
     // Pass frame to the radio layer. Note, this fails if we
     // haven't enabled raw stream or are already transmitting.
     error = otLinkRawTransmit(mInstance, &NcpBase::LinkRawTransmitDone);
@@ -411,7 +414,9 @@ exit:
 
     if (error == OT_ERROR_NONE)
     {
-        // Don't do anything here yet. We will complete the transaction when we get a transmit done callback
+        // Cache the transaction ID for async response
+        mCurTransmitTID = SPINEL_HEADER_GET_TID(aHeader);
+        mCurTransmitIID = SPINEL_HEADER_GET_IID(aHeader);
     }
     else
     {

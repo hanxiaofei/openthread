@@ -376,7 +376,11 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleReceivedFrame(void)
 
     unpacked = spinel_datatype_unpack(mRxFrameBuffer.GetFrame(), mRxFrameBuffer.GetLength(), "C", &header);
 
-    VerifyOrExit(unpacked > 0 && (header & SPINEL_HEADER_FLAG) == SPINEL_HEADER_FLAG,
+    // Accept spinel messages with the correct IID or with IID 0. For nowIID 0 is used 
+    // messages that should be sent to both host applications such as 802.15.4 data or log data 
+    VerifyOrExit(unpacked > 0 && (header & SPINEL_HEADER_FLAG) == SPINEL_HEADER_FLAG &&
+                 (SPINEL_HEADER_GET_IID(header) == (spinel_iid_t)mPanIndex || 
+                 SPINEL_HEADER_GET_IID(header) == 0),
                  error = OT_ERROR_PARSE);
 
     if (SPINEL_HEADER_GET_TID(header) == 0)
@@ -759,7 +763,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleValueIs(spinel_prop_k
         if (status >= SPINEL_STATUS_RESET__BEGIN && status <= SPINEL_STATUS_RESET__END)
         {
             // If RCP crashes/resets while radio was enabled, posix app exits.
-            VerifyOrDie(!IsEnabled(), OT_EXIT_RADIO_SPINEL_RESET);
+            //VerifyOrDie(!IsEnabled(), OT_EXIT_RADIO_SPINEL_RESET);
 
             otLogInfoPlat("RCP reset: %s", spinel_status_to_cstr(status));
             mIsReady = true;
