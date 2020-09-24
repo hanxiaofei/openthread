@@ -420,7 +420,6 @@ void otTick(void)
         perror("select");
         exit(OT_EXIT_FAILURE);
     }
-    fprintf(stderr, ".");
 }
 
 int main(int argc, char *argv[])
