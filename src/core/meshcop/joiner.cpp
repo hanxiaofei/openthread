@@ -104,7 +104,7 @@ otError Joiner::Start(const char *     aPskd,
 
     // Use random-generated extended address.
     randomAddress.GenerateRandom();
-    Get<Mac::Mac>().SetExtAddress(randomAddress, 0);
+    Get<Mac::Mac>().SetExtAddress(randomAddress);
     Get<Mle::MleRouter>().UpdateLinkLocalAddress();
 
     SuccessOrExit(error = Get<Coap::CoapSecure>().Start(kJoinerUdpPort));
@@ -234,7 +234,7 @@ void Joiner::HandleDiscoverResult(otActiveScanResult *aResult)
     {
         // Use extended address based on factory-assigned IEEE EUI-64
         GetJoinerId(joinerId);
-        Get<Mac::Mac>().SetExtAddress(joinerId, 0);
+        Get<Mac::Mac>().SetExtAddress(joinerId);
         Get<Mle::MleRouter>().UpdateLinkLocalAddress();
 
         mJoinerRouterIndex = 0;
@@ -342,7 +342,7 @@ otError Joiner::Connect(JoinerRouter &aRouter)
     otLogInfoMeshCoP("Joiner connecting to %s, pan:0x%04x, chan:%d", aRouter.mExtAddr.ToString().AsCString(),
                      aRouter.mPanId, aRouter.mChannel);
 
-    Get<Mac::Mac>().SetPanId(aRouter.mPanId, 0);
+    Get<Mac::Mac>().SetPanId(aRouter.mPanId);
     SuccessOrExit(error = Get<Mac::Mac>().SetPanChannel(aRouter.mChannel));
     SuccessOrExit(error = Get<Ip6::Filter>().AddUnsecurePort(kJoinerUdpPort));
 
@@ -616,7 +616,7 @@ void Joiner::HandleTimer(void)
         Mac::ExtAddress extAddress;
 
         extAddress.GenerateRandom();
-        Get<Mac::Mac>().SetExtAddress(extAddress, 0);
+        Get<Mac::Mac>().SetExtAddress(extAddress);
         Get<Mle::MleRouter>().UpdateLinkLocalAddress();
 
         error = OT_ERROR_NONE;

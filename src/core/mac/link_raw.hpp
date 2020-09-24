@@ -182,13 +182,12 @@ public:
      * This method updates short address.
      *
      * @param[in]   aShortAddress   The short address.
-     * @param[in]   aIndex          The radio PAN index.
      *
      * @retval OT_ERROR_NONE             If successful.
      * @retval OT_ERROR_INVALID_STATE    If the raw link-layer isn't enabled.
      *
      */
-    otError SetShortAddress(ShortAddress aShortAddress, uint8_t aIndex);
+    otError SetShortAddress(ShortAddress aShortAddress);
 
     /**
      * This function returns PANID.
@@ -202,13 +201,12 @@ public:
      * This method updates PANID.
      *
      * @param[in]   aPanId          The PANID.
-     * @param[in]   aIndex          The radio PAN index.
      *
      * @retval OT_ERROR_NONE             If successful.
      * @retval OT_ERROR_INVALID_STATE    If the raw link-layer isn't enabled.
      *
      */
-    otError SetPanId(PanId aPanId, uint8_t aIndex);
+    otError SetPanId(PanId aPanId);
 
     /**
      * This method gets the current receiving channel.
@@ -238,13 +236,12 @@ public:
      * This method updates extended address.
      *
      * @param[in]   aExtAddress     The extended address.
-     * @param[in]   aIndex          The radio PAN index
      *
      * @retval OT_ERROR_NONE             If successful.
      * @retval OT_ERROR_INVALID_STATE    If the raw link-layer isn't enabled.
      *
      */
-    otError SetExtAddress(const ExtAddress &aExtAddress, uint8_t aIndex);
+    otError SetExtAddress(const ExtAddress &aExtAddress);
 
     /**
      * This method records the status of a frame transmission attempt and is mainly used for logging failures.

@@ -40,12 +40,9 @@
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
 #include "common/instance.hpp"
-
 #include "mac/mac_frame.hpp"
 
 #if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
-
-extern uint8_t sPanIndex;
 
 namespace ot {
 namespace Ncp {
@@ -349,9 +346,8 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_MAC_15_4_SADDR>(void)
     otError  error = OT_ERROR_NONE;
 
     SuccessOrExit(error = mDecoder.ReadUint16(shortAddress));
-    //sPanIndex = mDecoder.GetIid();
 
-    error = otLinkRawSetShortAddress(mInstance, shortAddress, mDecoder.GetIid());
+    error = otLinkRawSetShortAddress(mInstance, shortAddress);
 
 exit:
     return error;

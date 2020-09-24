@@ -589,14 +589,13 @@ const otExtAddress *otLinkGetExtendedAddress(otInstance *aInstance);
  *
  * @param[in]  aInstance    A pointer to an OpenThread instance.
  * @param[in]  aExtAddress  A pointer to the IEEE 802.15.4 Extended Address.
- * @param[in]  aIndex       The radio PAN index.
  *
  * @retval OT_ERROR_NONE           Successfully set the IEEE 802.15.4 Extended Address.
  * @retval OT_ERROR_INVALID_ARGS   @p aExtAddress was NULL.
  * @retval OT_ERROR_INVALID_STATE  Thread protocols are enabled.
  *
  */
-otError otLinkSetExtendedAddress(otInstance *aInstance, const otExtAddress *aExtAddress, otPanIndex aIndex);
+otError otLinkSetExtendedAddress(otInstance *aInstance, const otExtAddress *aExtAddress);
 
 /**
  * Get the factory-assigned IEEE EUI-64.
@@ -627,7 +626,6 @@ otPanId otLinkGetPanId(otInstance *aInstance);
  *
  * @param[in]  aInstance    A pointer to an OpenThread instance.
  * @param[in]  aPanId       The IEEE 802.15.4 PAN ID.
- * @param[in]  aIndex       The radio PAN index.
  *
  * @retval OT_ERROR_NONE           Successfully set the PAN ID.
  * @retval OT_ERROR_INVALID_ARGS   If aPanId is not in the range [0, 65534].
@@ -636,7 +634,7 @@ otPanId otLinkGetPanId(otInstance *aInstance);
  * @sa otLinkGetPanId
  *
  */
-otError otLinkSetPanId(otInstance *aInstance, otPanId aPanId, otPanIndex aIndex);
+otError otLinkSetPanId(otInstance *aInstance, otPanId aPanId);
 
 /**
  * Get the data poll period of sleepy end device.

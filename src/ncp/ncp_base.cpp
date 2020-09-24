@@ -43,10 +43,14 @@
 #include <openthread/network_time.h>
 #include <openthread/platform/misc.h>
 #include <openthread/platform/radio.h>
-#include "common/logging.hpp"
+
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
 #include "radio/radio.hpp"
+
+#if OPENTHREAD_RADIO
+uint16_t sPanIndex = 0;
+#endif
 
 namespace ot {
 namespace Ncp {
@@ -343,6 +347,10 @@ void NcpBase::HandleReceive(const uint8_t *aBuf, uint16_t aBufLength)
 
     SuccessOrExit(mDecoder.ReadUint8(header));
     VerifyOrExit((SPINEL_HEADER_FLAG & header) == SPINEL_HEADER_FLAG, OT_NOOP);
+
+#if OPENTHREAD_RADIO
+    sPanIndex = SPINEL_HEADER_GET_IID(header);
+#endif
 
     mRxSpinelFrameCounter++;
 
@@ -1412,7 +1420,7 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_MAC_15_4_PANID>(void)
 
     SuccessOrExit(error = mDecoder.ReadUint16(panid));
 
-    error = otLinkSetPanId(mInstance, panid, mDecoder.GetIid());
+    error = otLinkSetPanId(mInstance, panid);
 
 exit:
     return error;
@@ -1430,7 +1438,7 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_MAC_15_4_LADDR>(void)
 
     SuccessOrExit(error = mDecoder.ReadEui64(extAddress));
 
-    error = otLinkSetExtendedAddress(mInstance, extAddress, mDecoder.GetIid());
+    error = otLinkSetExtendedAddress(mInstance, extAddress);
 
 exit:
     return error;

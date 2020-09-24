@@ -62,12 +62,6 @@ enum
 };
 
 /**
- * This type represents the radio PAN index.
- *
- */
-typedef otPanIndex PanIndex;
-
-/**
  * This type represents the IEEE 802.15.4 PAN ID.
  *
  */

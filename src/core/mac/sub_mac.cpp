@@ -94,20 +94,20 @@ otRadioCaps SubMac::GetCaps(void) const
     return caps;
 }
 
-void SubMac::SetPanId(PanId aPanId, PanIndex aIndex)
+void SubMac::SetPanId(PanId aPanId)
 {
-    Get<Radio>().SetPanId(aPanId, aIndex);
-    otLogDebgMac("RadioPanId: 0x%04x @%u", aPanId, aIndex);
+    Get<Radio>().SetPanId(aPanId);
+    otLogDebgMac("RadioPanId: 0x%04x", aPanId);
 }
 
-void SubMac::SetShortAddress(ShortAddress aShortAddress, PanIndex aIndex)
+void SubMac::SetShortAddress(ShortAddress aShortAddress)
 {
     mShortAddress = aShortAddress;
-    Get<Radio>().SetShortAddress(mShortAddress, aIndex);
-    otLogDebgMac("RadioShortAddress: 0x%04x @%u", mShortAddress, aIndex);
+    Get<Radio>().SetShortAddress(mShortAddress);
+    otLogDebgMac("RadioShortAddress: 0x%04x", mShortAddress);
 }
 
-void SubMac::SetExtAddress(const ExtAddress &aExtAddress, PanIndex aIndex)
+void SubMac::SetExtAddress(const ExtAddress &aExtAddress)
 {
     ExtAddress address;
 
@@ -115,8 +115,9 @@ void SubMac::SetExtAddress(const ExtAddress &aExtAddress, PanIndex aIndex)
 
     // Reverse the byte order before setting on radio.
     address.Set(aExtAddress.m8, ExtAddress::kReverseByteOrder);
-    Get<Radio>().SetExtendedAddress(address, aIndex);
-    otLogDebgMac("RadioExtAddress: %s @%u", mExtAddress.ToString().AsCString(), aIndex);
+    Get<Radio>().SetExtendedAddress(address);
+
+    otLogDebgMac("RadioExtAddress: %s", mExtAddress.ToString().AsCString());
 }
 
 void SubMac::SetPcapCallback(otLinkPcapCallback aPcapCallback, void *aCallbackContext)
