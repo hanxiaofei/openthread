@@ -48,10 +48,6 @@
 #include "common/debug.hpp"
 #include "radio/radio.hpp"
 
-#if OPENTHREAD_RADIO
-uint16_t sPanIndex = 0;
-#endif
-
 namespace ot {
 namespace Ncp {
 
@@ -203,6 +199,7 @@ NcpBase::NcpBase(Instance *aInstance)
     , mEncoder(mTxFrameBuffer)
     , mDecoder()
     , mHostPowerStateInProgress(false)
+    , mPanIndex(0)
     , mLastStatus(SPINEL_STATUS_OK)
     , mScanChannelMask(Radio::kSupportedChannels)
     , mScanPeriod(200)
@@ -302,6 +299,11 @@ NcpBase *NcpBase::GetNcpInstance(void)
     return sNcpInstance;
 }
 
+uint8_t NcpBase::GetPanIndex(void)
+{
+    return mPanIndex;
+}
+
 void NcpBase::ResetCounters(void)
 {
     mFramingErrorCounter          = 0;
@@ -349,7 +351,7 @@ void NcpBase::HandleReceive(const uint8_t *aBuf, uint16_t aBufLength)
     VerifyOrExit((SPINEL_HEADER_FLAG & header) == SPINEL_HEADER_FLAG, OT_NOOP);
 
 #if OPENTHREAD_RADIO
-    sPanIndex = SPINEL_HEADER_GET_IID(header);
+    mPanIndex = SPINEL_HEADER_GET_IID(header);
 #endif
 
     mRxSpinelFrameCounter++;
@@ -2417,6 +2419,13 @@ extern "C" void otNcpPlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, cons
         IgnoreError(otNcpStreamWrite(0, reinterpret_cast<uint8_t *>(logString), charsWritten));
     }
 }
+
+#if OPENTHREAD_RADIO
+extern "C" uint16_t otNcpPlatGetPanIndex()
+{
+    return ot::Ncp::NcpBase::GetNcpInstance()->GetPanIndex();
+}
+#endif
 
 #if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_NCP_SPINEL)
 
