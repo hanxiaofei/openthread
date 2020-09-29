@@ -86,6 +86,14 @@ public:
     static NcpBase *GetNcpInstance(void);
 
     /**
+     * This static method returns the radio index for PanId, ExtendedAddress, and ShortAddress
+     *
+     * @returns PAN index.
+     *
+     */
+    uint8_t GetPanIndex(void);
+
+    /**
      * This method sends data to host via specific stream.
      *
      *
@@ -524,6 +532,7 @@ protected:
     Spinel::Encoder        mEncoder;
     Spinel::Decoder        mDecoder;
     bool                   mHostPowerStateInProgress;
+    uint8_t                mPanIndex;
 
     enum
     {

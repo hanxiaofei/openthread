@@ -197,10 +197,9 @@ public:
      * This method sets the PAN ID.
      *
      * @param[in] aPanId  The PAN ID.
-     * @param[in] aIndex  The radio PAN index.
      *
      */
-    void SetPanId(PanId aPanId, uint8_t aIndex);
+    void SetPanId(PanId aPanId);
 
     /**
      * This method gets the short address.
@@ -214,10 +213,9 @@ public:
      * This method sets the short address.
      *
      * @param[in] aShortAddress   The short address.
-     * @param[in] aIndex          The radio PAN index.
      *
      */
-    void SetShortAddress(ShortAddress aShortAddress, uint8_t aIndex);
+    void SetShortAddress(ShortAddress aShortAddress);
 
     /**
      * This function gets the extended address.
@@ -231,10 +229,9 @@ public:
      * This method sets extended address.
      *
      * @param[in] aExtAddress  The extended address.
-     * @param[in] aIndex       The radio PAN index.
      *
      */
-    void SetExtAddress(const ExtAddress &aExtAddress, uint8_t aIndex);
+    void SetExtAddress(const ExtAddress &aExtAddress);
 
     /**
      * This method registers a callback to provide received packet capture for IEEE 802.15.4 frames.

@@ -140,9 +140,9 @@ Mac::Mac(Instance &aInstance)
 #if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
     IgnoreError(SetDomainName(sDomainNameInit));
 #endif
-    SetPanId(mPanId, 0);
-    SetExtAddress(randomExtAddress, 0);
-    SetShortAddress(GetShortAddress(), 0);
+    SetPanId(mPanId);
+    SetExtAddress(randomExtAddress);
+    SetShortAddress(GetShortAddress());
 }
 
 otError Mac::ActiveScan(uint32_t aScanChannels, uint16_t aScanDuration, ActiveScanHandler aHandler, void *aContext)
@@ -287,7 +287,7 @@ void Mac::PerformActiveScan(void)
     }
     else
     {
-        mSubMac.SetPanId(mPanId, 0);
+        mSubMac.SetPanId(mPanId);
         FinishOperation();
         ReportActiveScanResult(NULL);
         PerformNextOperation();
@@ -523,10 +523,10 @@ otError Mac::SetDomainName(const NameData &aNameData)
 }
 #endif // (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
 
-void Mac::SetPanId(PanId aPanId, PanIndex aIndex)
+void Mac::SetPanId(PanId aPanId)
 {
     SuccessOrExit(Get<Notifier>().Update(mPanId, aPanId, OT_CHANGED_THREAD_PANID));
-    mSubMac.SetPanId(mPanId, aIndex);
+    mSubMac.SetPanId(mPanId);
 
 exit:
     return;
@@ -1031,7 +1031,7 @@ void Mac::BeginTransmit(void)
     switch (mOperation)
     {
     case kOperationActiveScan:
-        mSubMac.SetPanId(kPanIdBroadcast, 0);
+        mSubMac.SetPanId(kPanIdBroadcast);
         sendFrame.SetChannel(mScanChannel);
         PrepareBeaconRequest(sendFrame);
         sendFrame.SetSequence(0);

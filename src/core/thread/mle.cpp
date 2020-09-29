@@ -249,7 +249,7 @@ otError Mle::Start(bool aAnnounceAttach)
             panid = Random::NonCrypto::GetUint16();
         } while (panid == Mac::kPanIdBroadcast);
 
-        Get<Mac::Mac>().SetPanId(panid, 0);
+        Get<Mac::Mac>().SetPanId(panid);
     }
 
     SetStateDetached();
@@ -389,8 +389,8 @@ otError Mle::Restore(void)
         ExitNow();
     }
 
-    Get<Mac::Mac>().SetShortAddress(networkInfo.GetRloc16(), 0);
-    Get<Mac::Mac>().SetExtAddress(networkInfo.GetExtAddress(), 0);
+    Get<Mac::Mac>().SetShortAddress(networkInfo.GetRloc16());
+    Get<Mac::Mac>().SetExtAddress(networkInfo.GetExtAddress());
 
     memcpy(&mMeshLocal64.GetAddress().mFields.m8[OT_IP6_PREFIX_SIZE], networkInfo.GetMeshLocalIid(),
            OT_IP6_ADDRESS_SIZE - OT_IP6_PREFIX_SIZE);
@@ -1011,7 +1011,7 @@ void Mle::SetRloc16(uint16_t aRloc16)
 
     IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mMeshLocal16));
 
-    Get<Mac::Mac>().SetShortAddress(aRloc16, 0);
+    Get<Mac::Mac>().SetShortAddress(aRloc16);
     Get<Ip6::Mpl>().SetSeedId(aRloc16);
 
     if (aRloc16 != Mac::kShortAddrInvalid)
@@ -1891,7 +1891,7 @@ uint32_t Mle::Reattach(void)
             if (mAlternatePanId != Mac::kPanIdBroadcast)
             {
                 IgnoreError(Get<Mac::Mac>().SetPanChannel(mAlternateChannel));
-                Get<Mac::Mac>().SetPanId(mAlternatePanId, 0);
+                Get<Mac::Mac>().SetPanId(mAlternatePanId);
                 mAlternatePanId = Mac::kPanIdBroadcast;
                 IgnoreError(BecomeDetached());
             }
@@ -3873,7 +3873,7 @@ void Mle::ProcessAnnounce(void)
     mAlternateTimestamp = 0;
 
     IgnoreError(Get<Mac::Mac>().SetPanChannel(newChannel));
-    Get<Mac::Mac>().SetPanId(newPanId, 0);
+    Get<Mac::Mac>().SetPanId(newPanId);
 
     IgnoreError(Start(/* aAnnounceAttach */ true));
 }

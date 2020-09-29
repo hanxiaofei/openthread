@@ -111,7 +111,7 @@ const otExtAddress *otLinkGetExtendedAddress(otInstance *aInstance)
     return &instance.Get<Mac::Mac>().GetExtAddress();
 }
 
-otError otLinkSetExtendedAddress(otInstance *aInstance, const otExtAddress *aExtAddress, otPanIndex aIndex)
+otError otLinkSetExtendedAddress(otInstance *aInstance, const otExtAddress *aExtAddress)
 {
     otError   error    = OT_ERROR_NONE;
     Instance &instance = *static_cast<Instance *>(aInstance);
@@ -119,7 +119,7 @@ otError otLinkSetExtendedAddress(otInstance *aInstance, const otExtAddress *aExt
     OT_ASSERT(aExtAddress != NULL);
     VerifyOrExit(instance.Get<Mle::MleRouter>().IsDisabled(), error = OT_ERROR_INVALID_STATE);
 
-    instance.Get<Mac::Mac>().SetExtAddress(*static_cast<const Mac::ExtAddress *>(aExtAddress), aIndex);
+    instance.Get<Mac::Mac>().SetExtAddress(*static_cast<const Mac::ExtAddress *>(aExtAddress));
 
     instance.Get<Mle::MleRouter>().UpdateLinkLocalAddress();
 
@@ -141,14 +141,14 @@ otPanId otLinkGetPanId(otInstance *aInstance)
     return instance.Get<Mac::Mac>().GetPanId();
 }
 
-otError otLinkSetPanId(otInstance *aInstance, otPanId aPanId, otPanIndex aIndex)
+otError otLinkSetPanId(otInstance *aInstance, otPanId aPanId)
 {
     otError   error    = OT_ERROR_NONE;
     Instance &instance = *static_cast<Instance *>(aInstance);
 
     VerifyOrExit(instance.Get<Mle::MleRouter>().IsDisabled(), error = OT_ERROR_INVALID_STATE);
 
-    instance.Get<Mac::Mac>().SetPanId(aPanId, aIndex);
+    instance.Get<Mac::Mac>().SetPanId(aPanId);
     instance.Get<MeshCoP::ActiveDataset>().Clear();
     instance.Get<MeshCoP::PendingDataset>().Clear();
 

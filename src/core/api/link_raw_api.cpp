@@ -59,9 +59,9 @@ bool otLinkRawIsEnabled(otInstance *aInstance)
     return static_cast<Instance *>(aInstance)->Get<Mac::LinkRaw>().IsEnabled();
 }
 
-otError otLinkRawSetShortAddress(otInstance *aInstance, uint16_t aShortAddress, uint8_t aIndex)
+otError otLinkRawSetShortAddress(otInstance *aInstance, uint16_t aShortAddress)
 {
-    return static_cast<Instance *>(aInstance)->Get<Mac::LinkRaw>().SetShortAddress(aShortAddress, aIndex);
+    return static_cast<Instance *>(aInstance)->Get<Mac::LinkRaw>().SetShortAddress(aShortAddress);
 }
 
 bool otLinkRawGetPromiscuous(otInstance *aInstance)
@@ -244,9 +244,9 @@ otPanId otLinkGetPanId(otInstance *aInstance)
     return static_cast<Instance *>(aInstance)->Get<Mac::LinkRaw>().GetPanId();
 }
 
-otError otLinkSetPanId(otInstance *aInstance, uint16_t aPanId, uint8_t aIndex)
+otError otLinkSetPanId(otInstance *aInstance, uint16_t aPanId)
 {
-    return static_cast<Instance *>(aInstance)->Get<Mac::LinkRaw>().SetPanId(aPanId, aIndex);
+    return static_cast<Instance *>(aInstance)->Get<Mac::LinkRaw>().SetPanId(aPanId);
 }
 
 const otExtAddress *otLinkGetExtendedAddress(otInstance *aInstance)
@@ -254,10 +254,10 @@ const otExtAddress *otLinkGetExtendedAddress(otInstance *aInstance)
     return &static_cast<Instance *>(aInstance)->Get<Mac::LinkRaw>().GetExtAddress();
 }
 
-otError otLinkSetExtendedAddress(otInstance *aInstance, const otExtAddress *aExtAddress, uint8_t aIndex)
+otError otLinkSetExtendedAddress(otInstance *aInstance, const otExtAddress *aExtAddress)
 {
     return static_cast<Instance *>(aInstance)->Get<Mac::LinkRaw>().SetExtAddress(
-        *static_cast<const Mac::ExtAddress *>(aExtAddress), aIndex);
+        *static_cast<const Mac::ExtAddress *>(aExtAddress));
 }
 
 uint16_t otLinkGetShortAddress(otInstance *aInstance)

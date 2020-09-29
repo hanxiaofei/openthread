@@ -43,7 +43,7 @@
 #include <openthread/network_time.h>
 #include <openthread/platform/misc.h>
 #include <openthread/platform/radio.h>
-#include "common/logging.hpp"
+
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
 #include "radio/radio.hpp"
@@ -199,6 +199,7 @@ NcpBase::NcpBase(Instance *aInstance)
     , mEncoder(mTxFrameBuffer)
     , mDecoder()
     , mHostPowerStateInProgress(false)
+    , mPanIndex(0)
     , mLastStatus(SPINEL_STATUS_OK)
     , mScanChannelMask(Radio::kSupportedChannels)
     , mScanPeriod(200)
@@ -298,6 +299,11 @@ NcpBase *NcpBase::GetNcpInstance(void)
     return sNcpInstance;
 }
 
+uint8_t NcpBase::GetPanIndex(void)
+{
+    return mPanIndex;
+}
+
 void NcpBase::ResetCounters(void)
 {
     mFramingErrorCounter          = 0;
@@ -343,6 +349,10 @@ void NcpBase::HandleReceive(const uint8_t *aBuf, uint16_t aBufLength)
 
     SuccessOrExit(mDecoder.ReadUint8(header));
     VerifyOrExit((SPINEL_HEADER_FLAG & header) == SPINEL_HEADER_FLAG, OT_NOOP);
+
+#if OPENTHREAD_RADIO
+    mPanIndex = SPINEL_HEADER_GET_IID(header);
+#endif
 
     mRxSpinelFrameCounter++;
 
@@ -1412,7 +1422,7 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_MAC_15_4_PANID>(void)
 
     SuccessOrExit(error = mDecoder.ReadUint16(panid));
 
-    error = otLinkSetPanId(mInstance, panid, mDecoder.GetIid());
+    error = otLinkSetPanId(mInstance, panid);
 
 exit:
     return error;
@@ -1430,7 +1440,7 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_MAC_15_4_LADDR>(void)
 
     SuccessOrExit(error = mDecoder.ReadEui64(extAddress));
 
-    error = otLinkSetExtendedAddress(mInstance, extAddress, mDecoder.GetIid());
+    error = otLinkSetExtendedAddress(mInstance, extAddress);
 
 exit:
     return error;
@@ -2409,6 +2419,13 @@ extern "C" void otNcpPlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, cons
         IgnoreError(otNcpStreamWrite(0, reinterpret_cast<uint8_t *>(logString), charsWritten));
     }
 }
+
+#if OPENTHREAD_RADIO
+extern "C" uint16_t otNcpPlatGetPanIndex()
+{
+    return ot::Ncp::NcpBase::GetNcpInstance()->GetPanIndex();
+}
+#endif
 
 #if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_NCP_SPINEL)
 
