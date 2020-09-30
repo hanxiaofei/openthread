@@ -124,12 +124,7 @@ otError NetworkDiagnostic::SendDiagnosticGet(const Ip6::Address &aDestination,
     otLogInfoNetDiag("Sent diagnostic get");
 
 exit:
-
-    if (error != OT_ERROR_NONE && message != nullptr)
-    {
-        message->Free();
-    }
-
+    FreeMessageOnError(message, error);
     return error;
 }
 
@@ -525,11 +520,7 @@ void NetworkDiagnostic::HandleDiagnosticGetQuery(Coap::Message &aMessage, const 
     otLogInfoNetDiag("Sent diagnostic get answer");
 
 exit:
-
-    if (error != OT_ERROR_NONE && message != nullptr)
-    {
-        message->Free();
-    }
+    FreeMessageOnError(message, error);
 }
 
 void NetworkDiagnostic::HandleDiagnosticGetRequest(void *               aContext,
@@ -575,11 +566,7 @@ void NetworkDiagnostic::HandleDiagnosticGetRequest(Coap::Message &aMessage, cons
     otLogInfoNetDiag("Sent diagnostic get response");
 
 exit:
-
-    if (error != OT_ERROR_NONE && message != nullptr)
-    {
-        message->Free();
-    }
+    FreeMessageOnError(message, error);
 }
 
 otError NetworkDiagnostic::SendDiagnosticReset(const Ip6::Address &aDestination,
@@ -621,12 +608,7 @@ otError NetworkDiagnostic::SendDiagnosticReset(const Ip6::Address &aDestination,
     otLogInfoNetDiag("Sent network diagnostic reset");
 
 exit:
-
-    if (error != OT_ERROR_NONE && message != nullptr)
-    {
-        message->Free();
-    }
-
+    FreeMessageOnError(message, error);
     return error;
 }
 
@@ -679,10 +661,9 @@ exit:
 
 static inline void ParseMode(const Mle::DeviceMode &aMode, otLinkModeConfig &aLinkModeConfig)
 {
-    aLinkModeConfig.mRxOnWhenIdle       = aMode.IsRxOnWhenIdle();
-    aLinkModeConfig.mSecureDataRequests = aMode.IsSecureDataRequest();
-    aLinkModeConfig.mDeviceType         = aMode.IsFullThreadDevice();
-    aLinkModeConfig.mNetworkData        = aMode.IsFullNetworkData();
+    aLinkModeConfig.mRxOnWhenIdle = aMode.IsRxOnWhenIdle();
+    aLinkModeConfig.mDeviceType   = aMode.IsFullThreadDevice();
+    aLinkModeConfig.mNetworkData  = aMode.IsFullNetworkData();
 }
 
 static inline void ParseConnectivity(const ConnectivityTlv &    aConnectivityTlv,

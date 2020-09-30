@@ -174,15 +174,8 @@ static void SendErrorMessage(Coap::CoapSecure &aCoapSecure, ForwardContext &aFor
     SuccessOrExit(error = aCoapSecure.SendMessage(*message, aCoapSecure.GetMessageInfo()));
 
 exit:
-    if (error != OT_ERROR_NONE)
-    {
-        if (message != nullptr)
-        {
-            message->Free();
-        }
-
-        otLogWarnMeshCoP("Failed to send error CoAP message: %s", otThreadErrorToString(error));
-    }
+    FreeMessageOnError(message, error);
+    LogError("send error CoAP message", error);
 }
 
 static void SendErrorMessage(Coap::CoapSecure &   aCoapSecure,
@@ -214,15 +207,8 @@ static void SendErrorMessage(Coap::CoapSecure &   aCoapSecure,
     SuccessOrExit(error = aCoapSecure.SendMessage(*message, aCoapSecure.GetMessageInfo()));
 
 exit:
-    if (error != OT_ERROR_NONE)
-    {
-        if (message != nullptr)
-        {
-            message->Free();
-        }
-
-        otLogWarnMeshCoP("Failed to send error CoAP message: %s", otThreadErrorToString(error));
-    }
+    FreeMessageOnError(message, error);
+    LogError("send error CoAP message", error);
 }
 
 void BorderAgent::HandleCoapResponse(void *               aContext,
@@ -271,12 +257,10 @@ void BorderAgent::HandleCoapResponse(void *               aContext,
     SuccessOrExit(error = borderAgent.ForwardToCommissioner(*message, *response));
 
 exit:
+
     if (error != OT_ERROR_NONE)
     {
-        if (message != nullptr)
-        {
-            message->Free();
-        }
+        FreeMessage(message);
 
         otLogWarnMeshCoP("Commissioner request[%hu] failed: %s", forwardContext.GetMessageId(),
                          otThreadErrorToString(error));
@@ -407,15 +391,8 @@ void BorderAgent::HandleProxyTransmit(const Coap::Message &aMessage)
     otLogInfoMeshCoP("Proxy transmit sent");
 
 exit:
-    if (error != OT_ERROR_NONE)
-    {
-        otLogWarnMeshCoP("Failed to send proxy stream: %s", otThreadErrorToString(error));
-
-        if (message != nullptr)
-        {
-            message->Free();
-        }
-    }
+    FreeMessageOnError(message, error);
+    LogError("send proxy stream", error);
 }
 
 bool BorderAgent::HandleUdpReceive(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo)
@@ -458,11 +435,8 @@ bool BorderAgent::HandleUdpReceive(const Message &aMessage, const Ip6::MessageIn
     otLogInfoMeshCoP("Sent to commissioner on %s", UriPath::kProxyRx);
 
 exit:
-    if (message != nullptr && error != OT_ERROR_NONE)
-    {
-        otLogWarnMeshCoP("Failed notify commissioner on %s", UriPath::kProxyRx);
-        message->Free();
-    }
+    FreeMessageOnError(message, error);
+    LogError("notify commissioner on ProxyRx (c/ur)", error);
 
     return error != OT_ERROR_DESTINATION_ADDRESS_FILTERED;
 }
@@ -487,10 +461,7 @@ void BorderAgent::HandleRelayReceive(const Coap::Message &aMessage)
     otLogInfoMeshCoP("Sent to commissioner on %s", UriPath::kRelayRx);
 
 exit:
-    if (error != OT_ERROR_NONE && message != nullptr)
-    {
-        message->Free();
-    }
+    FreeMessageOnError(message, error);
 }
 
 otError BorderAgent::ForwardToCommissioner(Coap::Message &aForwardMessage, const Message &aMessage)
@@ -508,11 +479,7 @@ otError BorderAgent::ForwardToCommissioner(Coap::Message &aForwardMessage, const
     otLogInfoMeshCoP("Sent to commissioner");
 
 exit:
-    if (error != OT_ERROR_NONE)
-    {
-        otLogWarnMeshCoP("Failed to send to commissioner: %s", otThreadErrorToString(error));
-    }
-
+    LogError("send to commissioner", error);
     return error;
 }
 
@@ -560,15 +527,8 @@ void BorderAgent::HandleRelayTransmit(const Coap::Message &aMessage)
     otLogInfoMeshCoP("Sent to joiner router request on %s", UriPath::kRelayTx);
 
 exit:
-    if (error != OT_ERROR_NONE)
-    {
-        otLogWarnMeshCoP("Failed to sent to joiner router request %s: %s", UriPath::kRelayTx,
-                         otThreadErrorToString(error));
-        if (message != nullptr)
-        {
-            message->Free();
-        }
-    }
+    FreeMessageOnError(message, error);
+    LogError("send to joiner router request RelayTx (c/tx)", error);
 }
 
 otError BorderAgent::ForwardToLeader(const Coap::Message &   aMessage,
@@ -620,6 +580,8 @@ otError BorderAgent::ForwardToLeader(const Coap::Message &   aMessage,
     otLogInfoMeshCoP("Forwarded request to leader on %s", aPath);
 
 exit:
+    LogError("forward to leader", error);
+
     if (error != OT_ERROR_NONE)
     {
         if (forwardContext != nullptr)
@@ -627,13 +589,7 @@ exit:
             GetInstance().HeapFree(forwardContext);
         }
 
-        if (message != nullptr)
-        {
-            message->Free();
-        }
-
-        otLogWarnMeshCoP("Failed to forward to leader: %s", otThreadErrorToString(error));
-
+        FreeMessage(message);
         SendErrorMessage(Get<Coap::CoapSecure>(), aMessage, aSeparate, error);
     }
 

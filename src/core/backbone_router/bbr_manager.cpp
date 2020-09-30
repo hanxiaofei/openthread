@@ -283,11 +283,7 @@ void Manager::SendMulticastListenerRegistrationResponse(const Coap::Message &   
     SuccessOrExit(error = Get<Tmf::TmfAgent>().SendMessage(*message, aMessageInfo));
 
 exit:
-    if (error != OT_ERROR_NONE && message != nullptr)
-    {
-        message->Free();
-    }
-
+    FreeMessageOnError(message, error);
     otLogInfoBbr("Sent MLR.rsp (status=%d): %s", aStatus, otThreadErrorToString(error));
 }
 
@@ -300,6 +296,9 @@ void Manager::HandleDuaRegistration(const Coap::Message &aMessage, const Ip6::Me
     bool                       hasLastTransactionTime;
     Ip6::Address               target;
     Ip6::InterfaceIdentifier   meshLocalIid;
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+    Coap::Code duaRespCoapCode = Coap::kCodeEmpty;
+#endif
 
     VerifyOrExit(aMessageInfo.GetPeerAddr().GetIid().IsRoutingLocator(), error = OT_ERROR_DROP);
     VerifyOrExit(aMessage.IsConfirmablePostRequest(), error = OT_ERROR_PARSE);
@@ -311,7 +310,15 @@ void Manager::HandleDuaRegistration(const Coap::Message &aMessage, const Ip6::Me
     if (mDuaResponseIsSpecified && (mDuaResponseTargetMlIid.IsUnspecified() || mDuaResponseTargetMlIid == meshLocalIid))
     {
         mDuaResponseIsSpecified = false;
-        ExitNow(status = mDuaResponseStatus);
+        if (mDuaResponseStatus >= Coap::kCodeResponseMin)
+        {
+            duaRespCoapCode = static_cast<Coap::Code>(mDuaResponseStatus);
+        }
+        else
+        {
+            status = static_cast<ThreadStatusTlv::DuaStatus>(mDuaResponseStatus);
+        }
+        ExitNow();
     }
 #endif
 
@@ -347,7 +354,16 @@ exit:
 
     if (error == OT_ERROR_NONE)
     {
-        SendDuaRegistrationResponse(aMessage, aMessageInfo, target, status);
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+        if (duaRespCoapCode != Coap::kCodeEmpty)
+        {
+            IgnoreError(Get<Tmf::TmfAgent>().SendEmptyAck(aMessage, aMessageInfo, duaRespCoapCode));
+        }
+        else
+#endif
+        {
+            SendDuaRegistrationResponse(aMessage, aMessageInfo, target, status);
+        }
     }
 }
 
@@ -370,11 +386,7 @@ void Manager::SendDuaRegistrationResponse(const Coap::Message &      aMessage,
     SuccessOrExit(error = Get<Tmf::TmfAgent>().SendMessage(*message, aMessageInfo));
 
 exit:
-    if (error != OT_ERROR_NONE && message != nullptr)
-    {
-        message->Free();
-    }
-
+    FreeMessageOnError(message, error);
     otLogInfoBbr("Sent DUA.rsp for DUA %s, status %d %s", aTarget.ToString().AsCString(), aStatus,
                  otThreadErrorToString(error));
 }
@@ -393,7 +405,7 @@ void Manager::ConfigNextDuaRegistrationResponse(const Ip6::InterfaceIdentifier *
         mDuaResponseTargetMlIid.Clear();
     }
 
-    mDuaResponseStatus = static_cast<ThreadStatusTlv::DuaStatus>(aStatus);
+    mDuaResponseStatus = aStatus;
 }
 
 void Manager::ConfigNextMulticastListenerRegistrationResponse(ThreadStatusTlv::MlrStatus aStatus)

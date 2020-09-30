@@ -321,15 +321,12 @@ otError Commissioner::Start(otCommissionerStateCallback  aStateCallback,
     SetState(kStatePetition);
 
 exit:
-    if (error != OT_ERROR_NONE)
+    if ((error != OT_ERROR_NONE) && (error != OT_ERROR_ALREADY))
     {
-        otLogWarnMeshCoP("Failed to start commissioner: %s", otThreadErrorToString(error));
-        if (error != OT_ERROR_ALREADY)
-        {
-            Get<Coap::CoapSecure>().Stop();
-        }
+        Get<Coap::CoapSecure>().Stop();
     }
 
+    LogError("start commissioner", error);
     return error;
 }
 
@@ -364,11 +361,7 @@ otError Commissioner::Stop(bool aResign)
     }
 
 exit:
-    if (error != OT_ERROR_NONE)
-    {
-        otLogWarnMeshCoP("Failed to stop Commissioner: %s", otThreadErrorToString(error));
-    }
-
+    LogError("stop commissioner", error);
     return error;
 }
 
@@ -422,10 +415,7 @@ void Commissioner::SendCommissionerSet(void)
     error = SendMgmtCommissionerSetRequest(dataset, nullptr, 0);
 
 exit:
-    if (error != OT_ERROR_NONE)
-    {
-        otLogWarnMeshCoP("Failed to send MGMT_COMMISSIONER_SET.req: %s", otThreadErrorToString(error));
-    }
+    LogError("send MGMT_COMMISSIONER_SET.req", error);
 }
 
 void Commissioner::ClearJoiners(void)
@@ -724,12 +714,7 @@ otError Commissioner::SendMgmtCommissionerGetRequest(const uint8_t *aTlvs, uint8
     otLogInfoMeshCoP("sent MGMT_COMMISSIONER_GET.req to leader");
 
 exit:
-
-    if (error != OT_ERROR_NONE && message != nullptr)
-    {
-        message->Free();
-    }
-
+    FreeMessageOnError(message, error);
     return error;
 }
 
@@ -810,12 +795,7 @@ otError Commissioner::SendMgmtCommissionerSetRequest(const otCommissioningDatase
     otLogInfoMeshCoP("sent MGMT_COMMISSIONER_SET.req to leader");
 
 exit:
-
-    if (error != OT_ERROR_NONE && message != nullptr)
-    {
-        message->Free();
-    }
-
+    FreeMessageOnError(message, error);
     return error;
 }
 
@@ -869,12 +849,7 @@ otError Commissioner::SendPetition(void)
     otLogInfoMeshCoP("sent petition");
 
 exit:
-
-    if (error != OT_ERROR_NONE && message != nullptr)
-    {
-        message->Free();
-    }
-
+    FreeMessageOnError(message, error);
     return error;
 }
 
@@ -969,16 +944,8 @@ void Commissioner::SendKeepAlive(uint16_t aSessionId)
     otLogInfoMeshCoP("sent keep alive");
 
 exit:
-
-    if (error != OT_ERROR_NONE)
-    {
-        otLogWarnMeshCoP("Failed to send keep alive: %s", otThreadErrorToString(error));
-
-        if (message != nullptr)
-        {
-            message->Free();
-        }
-    }
+    FreeMessageOnError(message, error);
+    LogError("send keep alive", error);
 }
 
 void Commissioner::HandleLeaderKeepAliveResponse(void *               aContext,
@@ -1182,11 +1149,7 @@ void Commissioner::SendJoinFinalizeResponse(const Coap::Message &aRequest, State
     otLogInfoMeshCoP("sent joiner finalize response");
 
 exit:
-
-    if (error != OT_ERROR_NONE && message != nullptr)
-    {
-        message->Free();
-    }
+    FreeMessageOnError(message, error);
 }
 
 otError Commissioner::SendRelayTransmit(void *aContext, Message &aMessage, const Ip6::MessageInfo &aMessageInfo)
@@ -1236,12 +1199,7 @@ otError Commissioner::SendRelayTransmit(Message &aMessage, const Ip6::MessageInf
     aMessage.Free();
 
 exit:
-
-    if (error != OT_ERROR_NONE && message != nullptr)
-    {
-        message->Free();
-    }
-
+    FreeMessageOnError(message, error);
     return error;
 }
 

@@ -149,16 +149,8 @@ void Leader::SendPetitionResponse(const Coap::Message &   aRequest,
     otLogInfoMeshCoP("sent petition response");
 
 exit:
-
-    if (error != OT_ERROR_NONE)
-    {
-        otLogInfoMeshCoP("Failed to send petition response: %s", otThreadErrorToString(error));
-
-        if (message != nullptr)
-        {
-            message->Free();
-        }
-    }
+    FreeMessageOnError(message, error);
+    LogError("send petition response", error);
 }
 
 void Leader::HandleKeepAlive(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo)
@@ -231,16 +223,8 @@ void Leader::SendKeepAliveResponse(const Coap::Message &   aRequest,
     otLogInfoMeshCoP("sent keep alive response");
 
 exit:
-
-    if (error != OT_ERROR_NONE)
-    {
-        otLogWarnMeshCoP("Failed to send keep alive response: %s", otThreadErrorToString(error));
-
-        if (message != nullptr)
-        {
-            message->Free();
-        }
-    }
+    FreeMessageOnError(message, error);
+    LogError("send keep alive response", error);
 }
 
 void Leader::SendDatasetChanged(const Ip6::Address &aAddress)
@@ -261,16 +245,8 @@ void Leader::SendDatasetChanged(const Ip6::Address &aAddress)
     otLogInfoMeshCoP("sent dataset changed");
 
 exit:
-
-    if (error != OT_ERROR_NONE)
-    {
-        otLogWarnMeshCoP("Failed to send dataset changed: %s", otThreadErrorToString(error));
-
-        if (message != nullptr)
-        {
-            message->Free();
-        }
-    }
+    FreeMessageOnError(message, error);
+    LogError("send dataset changed", error);
 }
 
 otError Leader::SetDelayTimerMinimal(uint32_t aDelayTimerMinimal)
