@@ -204,7 +204,7 @@ protected:
     struct ResponseEntry
     {
 
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
         uint8_t      mIid : 2;              ///< Spinel Interface Identifier.
 #endif
         
@@ -537,7 +537,7 @@ protected:
     Spinel::Decoder        mDecoder;
     bool                   mHostPowerStateInProgress;
 
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
     uint8_t                mIid;
 #endif
 
@@ -596,7 +596,7 @@ protected:
 #if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
     uint8_t mCurTransmitTID;
 
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
     uint8_t mCurTransmitIID;
 #endif
 

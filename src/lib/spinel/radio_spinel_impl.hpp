@@ -199,7 +199,7 @@ RadioSpinel<InterfaceType, ProcessContextType>::RadioSpinel(void)
 
 
 template <typename InterfaceType, typename ProcessContextType>
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
 void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool aRestoreDatasetFromNcp, spinel_iid_t aIid)
 #else
 void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool aRestoreDatasetFromNcp)
@@ -229,7 +229,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool
     mTxRadioFrame.mPsdu  = mTxPsdu;
     mAckRadioFrame.mPsdu = mAckPsdu;
 
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
     mIid = aIid;
 #endif
 
@@ -385,7 +385,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleReceivedFrame(void)
 
     unpacked = spinel_datatype_unpack(mRxFrameBuffer.GetFrame(), mRxFrameBuffer.GetLength(), "C", &header);
 
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
     // Accept spinel messages with the correct IID or with IID 0. For nowIID 0 is used 
     // messages that should be sent to both host applications such as 802.15.4 data or log data 
     VerifyOrExit(unpacked > 0 && (header & SPINEL_HEADER_FLAG) == SPINEL_HEADER_FLAG &&
@@ -506,7 +506,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleResponse(const uint8_
     VerifyOrExit(rval > 0 && cmd >= SPINEL_CMD_PROP_VALUE_IS && cmd <= SPINEL_CMD_PROP_VALUE_REMOVED,
                  error = OT_ERROR_PARSE);
 
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
     otLogDebgPlat("Spinel resp: cmd:%s, prop:%s, iid:%02x, tid:%02x\n", spinel_command_to_cstr(cmd), spinel_prop_key_to_cstr(key), SPINEL_HEADER_GET_IID(header), SPINEL_HEADER_GET_TID(header));
 #endif
 
@@ -780,12 +780,12 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleValueIs(spinel_prop_k
         if (status >= SPINEL_STATUS_RESET__BEGIN && status <= SPINEL_STATUS_RESET__END)
         {
             
-        #ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
             // Handle Resets in MULTIPAN RCP Mode
-        #else
+#else
             // If RCP crashes/resets while radio was enabled, posix app exits.
             VerifyOrDie(!IsEnabled(), OT_EXIT_RADIO_SPINEL_RESET);
-        #endif
+#endif
 
             otLogInfoPlat("RCP reset: %s", spinel_status_to_cstr(status));
             mIsReady = true;
@@ -1355,7 +1355,7 @@ exit:
 }
 
 template <typename InterfaceType, typename ProcessContextType>
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
 otError RadioSpinel<InterfaceType, ProcessContextType>::SendCommand(uint32_t          aCommand,
                                                                     spinel_prop_key_t aKey,
                                                                     spinel_iid_t      iid,
@@ -1376,7 +1376,7 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::SendCommand(uint32_t    
     uint16_t       offset;
 
     // Pack the header, command and key
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
     otLogDebgPlat("Spinel send: cmd:%s: prop:%s, iid:%02x, tid:%02x\n", spinel_command_to_cstr(aCommand), spinel_prop_key_to_cstr(aKey), iid, tid);
 
     packed = spinel_datatype_pack(buffer, sizeof(buffer), "Cii", SPINEL_HEADER_FLAG | (iid << SPINEL_HEADER_IID_SHIFT) | tid,
@@ -1416,7 +1416,7 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::RequestV(bool           
 {
     otError      error = OT_ERROR_NONE;
 
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
     spinel_iid_t iid   = (spinel_iid_t)mIid;
 #endif
 
@@ -1424,7 +1424,7 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::RequestV(bool           
 
     VerifyOrExit(!aWait || tid > 0, error = OT_ERROR_BUSY);
 
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
     error = SendCommand(command, aKey, iid, tid, aFormat, aArgs);
 #else
     error = SendCommand(command, aKey, tid, aFormat, aArgs);

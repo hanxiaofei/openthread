@@ -78,7 +78,7 @@ typedef struct otPlatformConfig
     bool        mResetRadio;            ///< Whether to reset RCP when initializing.
     bool        mRestoreDatasetFromNcp; ///< Whether to retrieve dataset from NCP and save to file.
 
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
     uint8_t     mIid;                   ///< IID of the host application.
 #endif
 

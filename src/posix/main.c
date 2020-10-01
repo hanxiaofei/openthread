@@ -122,7 +122,7 @@ static const struct option kOptions[] = {{"debug-level", required_argument, NULL
                                          {"dry-run", no_argument, NULL, 'n'},
                                          {"help", no_argument, NULL, 'h'},
                                          {"interface-name", required_argument, NULL, 'I'},
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
                                          {"pan-index", required_argument, NULL, 'i'},
 #endif
                                          {"no-reset", no_argument, NULL, ARG_NO_RADIO_RESET},
@@ -156,7 +156,7 @@ static void PrintUsage(const char *aProgramName, FILE *aStream, int aExitCode)
             "    -d  --debug-level             Debug level of logging.\n"
             "    -h  --help                    Display this usage information.\n"
             "    -I  --interface-name name     Thread network interface name.\n"
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
             "    -i  --pan-index index         Radio PAN index.\n"
 #endif
             "    -n  --dry-run                 Just verify if arguments is valid and radio spinel is compatible.\n"
@@ -220,7 +220,7 @@ static void ParseArg(int aArgCount, char *aArgVector[], PosixConfig *aConfig)
     {
         int index  = 0;
 
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
         int option = getopt_long(aArgCount, aArgVector, "d:hI:i:ns:v", kOptions, &index);
 #else
         int option = getopt_long(aArgCount, aArgVector, "d:hI:ns:v", kOptions, &index);
@@ -242,7 +242,7 @@ static void ParseArg(int aArgCount, char *aArgVector[], PosixConfig *aConfig)
         case 'I':
             aConfig->mPlatformConfig.mInterfaceName = optarg;
             break;
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
         case 'i':
             aConfig->mPlatformConfig.mIid = (uint8_t)atoi(optarg);
             break;

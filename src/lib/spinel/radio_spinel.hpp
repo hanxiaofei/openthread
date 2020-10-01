@@ -108,7 +108,7 @@ public:
      */
     RadioSpinel(void);
 
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
     /**
      * Initialize this radio transceiver.
      *
@@ -740,7 +740,7 @@ private:
     otError WaitResponse(void);
     otError SendReset(void);
 
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
     otError SendCommand(uint32_t          command,
                         spinel_prop_key_t key,
                         spinel_iid_t      iid,
@@ -810,7 +810,7 @@ private:
     otRadioFrame  mAckRadioFrame;
     otRadioFrame *mTransmitFrame; ///< Points to the frame to send
 
-#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP
     spinel_iid_t   mIid;
 #endif
 
