@@ -108,6 +108,19 @@ public:
      */
     RadioSpinel(void);
 
+#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+    /**
+     * Initialize this radio transceiver.
+     *
+     * @param[in]  aResetRadio            TRUE to reset on init, FALSE to not reset on init.
+     * @param[in]  aRestoreDatasetFromNcp TRUE to restore dataset to host from non-volatile memory
+     *                                    (only used when attempts to upgrade from NCP to RCP mode),
+     *                                    FALSE otherwise.
+     * @param[in]  aIid                   The IID of the Host Application.
+     *
+     */
+    void Init(bool aResetRadio, bool aRestoreDataSetFromNcp, spinel_iid_t aIid);
+#else
     /**
      * Initialize this radio transceiver.
      *
@@ -117,8 +130,8 @@ public:
      *                                    FALSE otherwise.
      *
      */
-    void Init(bool aResetRadio, bool aRestoreDataSetFromNcp, otPanIndex aPanIndex);
-
+    void Init(bool aResetRadio, bool aRestoreDataSetFromNcp);
+#endif
     /**
      * Deinitialize this radio transceiver.
      *
@@ -726,12 +739,22 @@ private:
     otError Request(bool aWait, uint32_t aCommand, spinel_prop_key_t aKey, const char *aFormat, ...);
     otError WaitResponse(void);
     otError SendReset(void);
+
+#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
     otError SendCommand(uint32_t          command,
                         spinel_prop_key_t key,
                         spinel_iid_t      iid,
                         spinel_tid_t      tid,
                         const char *      pack_format,
                         va_list           args);
+#else
+    otError SendCommand(uint32_t          command,
+                        spinel_prop_key_t key,
+                        spinel_tid_t      tid,
+                        const char *      pack_format,
+                        va_list           args);
+#endif
+
     otError ParseRadioFrame(otRadioFrame &aFrame, const uint8_t *aBuffer, uint16_t aLength);
     otError ThreadDatasetHandler(const uint8_t *aBuffer, uint16_t aLength);
 
@@ -787,7 +810,10 @@ private:
     otRadioFrame  mAckRadioFrame;
     otRadioFrame *mTransmitFrame; ///< Points to the frame to send
 
-    otPanIndex   mPanIndex;
+#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+    spinel_iid_t   mIid;
+#endif
+
     otExtAddress mExtendedAddress;
     uint16_t     mShortAddress;
     uint16_t     mPanId;

@@ -199,7 +199,9 @@ NcpBase::NcpBase(Instance *aInstance)
     , mEncoder(mTxFrameBuffer)
     , mDecoder()
     , mHostPowerStateInProgress(false)
-    , mPanIndex(0)
+#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+    , mIid(0)
+#endif
     , mLastStatus(SPINEL_STATUS_OK)
     , mScanChannelMask(Radio::kSupportedChannels)
     , mScanPeriod(200)
@@ -233,7 +235,9 @@ NcpBase::NcpBase(Instance *aInstance)
 #endif
 #if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
     , mCurTransmitTID(0)
+#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
     , mCurTransmitIID(0)
+#endif
     , mCurScanChannel(kInvalidScanChannel)
     , mSrcMatchEnabled(false)
 #endif // OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
@@ -299,10 +303,12 @@ NcpBase *NcpBase::GetNcpInstance(void)
     return sNcpInstance;
 }
 
-uint8_t NcpBase::GetPanIndex(void)
+#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+uint8_t NcpBase::GetIid(void)
 {
-    return mPanIndex;
+    return mIid;
 }
+#endif
 
 void NcpBase::ResetCounters(void)
 {
@@ -350,8 +356,8 @@ void NcpBase::HandleReceive(const uint8_t *aBuf, uint16_t aBufLength)
     SuccessOrExit(mDecoder.ReadUint8(header));
     VerifyOrExit((SPINEL_HEADER_FLAG & header) == SPINEL_HEADER_FLAG, OT_NOOP);
 
-#if OPENTHREAD_RADIO
-    mPanIndex = SPINEL_HEADER_GET_IID(header);
+#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+    mIid = SPINEL_HEADER_GET_IID(header);
 #endif
 
     mRxSpinelFrameCounter++;
@@ -679,7 +685,11 @@ uint8_t NcpBase::GetWrappedResponseQueueIndex(uint8_t aPosition)
 otError NcpBase::EnqueueResponse(uint8_t aHeader, ResponseType aType, unsigned int aPropKeyOrStatus)
 {
     otError        error = OT_ERROR_NONE;
+
+#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
     spinel_iid_t   iid   = SPINEL_HEADER_GET_IID(aHeader);
+#endif
+
     spinel_tid_t   tid   = SPINEL_HEADER_GET_TID(aHeader);
     ResponseEntry *entry;
 
@@ -718,7 +728,11 @@ otError NcpBase::EnqueueResponse(uint8_t aHeader, ResponseType aType, unsigned i
         {
             entry = &mResponseQueue[GetWrappedResponseQueueIndex(cur)];
 
+#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
             if (entry->mIsInUse && (entry->mIid == iid) && (entry->mTid == tid))
+#else
+            if (entry->mIsInUse && (entry->mTid == tid))
+#endif
             {
                 // Entry is just marked here and will be removed
                 // from `SendQueuedResponses()`.
@@ -733,7 +747,10 @@ otError NcpBase::EnqueueResponse(uint8_t aHeader, ResponseType aType, unsigned i
 
     entry = &mResponseQueue[GetWrappedResponseQueueIndex(mResponseQueueTail)];
 
+#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
     entry->mIid             = iid;
+#endif
+
     entry->mTid             = tid;
     entry->mIsInUse         = true;
     entry->mType            = aType;
@@ -755,9 +772,14 @@ otError NcpBase::SendQueuedResponses(void)
 
         if (entry.mIsInUse)
         {
+
+#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
             uint8_t header = SPINEL_HEADER_FLAG;
 
             header |= static_cast<uint8_t>(entry.mIid << SPINEL_HEADER_IID_SHIFT);
+#else
+            uint8_t header = SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0;
+#endif
             header |= static_cast<uint8_t>(entry.mTid << SPINEL_HEADER_TID_SHIFT);
 
             if (entry.mType == kResponseTypeLastStatus)
@@ -2420,10 +2442,10 @@ extern "C" void otNcpPlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, cons
     }
 }
 
-#if OPENTHREAD_RADIO
-extern "C" uint16_t otNcpPlatGetPanIndex()
+#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+extern "C" uint16_t otNcpPlatGetIid()
 {
-    return ot::Ncp::NcpBase::GetNcpInstance()->GetPanIndex();
+    return ot::Ncp::NcpBase::GetNcpInstance()->GetIid();
 }
 #endif
 

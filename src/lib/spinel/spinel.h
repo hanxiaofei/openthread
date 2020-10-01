@@ -666,7 +666,11 @@ typedef struct
 
 typedef int          spinel_ssize_t;
 typedef unsigned int spinel_size_t;
+
+#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
 typedef uint8_t      spinel_iid_t;
+#endif
+
 typedef uint8_t      spinel_tid_t;
 
 enum

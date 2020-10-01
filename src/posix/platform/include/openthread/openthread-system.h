@@ -77,7 +77,10 @@ typedef struct otPlatformConfig
     const char *mMaxPowerTable;         ///< Radio max transmit power table.
     bool        mResetRadio;            ///< Whether to reset RCP when initializing.
     bool        mRestoreDatasetFromNcp; ///< Whether to retrieve dataset from NCP and save to file.
-    uint8_t     mPanIndex;              ///< Index for the radio PanId.
+
+#ifdef OPENTHREAD_CONFIG_MULTIPAN_RCP
+    uint8_t     mIid;                   ///< IID of the host application.
+#endif
 
     char *   mSpiGpioIntDevice;   ///< Path to the Linux GPIO character device for the `I̅N̅T̅` pin.
     char *   mSpiGpioResetDevice; ///< Path to the Linux GPIO character device for the `R̅E̅S̅E̅T̅` pin.
