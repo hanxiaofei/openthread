@@ -199,7 +199,7 @@ NcpBase::NcpBase(Instance *aInstance)
     , mEncoder(mTxFrameBuffer)
     , mDecoder()
     , mHostPowerStateInProgress(false)
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     , mIid(0)
 #endif
     , mLastStatus(SPINEL_STATUS_OK)
@@ -235,7 +235,7 @@ NcpBase::NcpBase(Instance *aInstance)
 #endif
 #if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
     , mCurTransmitTID(0)
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     , mCurTransmitIID(0)
 #endif
     , mCurScanChannel(kInvalidScanChannel)
@@ -303,7 +303,7 @@ NcpBase *NcpBase::GetNcpInstance(void)
     return sNcpInstance;
 }
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
 uint8_t NcpBase::GetIid(void)
 {
     return mIid;
@@ -356,7 +356,7 @@ void NcpBase::HandleReceive(const uint8_t *aBuf, uint16_t aBufLength)
     SuccessOrExit(mDecoder.ReadUint8(header));
     VerifyOrExit((SPINEL_HEADER_FLAG & header) == SPINEL_HEADER_FLAG, OT_NOOP);
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     mIid = SPINEL_HEADER_GET_IID(header);
 #endif
 
@@ -686,7 +686,7 @@ otError NcpBase::EnqueueResponse(uint8_t aHeader, ResponseType aType, unsigned i
 {
     otError        error = OT_ERROR_NONE;
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     spinel_iid_t   iid   = SPINEL_HEADER_GET_IID(aHeader);
 #endif
 
@@ -728,7 +728,7 @@ otError NcpBase::EnqueueResponse(uint8_t aHeader, ResponseType aType, unsigned i
         {
             entry = &mResponseQueue[GetWrappedResponseQueueIndex(cur)];
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
             if (entry->mIsInUse && (entry->mIid == iid) && (entry->mTid == tid))
 #else
             if (entry->mIsInUse && (entry->mTid == tid))
@@ -747,7 +747,7 @@ otError NcpBase::EnqueueResponse(uint8_t aHeader, ResponseType aType, unsigned i
 
     entry = &mResponseQueue[GetWrappedResponseQueueIndex(mResponseQueueTail)];
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     entry->mIid             = iid;
 #endif
 
@@ -773,7 +773,7 @@ otError NcpBase::SendQueuedResponses(void)
         if (entry.mIsInUse)
         {
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
             uint8_t header = SPINEL_HEADER_FLAG;
 
             header |= static_cast<uint8_t>(entry.mIid << SPINEL_HEADER_IID_SHIFT);
@@ -2442,7 +2442,7 @@ extern "C" void otNcpPlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, cons
     }
 }
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
 extern "C" uint16_t otNcpPlatGetIid()
 {
     return ot::Ncp::NcpBase::GetNcpInstance()->GetIid();
