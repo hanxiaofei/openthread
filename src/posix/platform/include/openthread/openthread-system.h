@@ -79,7 +79,7 @@ typedef struct otPlatformConfig
     bool        mRestoreDatasetFromNcp; ///< Whether to retrieve dataset from NCP and save to file.
 
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-    uint8_t     mIid;                   ///< IID of the host application.
+    uint8_t     mPanIndex;                   ///< IID of the host application.
 #endif
 
     char *   mSpiGpioIntDevice;   ///< Path to the Linux GPIO character device for the `I̅N̅T̅` pin.
