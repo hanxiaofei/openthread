@@ -244,7 +244,7 @@ static void ParseArg(int aArgCount, char *aArgVector[], PosixConfig *aConfig)
             break;
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
         case 'i':
-            aConfig->mPlatformConfig.mIid = (uint8_t)atoi(optarg);
+            aConfig->mPlatformConfig.mPanIndex = (uint8_t)atoi(optarg);
             break;
 #endif
         case 'n':

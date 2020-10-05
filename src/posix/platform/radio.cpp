@@ -125,7 +125,7 @@ void platformRadioInit(const otPlatformConfig *aPlatformConfig)
     SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(*aPlatformConfig));
 
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-    sRadioSpinel.Init(aPlatformConfig->mResetRadio, aPlatformConfig->mRestoreDatasetFromNcp, aPlatformConfig->mIid);
+    sRadioSpinel.Init(aPlatformConfig->mResetRadio, aPlatformConfig->mRestoreDatasetFromNcp, aPlatformConfig->mPanIndex);
 #else
     sRadioSpinel.Init(aPlatformConfig->mResetRadio, aPlatformConfig->mRestoreDatasetFromNcp);
 #endif

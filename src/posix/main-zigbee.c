@@ -242,7 +242,7 @@ static void ParseArg(int aArgCount, char *aArgVector[], PosixConfig *aConfig)
             aConfig->mPlatformConfig.mInterfaceName = optarg;
             break;
         case 'i':
-            aConfig->mPlatformConfig.mIid = (uint8_t)atoi(optarg);
+            aConfig->mPlatformConfig.mPanIndex = (uint8_t)atoi(optarg);
             break;
         case 'n':
             aConfig->mIsDryRun = true;
