@@ -204,11 +204,14 @@ void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool
 
     if (aResetRadio)
     {
-        SuccessOrExit(error = SendReset());
+        SuccessOrExit(error = SendReset());    
+        SuccessOrExit(error = WaitResponse());
+        VerifyOrExit(mIsReady, error = OT_ERROR_FAILED);
     }
-
-    SuccessOrExit(error = WaitResponse());
-    VerifyOrExit(mIsReady, error = OT_ERROR_FAILED);
+    else
+    {
+        mIsReady = true;
+    }
 
     SuccessOrExit(error = CheckSpinelVersion());
     SuccessOrExit(error = Get(SPINEL_PROP_NCP_VERSION, SPINEL_DATATYPE_UTF8_S, mVersion, sizeof(mVersion)));
