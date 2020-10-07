@@ -318,6 +318,7 @@ void SubMac::HandleTransmitDone(TxFrame &aFrame, RxFrame *aAckFrame, otError aEr
         // since there may be no CCA check performed by radio.
         break;
 
+    case OT_ERROR_INVALID_STATE:
     case OT_ERROR_CHANNEL_ACCESS_FAILURE:
         ccaSuccess = false;
 
@@ -488,7 +489,13 @@ bool SubMac::ShouldHandleCsmaBackOff(void) const
 {
     bool swCsma = true;
 
-    VerifyOrExit(!RadioSupportsCsmaBackoff(), swCsma = false);
+    /** Radio does support retries but we would like to 
+    *   use CSMA Backoffs not only when OT_ERROR_CHANNEL_ACCESS_FAILURE
+    *   but also when OT_ERROR_INVALID_CHANNEL. The latter cannot 
+    *   happen on the radio so it needs to happen here.
+    */
+
+    //VerifyOrExit(!RadioSupportsCsmaBackoff(), swCsma = false);
 
 #if OPENTHREAD_CONFIG_LINK_RAW_ENABLE
     VerifyOrExit(Get<LinkRaw>().IsEnabled(), OT_NOOP);
@@ -498,7 +505,7 @@ bool SubMac::ShouldHandleCsmaBackOff(void) const
     swCsma = OPENTHREAD_CONFIG_SOFTWARE_CSMA_BACKOFF_ENABLE;
 #endif
 
-exit:
+//exit:
     return swCsma;
 }
 

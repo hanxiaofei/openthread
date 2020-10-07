@@ -831,7 +831,7 @@ void MeshForwarder::HandleSentFrame(Mac::TxFrame &aFrame, otError aError)
     Mac::Address macDest;
 
     OT_ASSERT((aError == OT_ERROR_NONE) || (aError == OT_ERROR_CHANNEL_ACCESS_FAILURE) || (aError == OT_ERROR_ABORT) ||
-              (aError == OT_ERROR_NO_ACK));
+              (aError == OT_ERROR_NO_ACK) || (aError == OT_ERROR_INVALID_STATE));
 
     mSendBusy = false;
 
