@@ -337,5 +337,4 @@ private:
  */
 
 } // namespace ot
-
 #endif // ADDRESS_RESOLVER_HPP_
