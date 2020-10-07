@@ -201,6 +201,7 @@ template <typename InterfaceType, typename ProcessContextType>
 void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool aRestoreDatasetFromNcp, otPanIndex aPanIndex)
 {
     otError error = OT_ERROR_NONE;
+    mPanIndex = aPanIndex;
 
     if (aResetRadio)
     {
@@ -226,7 +227,6 @@ void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool
     mRxRadioFrame.mPsdu  = mRxPsdu;
     mTxRadioFrame.mPsdu  = mTxPsdu;
     mAckRadioFrame.mPsdu = mAckPsdu;
-    mPanIndex = aPanIndex;
 
 exit:
     SuccessOrDie(error);
@@ -766,8 +766,19 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleValueIs(spinel_prop_k
         if (status >= SPINEL_STATUS_RESET__BEGIN && status <= SPINEL_STATUS_RESET__END)
         {
             // If RCP crashes/resets while radio was enabled, posix app exits.
-            //VerifyOrDie(!IsEnabled(), OT_EXIT_RADIO_SPINEL_RESET);
+            if(IsEnabled())
+            {
+                otLogDebgPlat("RESET: mPanId=%04X, mShortAddress=%04x, mExtendedAddress=%02X%02X%02X%02X", 
+                    mPanId, mShortAddress, mExtendedAddress.m8[0],mExtendedAddress.m8[1],mExtendedAddress.m8[2],
+                    mExtendedAddress.m8[3]);
 
+                // Before any parameters are set, the PHY has to be enabled.
+                SuccessOrExit(error = Set(SPINEL_PROP_PHY_ENABLED, SPINEL_DATATYPE_BOOL_S, true));
+                SuccessOrExit(error = Set(SPINEL_PROP_MAC_15_4_PANID, SPINEL_DATATYPE_UINT16_S, mPanId));
+                SuccessOrExit(error = Set(SPINEL_PROP_MAC_15_4_SADDR, SPINEL_DATATYPE_UINT16_S, mShortAddress));
+                SuccessOrExit(error = Set(SPINEL_PROP_MAC_15_4_LADDR, SPINEL_DATATYPE_EUI64_S, mExtendedAddress.m8));
+            }
+            
             otLogInfoPlat("RCP reset: %s", spinel_status_to_cstr(status));
             mIsReady = true;
         }
