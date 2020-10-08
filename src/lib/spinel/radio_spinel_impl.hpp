@@ -198,10 +198,17 @@ RadioSpinel<InterfaceType, ProcessContextType>::RadioSpinel(void)
 }
 
 template <typename InterfaceType, typename ProcessContextType>
-void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool aRestoreDatasetFromNcp, otPanIndex aPanIndex)
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool aRestoreDatasetFromNcp, spinel_iid_t aIid)
+#else
+void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool aRestoreDatasetFromNcp)
+#endif
 {
     otError error = OT_ERROR_NONE;
-    mPanIndex = aPanIndex;
+
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+    mIid = aIid;
+#endif
 
     if (aResetRadio)
     {
@@ -765,7 +772,9 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleValueIs(spinel_prop_k
 
         if (status >= SPINEL_STATUS_RESET__BEGIN && status <= SPINEL_STATUS_RESET__END)
         {
-            // If RCP crashes/resets while radio was enabled, posix app exits.
+            
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+            // Handle Resets in MULTIPAN RCP Mode
             if(IsEnabled())
             {
                 otLogDebgPlat("RESET: mPanId=%04X, mShortAddress=%04x, mExtendedAddress=%02X%02X%02X%02X", 
@@ -781,6 +790,10 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleValueIs(spinel_prop_k
             
             otLogInfoPlat("RCP reset: %s", spinel_status_to_cstr(status));
             mIsReady = true;
+#else
+            // If RCP crashes/resets while radio was enabled, posix app exits.
+            VerifyOrDie(!IsEnabled(), OT_EXIT_RADIO_SPINEL_RESET);
+#endif
         }
         else
         {
@@ -1347,23 +1360,39 @@ exit:
 }
 
 template <typename InterfaceType, typename ProcessContextType>
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
 otError RadioSpinel<InterfaceType, ProcessContextType>::SendCommand(uint32_t          aCommand,
                                                                     spinel_prop_key_t aKey,
                                                                     spinel_iid_t      iid,
                                                                     spinel_tid_t      tid,
                                                                     const char *      aFormat,
                                                                     va_list           args)
+#else
+otError RadioSpinel<InterfaceType, ProcessContextType>::SendCommand(uint32_t          aCommand,
+                                                                    spinel_prop_key_t aKey,
+                                                                    spinel_tid_t      tid,
+                                                                    const char *      aFormat,
+                                                                    va_list           args)
+#endif
 {
     otError        error = OT_ERROR_NONE;
     uint8_t        buffer[kMaxSpinelFrame];
     spinel_ssize_t packed;
     uint16_t       offset;
 
+    // Pack the header, command and key
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     otLogDebgPlat("Spinel send: cmd:%s: prop:%s, iid:%02x, tid:%02x\n", spinel_command_to_cstr(aCommand), spinel_prop_key_to_cstr(aKey), iid, tid);
 
     // Pack the header, command and key
     packed = spinel_datatype_pack(buffer, sizeof(buffer), "Cii", SPINEL_HEADER_FLAG | (iid << SPINEL_HEADER_IID_SHIFT) | tid,
                                   aCommand, aKey);
+#else
+    otLogDebgPlat("Spinel send: cmd:%s: prop:%s, tid:%02x\n", spinel_command_to_cstr(aCommand), spinel_prop_key_to_cstr(aKey), tid);
+
+    packed = spinel_datatype_pack(buffer, sizeof(buffer), "Cii", SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0 | tid,
+                                  aCommand, aKey);
+#endif
 
     VerifyOrExit(packed > 0 && static_cast<size_t>(packed) <= sizeof(buffer), error = OT_ERROR_NO_BUFS);
 
@@ -1392,12 +1421,20 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::RequestV(bool           
                                                                  va_list           aArgs)
 {
     otError      error = OT_ERROR_NONE;
-    spinel_iid_t iid   = (spinel_iid_t)mPanIndex;
+
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+    spinel_iid_t iid   = (spinel_iid_t)mIid;
+#endif
+
     spinel_tid_t tid   = (aWait ? GetNextTid() : 0);
 
     VerifyOrExit(!aWait || tid > 0, error = OT_ERROR_BUSY);
 
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     error = SendCommand(command, aKey, iid, tid, aFormat, aArgs);
+#else
+    error = SendCommand(command, aKey, tid, aFormat, aArgs);
+#endif
     SuccessOrExit(error);
 
     if (aKey == SPINEL_PROP_STREAM_RAW)
