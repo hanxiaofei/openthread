@@ -86,12 +86,12 @@ public:
     static NcpBase *GetNcpInstance(void);
 
     /**
-     * This static method returns the radio index for PanId, ExtendedAddress, and ShortAddress
+     * This method returns the radio IID of the host application
      *
-     * @returns PAN index.
+     * @returns IID.
      *
      */
-    uint8_t GetPanIndex(void);
+    uint8_t GetIid(void);
 
     /**
      * This method sends data to host via specific stream.
@@ -203,7 +203,11 @@ protected:
      */
     struct ResponseEntry
     {
+
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
         uint8_t      mIid : 2;              ///< Spinel Interface Identifier.
+#endif
+        
         uint8_t      mTid : 4;              ///< Spinel transaction id.
         bool         mIsInUse : 1;          ///< `true` if this entry is in use, `false` otherwise.
         ResponseType mType : 2;             ///< Response type.
@@ -532,7 +536,10 @@ protected:
     Spinel::Encoder        mEncoder;
     Spinel::Decoder        mDecoder;
     bool                   mHostPowerStateInProgress;
-    uint8_t                mPanIndex;
+
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+    uint8_t                mIid;
+#endif
 
     enum
     {
@@ -588,7 +595,11 @@ protected:
 
 #if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
     uint8_t mCurTransmitTID;
+
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     uint8_t mCurTransmitIID;
+#endif
+
     int8_t  mCurScanChannel;
     bool    mSrcMatchEnabled;
 #endif // OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
