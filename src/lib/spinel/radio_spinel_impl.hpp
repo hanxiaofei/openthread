@@ -386,12 +386,18 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleReceivedFrame(void)
 
     unpacked = spinel_datatype_unpack(mRxFrameBuffer.GetFrame(), mRxFrameBuffer.GetLength(), "C", &header);
 
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     // Accept spinel messages with the correct IID or with IID 0. For nowIID 0 is used 
     // messages that should be sent to both host applications such as 802.15.4 data or log data 
     VerifyOrExit(unpacked > 0 && (header & SPINEL_HEADER_FLAG) == SPINEL_HEADER_FLAG &&
-                 (SPINEL_HEADER_GET_IID(header) == (spinel_iid_t)mPanIndex || 
+                 (SPINEL_HEADER_GET_IID(header) == (spinel_iid_t)mIid || 
                  SPINEL_HEADER_GET_IID(header) == 0),
                  error = OT_ERROR_PARSE);
+#else
+    VerifyOrExit(unpacked > 0 && (header & SPINEL_HEADER_FLAG) == SPINEL_HEADER_FLAG &&
+                 SPINEL_HEADER_GET_IID(header) == 0,
+                 error = OT_ERROR_PARSE);
+#endif
 
     if (SPINEL_HEADER_GET_TID(header) == 0)
     {
@@ -501,7 +507,9 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleResponse(const uint8_
     VerifyOrExit(rval > 0 && cmd >= SPINEL_CMD_PROP_VALUE_IS && cmd <= SPINEL_CMD_PROP_VALUE_REMOVED,
                  error = OT_ERROR_PARSE);
 
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     otLogDebgPlat("Spinel resp: cmd:%s, prop:%s, iid:%02x, tid:%02x\n", spinel_command_to_cstr(cmd), spinel_prop_key_to_cstr(key), SPINEL_HEADER_GET_IID(header), SPINEL_HEADER_GET_TID(header));
+#endif
 
     if (mWaitingTid == SPINEL_HEADER_GET_TID(header))
     {
@@ -1384,7 +1392,6 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::SendCommand(uint32_t    
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     otLogDebgPlat("Spinel send: cmd:%s: prop:%s, iid:%02x, tid:%02x\n", spinel_command_to_cstr(aCommand), spinel_prop_key_to_cstr(aKey), iid, tid);
 
-    // Pack the header, command and key
     packed = spinel_datatype_pack(buffer, sizeof(buffer), "Cii", SPINEL_HEADER_FLAG | (iid << SPINEL_HEADER_IID_SHIFT) | tid,
                                   aCommand, aKey);
 #else
