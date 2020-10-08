@@ -110,7 +110,7 @@
 /**
  * @def OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
  *
- * Define to 1 to enable multiple instance support.
+ * Define to 1 to enable multipan RCP support.
  *
  */
 #ifndef OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
