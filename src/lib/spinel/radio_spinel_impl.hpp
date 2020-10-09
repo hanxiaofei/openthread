@@ -197,7 +197,6 @@ RadioSpinel<InterfaceType, ProcessContextType>::RadioSpinel(void)
     mVersion[0] = '\0';
 }
 
-
 template <typename InterfaceType, typename ProcessContextType>
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
 void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool aRestoreDatasetFromNcp, spinel_iid_t aIid)
@@ -206,6 +205,10 @@ void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool
 #endif
 {
     otError error = OT_ERROR_NONE;
+
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+    mIid = aIid;
+#endif
 
     if (aResetRadio)
     {
@@ -232,14 +235,9 @@ void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio, bool
     mTxRadioFrame.mPsdu  = mTxPsdu;
     mAckRadioFrame.mPsdu = mAckPsdu;
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-    mIid = aIid;
-#endif
-
 exit:
     SuccessOrDie(error);
 }
-
 
 template <typename InterfaceType, typename ProcessContextType>
 otError RadioSpinel<InterfaceType, ProcessContextType>::CheckSpinelVersion(void)
@@ -785,11 +783,22 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleValueIs(spinel_prop_k
             
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
             // Handle Resets in MULTIPAN RCP Mode
+            if(IsEnabled())
+            {
+                otLogDebgPlat("RESET: mPanId=%04X, mShortAddress=%04x, mExtendedAddress=%02X%02X%02X%02X", 
+                    mPanId, mShortAddress, mExtendedAddress.m8[0],mExtendedAddress.m8[1],mExtendedAddress.m8[2],
+                    mExtendedAddress.m8[3]);
+
+                // Before any parameters are set, the PHY has to be enabled.
+                SuccessOrExit(error = Set(SPINEL_PROP_PHY_ENABLED, SPINEL_DATATYPE_BOOL_S, true));
+                SuccessOrExit(error = Set(SPINEL_PROP_MAC_15_4_PANID, SPINEL_DATATYPE_UINT16_S, mPanId));
+                SuccessOrExit(error = Set(SPINEL_PROP_MAC_15_4_SADDR, SPINEL_DATATYPE_UINT16_S, mShortAddress));
+                SuccessOrExit(error = Set(SPINEL_PROP_MAC_15_4_LADDR, SPINEL_DATATYPE_EUI64_S, mExtendedAddress.m8));
+            }
 #else
             // If RCP crashes/resets while radio was enabled, posix app exits.
             VerifyOrDie(!IsEnabled(), OT_EXIT_RADIO_SPINEL_RESET);
 #endif
-
             otLogInfoPlat("RCP reset: %s", spinel_status_to_cstr(status));
             mIsReady = true;
         }
