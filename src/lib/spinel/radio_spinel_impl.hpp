@@ -795,14 +795,14 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleValueIs(spinel_prop_k
                 SuccessOrExit(error = Set(SPINEL_PROP_MAC_15_4_SADDR, SPINEL_DATATYPE_UINT16_S, mShortAddress));
                 SuccessOrExit(error = Set(SPINEL_PROP_MAC_15_4_LADDR, SPINEL_DATATYPE_EUI64_S, mExtendedAddress.m8));
             }
-            
-            otLogInfoPlat("RCP reset: %s", spinel_status_to_cstr(status));
-            mIsReady = true;
 #else
             // If RCP crashes/resets while radio was enabled, posix app exits.
             VerifyOrDie(!IsEnabled(), OT_EXIT_RADIO_SPINEL_RESET);
 #endif
         }
+            otLogInfoPlat("RCP reset: %s", spinel_status_to_cstr(status));
+            mIsReady = true;
+
         else
         {
             otLogInfoPlat("RCP last status: %s", spinel_status_to_cstr(status));
