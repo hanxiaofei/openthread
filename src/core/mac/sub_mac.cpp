@@ -500,7 +500,7 @@ bool SubMac::ShouldHandleCsmaBackOff(void) const
     *   we don't check if the radio supports it.
     */
 
-    SuccessOrExit(!swCsma);
+    goto exit;
 #else
     VerifyOrExit(!RadioSupportsCsmaBackoff(), swCsma = false);
 #endif
