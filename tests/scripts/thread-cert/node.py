@@ -45,6 +45,7 @@ import pexpect.popen_spawn
 
 import config
 import simulator
+import thread_cert
 
 PORT_OFFSET = int(os.getenv('PORT_OFFSET', "0"))
 
@@ -105,13 +106,17 @@ class OtbrDocker:
             '--cap-add=NET_ADMIN',
             '--volume',
             f'{self._rcp_device}:/dev/ttyUSB0',
+            '-v',
+            '/tmp/codecov.bash:/tmp/codecov.bash',
             config.OTBR_DOCKER_IMAGE,
+            '-B',
+            config.BACKBONE_IFNAME,
         ],
                                              stdin=subprocess.DEVNULL,
                                              stdout=sys.stdout,
                                              stderr=sys.stderr)
 
-        launch_docker_deadline = time.time() + 60
+        launch_docker_deadline = time.time() + 300
         launch_ok = False
 
         while time.time() < launch_docker_deadline:
@@ -121,7 +126,7 @@ class OtbrDocker:
                 logging.info("OTBR Docker %s Is Ready!", self._docker_name)
                 break
             except subprocess.CalledProcessError:
-                time.sleep(0.2)
+                time.sleep(5)
                 continue
 
         assert launch_ok
@@ -155,8 +160,7 @@ class OtbrDocker:
             if COVERAGE or OTBR_COVERAGE:
                 self.bash('service otbr-agent stop')
 
-                self.bash('curl https://codecov.io/bash -o codecov_bash --retry 5')
-                codecov_cmd = 'bash codecov_bash -Z'
+                codecov_cmd = 'bash /tmp/codecov.bash -Z'
                 # Upload OTBR code coverage if OTBR_COVERAGE=1, otherwise OpenThread code coverage.
                 if not OTBR_COVERAGE:
                     codecov_cmd += ' -R third_party/openthread/repo'
@@ -381,9 +385,6 @@ class OtCli:
         serialPort = '/dev/ttyUSB%d' % ((nodeid - 1) * 2)
         self.pexpect = fdpexpect.fdspawn(os.open(serialPort, os.O_RDWR | os.O_NONBLOCK | os.O_NOCTTY))
 
-    def __del__(self):
-        self.destroy()
-
     def destroy(self):
         if not self._initialized:
             return
@@ -412,6 +413,7 @@ class NodeImpl:
         super().__init__(nodeid, **kwargs)
 
         self.set_extpanid(config.EXTENDED_PANID)
+        self.set_addr64('%016x' % (thread_cert.EXTENDED_ADDRESS_BASE + nodeid))
 
     def _expect(self, pattern, timeout=-1, *args, **kwargs):
         """ Process simulator events until expected the pattern. """
@@ -608,6 +610,11 @@ class NodeImpl:
         cmd = 'commissioner start'
         self.send_command(cmd)
         self._expect('Done')
+
+    def commissioner_state(self):
+        states = [r'disabled', r'petitioning', r'active']
+        self.send_command('commissioner state')
+        return self._expect_result(states)
 
     def commissioner_add_joiner(self, addr, psk):
         cmd = 'commissioner joiner add %s %s' % (addr, psk)
@@ -826,7 +833,10 @@ class NodeImpl:
         self.send_command('extaddr')
         return self._expect_result('[0-9a-fA-F]{16}')
 
-    def set_addr64(self, addr64):
+    def set_addr64(self, addr64: str):
+        # Make sure `addr64` is a hex string of length 16
+        assert len(addr64) == 16
+        int(addr64, 16)
         self.send_command('extaddr %s' % addr64)
         self._expect('Done')
 
@@ -949,6 +959,14 @@ class NodeImpl:
 
     def set_csl_timeout(self, csl_timeout):
         self.send_command('csl timeout %d' % csl_timeout)
+        self._expect('Done')
+
+    def send_mac_emptydata(self):
+        self.send_command('mac send emptydata')
+        self._expect('Done')
+
+    def send_mac_datarequest(self):
+        self.send_command('mac send datarequest')
         self._expect('Done')
 
     def set_router_upgrade_threshold(self, threshold):
@@ -1379,7 +1397,7 @@ class NodeImpl:
         self.send_command('dataset commit active')
         self._expect('Done')
 
-    def set_pending_dataset(self, pendingtimestamp, activetimestamp, panid=None, channel=None):
+    def set_pending_dataset(self, pendingtimestamp, activetimestamp, panid=None, channel=None, delay=None):
         self.send_command('dataset clear')
         self._expect('Done')
 
@@ -1398,6 +1416,11 @@ class NodeImpl:
 
         if channel is not None:
             cmd = 'dataset channel %d' % channel
+            self.send_command(cmd)
+            self._expect('Done')
+
+        if delay is not None:
+            cmd = 'dataset delay %d' % delay
             self.send_command(cmd)
             self._expect('Done')
 
@@ -1904,7 +1927,7 @@ class Node(NodeImpl, OtCli):
 
 class LinuxHost():
     PING_RESPONSE_PATTERN = re.compile(r'\d+ bytes from .*:.*')
-    ETH_DEV = 'eth0'
+    ETH_DEV = config.BACKBONE_IFNAME
 
     def get_ether_addrs(self):
         output = self.bash(f'ip -6 addr list dev {self.ETH_DEV}')
