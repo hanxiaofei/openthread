@@ -120,6 +120,13 @@ public:
      *
      */
     void Init(bool aResetRadio, bool aRestoreDataSetFromNcp, spinel_iid_t aIid);
+
+    /**
+     * Software reset of this radio transceiver.
+     *
+     */
+
+    void SoftReset(void);
 #else
     /**
      * Initialize this radio transceiver.
