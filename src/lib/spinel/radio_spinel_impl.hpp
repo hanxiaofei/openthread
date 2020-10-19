@@ -239,6 +239,32 @@ exit:
     SuccessOrDie(error);
 }
 
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+template <typename InterfaceType, typename ProcessContextType>
+void RadioSpinel<InterfaceType, ProcessContextType>::SoftReset(void)
+{
+    otError error = OT_ERROR_NONE;
+
+    // Free any tid's that did not receive a response
+    FreeTid(mTxRadioTid);
+    mTxRadioTid = 0;
+    FreeTid(mWaitingTid);
+    mWaitingTid = 0;
+
+    // Reset the parameters on the radio
+    mState = kStateDisabled;
+    SuccessOrExit(error = Enable(mInstance));
+    SuccessOrExit(error = SetExtendedAddress(mExtendedAddress));
+
+    // Reset TX timeout
+    mTxRadioEndUs = UINT64_MAX;
+
+exit:
+    // If we cannot reinitialize after a reset, we should kill the host app
+    SuccessOrDie(error);
+}
+#endif
+
 template <typename InterfaceType, typename ProcessContextType>
 otError RadioSpinel<InterfaceType, ProcessContextType>::CheckSpinelVersion(void)
 {
@@ -785,15 +811,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleValueIs(spinel_prop_k
             // Handle Resets in MULTIPAN RCP Mode
             if(IsEnabled())
             {
-                otLogDebgPlat("RESET: mPanId=%04X, mShortAddress=%04x, mExtendedAddress=%02X%02X%02X%02X", 
-                    mPanId, mShortAddress, mExtendedAddress.m8[0],mExtendedAddress.m8[1],mExtendedAddress.m8[2],
-                    mExtendedAddress.m8[3]);
-
-                // Before any parameters are set, the PHY has to be enabled.
-                SuccessOrExit(error = Set(SPINEL_PROP_PHY_ENABLED, SPINEL_DATATYPE_BOOL_S, true));
-                SuccessOrExit(error = Set(SPINEL_PROP_MAC_15_4_PANID, SPINEL_DATATYPE_UINT16_S, mPanId));
-                SuccessOrExit(error = Set(SPINEL_PROP_MAC_15_4_SADDR, SPINEL_DATATYPE_UINT16_S, mShortAddress));
-                SuccessOrExit(error = Set(SPINEL_PROP_MAC_15_4_LADDR, SPINEL_DATATYPE_EUI64_S, mExtendedAddress.m8));
+                SoftReset();
             }
 #else
             // If RCP crashes/resets while radio was enabled, posix app exits.
@@ -1003,7 +1021,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::ProcessRadioStateMachine(vo
     else if (mState == kStateTransmitting && otPlatTimeGet() >= mTxRadioEndUs)
     {
         // Frame has been successfully passed to radio, but no `TransmitDone` event received within TX_WAIT_US.
-        DieNowWithMessage("radio tx timeout", OT_EXIT_FAILURE);
+        TransmitDone(mTransmitFrame, NULL, OT_ERROR_NO_ACK);    
     }
 }
 
