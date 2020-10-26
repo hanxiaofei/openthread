@@ -425,9 +425,13 @@ exit:
     }
     else
     {
-        error = WriteLastStatusFrame(aHeader, ThreadErrorToSpinelStatus(error));
-    }
-
+        // If we fail to report the error now, it will be reported later in
+        // HandleReceive() of ncp_base.cpp.
+        if (WriteLastStatusFrame(aHeader, ThreadErrorToSpinelStatus(error)) == OT_ERROR_NONE)
+        {
+            return OT_ERROR_NONE;
+        }
+    } 
     return error;
 }
 
