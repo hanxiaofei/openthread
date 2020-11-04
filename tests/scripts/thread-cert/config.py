@@ -71,7 +71,6 @@ BACKBONE_IFNAME = 'eth0'
 
 OTBR_DOCKER_IMAGE = os.getenv('OTBR_DOCKER_IMAGE', 'otbr-ot12-backbone-ci')
 OTBR_DOCKER_NAME_PREFIX = f'otbr_{PORT_OFFSET}_'
-OTBR_COMMIT = os.getenv('OTBR_COMMIT', 'master')
 
 ALL_NETWORK_BBRS_ADDRESS = 'ff32:40:fd00:db8:0:0:0:3'
 
@@ -129,6 +128,7 @@ ADDRESS_QUERY_INITIAL_RETRY_DELAY = 15
 DEFAULT_CHILD_TIMEOUT = 6
 VIRTUAL_TIME = int(os.getenv('VIRTUAL_TIME', 0))
 PARENT_AGGREGATIOIN_DELAY = 5
+DUA_DAD_DELAY = 5
 
 LEADER_NOTIFY_SED_BY_CHILD_UPDATE_REQUEST = True
 
@@ -260,7 +260,9 @@ def create_default_mle_tlvs_factories():
         mle.TlvType.TIME_PARAMETER: mle.TimeParameterFactory(),
         mle.TlvType.THREAD_DISCOVERY: create_default_mle_tlv_thread_discovery_factory(),
         mle.TlvType.LINK_METRICS_QUERY: mle.LinkMetricsQueryFactory(),
+        mle.TlvType.LINK_METRICS_MANAGEMENT: mle.LinkMetricsManagementFactory(),
         mle.TlvType.LINK_METRICS_REPORT: mle.LinkMetricsReportFactory(),
+        mle.TlvType.LINK_PROBE: mle.LinkProbeFactory(),
     }
 
 

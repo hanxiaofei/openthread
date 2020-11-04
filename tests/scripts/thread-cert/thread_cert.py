@@ -176,6 +176,8 @@ class TestCase(NcpSupportMixin, unittest.TestCase):
                 self.nodes[i].set_router_downgrade_threshold(params['router_downgrade_threshold'])
             if 'router_eligible' in params:
                 self.nodes[i].set_router_eligible(params['router_eligible'])
+            if 'prefer_router_id' in params:
+                self.nodes[i].prefer_router_id(params['prefer_router_id'])
 
             if 'timeout' in params:
                 self.nodes[i].set_timeout(params['timeout'])
@@ -207,6 +209,9 @@ class TestCase(NcpSupportMixin, unittest.TestCase):
 
             if 'max_children' in params:
                 self.nodes[i].set_max_children(params['max_children'])
+
+            if 'bbr_registration_jitter' in params:
+                self.nodes[i].set_bbr_registration_jitter(params['bbr_registration_jitter'])
 
         # we have to add allowlist after nodes are all created
         for i, params in initial_topology.items():
@@ -324,6 +329,9 @@ class TestCase(NcpSupportMixin, unittest.TestCase):
         test_info['rlocs'] = {}
 
         for i, node in self.nodes.items():
+            if node.is_host:
+                continue
+
             test_info['rlocs'][i] = node.get_rloc()
 
     def collect_leader_aloc(self, node):
@@ -364,7 +372,6 @@ class TestCase(NcpSupportMixin, unittest.TestCase):
                 'interface': config.BACKBONE_DOCKER_NETWORK_NAME,
                 'prefix': config.BACKBONE_PREFIX,
             },
-            'otbr_commit': config.OTBR_COMMIT,
             'domain_prefix': config.DOMAIN_PREFIX,
             'env': {
                 'PORT_OFFSET': config.PORT_OFFSET,

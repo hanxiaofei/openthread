@@ -120,7 +120,7 @@ Interpreter::Interpreter(Instance *aInstance)
     , mPingIdentifier(0)
     , mPingTimer(*aInstance, Interpreter::HandlePingTimer, this)
 #if OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
-    , mResolvingInProgress(0)
+    , mResolvingInProgress(false)
 #endif
 #if OPENTHREAD_CONFIG_SNTP_CLIENT_ENABLE
     , mSntpQueryingInProgress(false)
@@ -1542,6 +1542,22 @@ otError Interpreter::ProcessFake(uint8_t aArgsLength, char *aArgs[])
         SuccessOrExit(error = ParseAsHexString(aArgs[3], mlIid.mFields.m8));
         otThreadSendAddressNotification(mInstance, &destination, &target, &mlIid);
     }
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+    else if (strcmp(aArgs[0], "/b/ba") == 0)
+    {
+        otIp6Address             target;
+        otIp6InterfaceIdentifier mlIid;
+        uint32_t                 timeSinceLastTransaction;
+
+        VerifyOrExit(aArgsLength == 4, error = OT_ERROR_INVALID_ARGS);
+
+        SuccessOrExit(error = ParseAsIp6Address(aArgs[1], target));
+        SuccessOrExit(error = ParseAsHexString(aArgs[2], mlIid.mFields.m8));
+        SuccessOrExit(error = ParseAsUint32(aArgs[3], timeSinceLastTransaction));
+
+        error = otThreadSendProactiveBackboneNotification(mInstance, &target, &mlIid, timeSinceLastTransaction);
+    }
+#endif
 exit:
     return error;
 }
@@ -1904,12 +1920,15 @@ exit:
 #if OPENTHREAD_CONFIG_MLE_LINK_METRICS_ENABLE
 void Interpreter::HandleLinkMetricsReport(const otIp6Address *       aAddress,
                                           const otLinkMetricsValues *aMetricsValues,
+                                          uint8_t                    aStatus,
                                           void *                     aContext)
 {
-    static_cast<Interpreter *>(aContext)->HandleLinkMetricsReport(aAddress, aMetricsValues);
+    static_cast<Interpreter *>(aContext)->HandleLinkMetricsReport(aAddress, aMetricsValues, aStatus);
 }
 
-void Interpreter::HandleLinkMetricsReport(const otIp6Address *aAddress, const otLinkMetricsValues *aMetricsValues)
+void Interpreter::HandleLinkMetricsReport(const otIp6Address *       aAddress,
+                                          const otLinkMetricsValues *aMetricsValues,
+                                          uint8_t                    aStatus)
 {
     const char kLinkMetricsTypeCount[]   = "(Count/Summation)";
     const char kLinkMetricsTypeAverage[] = "(Exponential Moving Average)";
@@ -1918,25 +1937,87 @@ void Interpreter::HandleLinkMetricsReport(const otIp6Address *aAddress, const ot
     OutputIp6Address(*aAddress);
     OutputLine("");
 
-    if (aMetricsValues->mMetrics.mPduCount)
+    if (aMetricsValues != nullptr)
     {
-        OutputLine(" - PDU Counter: %d %s", aMetricsValues->mPduCountValue, kLinkMetricsTypeCount);
+        if (aMetricsValues->mMetrics.mPduCount)
+        {
+            OutputLine(" - PDU Counter: %d %s", aMetricsValues->mPduCountValue, kLinkMetricsTypeCount);
+        }
+
+        if (aMetricsValues->mMetrics.mLqi)
+        {
+            OutputLine(" - LQI: %d %s", aMetricsValues->mLqiValue, kLinkMetricsTypeAverage);
+        }
+
+        if (aMetricsValues->mMetrics.mLinkMargin)
+        {
+            OutputLine(" - Margin: %d (dB) %s", aMetricsValues->mLinkMarginValue, kLinkMetricsTypeAverage);
+        }
+
+        if (aMetricsValues->mMetrics.mRssi)
+        {
+            OutputLine(" - RSSI: %d (dBm) %s", aMetricsValues->mRssiValue, kLinkMetricsTypeAverage);
+        }
+    }
+    else
+    {
+        OutputLine("Link Metrics Report, status: %s", LinkMetricsStatusToStr(aStatus));
+    }
+}
+
+void Interpreter::HandleLinkMetricsMgmtResponse(const otIp6Address *aAddress, uint8_t aStatus, void *aContext)
+{
+    static_cast<Interpreter *>(aContext)->HandleLinkMetricsMgmtResponse(aAddress, aStatus);
+}
+
+void Interpreter::HandleLinkMetricsMgmtResponse(const otIp6Address *aAddress, uint8_t aStatus)
+{
+    OutputFormat("Received Link Metrics Management Response from: ");
+    OutputIp6Address(*aAddress);
+    OutputLine("");
+
+    OutputLine("Status: %s", LinkMetricsStatusToStr(aStatus));
+}
+
+const char *Interpreter::LinkMetricsStatusToStr(uint8_t aStatus)
+{
+    uint8_t            strIndex                = 0;
+    static const char *linkMetricsStatusText[] = {
+        "Success",
+        "Cannot support new series",
+        "Series ID already registered",
+        "Series ID not recognized",
+        "No matching series ID",
+        "Other error",
+        "Unknown error",
+    };
+
+    switch (aStatus)
+    {
+    case OT_LINK_METRICS_STATUS_SUCCESS:
+        strIndex = 0;
+        break;
+    case OT_LINK_METRICS_STATUS_CANNOT_SUPPORT_NEW_SERIES:
+        strIndex = 1;
+        break;
+    case OT_LINK_METRICS_STATUS_SERIESID_ALREADY_REGISTERED:
+        strIndex = 2;
+        break;
+    case OT_LINK_METRICS_STATUS_SERIESID_NOT_RECOGNIZED:
+        strIndex = 3;
+        break;
+    case OT_LINK_METRICS_STATUS_NO_MATCHING_FRAMES_RECEIVED:
+        strIndex = 4;
+        break;
+    case OT_LINK_METRICS_STATUS_OTHER_ERROR:
+        strIndex = 5;
+        break;
+    default:
+        strIndex = 6;
+        break;
     }
 
-    if (aMetricsValues->mMetrics.mLqi)
-    {
-        OutputLine(" - LQI: %d %s", aMetricsValues->mLqiValue, kLinkMetricsTypeAverage);
-    }
-
-    if (aMetricsValues->mMetrics.mLinkMargin)
-    {
-        OutputLine(" - Margin: %d (dB) %s", aMetricsValues->mLinkMarginValue, kLinkMetricsTypeAverage);
-    }
-
-    if (aMetricsValues->mMetrics.mRssi)
-    {
-        OutputLine(" - RSSI: %d (dBm) %s", aMetricsValues->mRssiValue, kLinkMetricsTypeAverage);
-    }
+    return linkMetricsStatusText[strIndex];
 }
 
 otError Interpreter::ProcessLinkMetrics(uint8_t aArgsLength, char *aArgs[])
@@ -1949,6 +2030,14 @@ otError Interpreter::ProcessLinkMetrics(uint8_t aArgsLength, char *aArgs[])
     {
         error = ProcessLinkMetricsQuery(aArgsLength - 1, aArgs + 1);
     }
+    else if (strcmp(aArgs[0], "mgmt") == 0)
+    {
+        error = ProcessLinkMetricsMgmt(aArgsLength - 1, aArgs + 1);
+    }
+    else if (strcmp(aArgs[0], "probe") == 0)
+    {
+        error = ProcessLinkMetricsProbe(aArgsLength - 1, aArgs + 1);
+    }
 
 exit:
     return error;
@@ -1959,49 +2048,150 @@ otError Interpreter::ProcessLinkMetricsQuery(uint8_t aArgsLength, char *aArgs[])
     otError       error = OT_ERROR_INVALID_ARGS;
     otIp6Address  address;
     otLinkMetrics linkMetrics;
-    long          seriesId = 0;
 
-    VerifyOrExit(aArgsLength >= 2);
+    VerifyOrExit(aArgsLength == 3);
 
     SuccessOrExit(error = ParseAsIp6Address(aArgs[0], address));
 
-    memset(&linkMetrics, 0, sizeof(otLinkMetrics));
-
     if (strcmp(aArgs[1], "single") == 0)
     {
-        VerifyOrExit(aArgsLength == 3);
-        for (char *arg = aArgs[2]; *arg != '\0'; arg++)
-        {
-            switch (*arg)
-            {
-            case 'p':
-                linkMetrics.mPduCount = 1;
-                break;
-
-            case 'q':
-                linkMetrics.mLqi = 1;
-                break;
-
-            case 'm':
-                linkMetrics.mLinkMargin = 1;
-                break;
-
-            case 'r':
-                linkMetrics.mRssi = 1;
-                break;
-
-            default:
-                ExitNow(error = OT_ERROR_INVALID_ARGS);
-            }
-        }
-        error = otLinkMetricsQuery(mInstance, &address, static_cast<uint8_t>(seriesId), &linkMetrics,
+        SuccessOrExit(error = ParseLinkMetricsFlags(linkMetrics, aArgs[2]));
+        error = otLinkMetricsQuery(mInstance, &address, /* aSeriesId */ 0, &linkMetrics,
                                    &Interpreter::HandleLinkMetricsReport, this);
+    }
+    else if (strcmp(aArgs[1], "forward") == 0)
+    {
+        uint8_t seriesId;
+        SuccessOrExit(error = ParseAsUint8(aArgs[2], seriesId));
+        error = otLinkMetricsQuery(mInstance, &address, seriesId, nullptr, &Interpreter::HandleLinkMetricsReport, this);
     }
 
 exit:
     return error;
 }
 
+otError Interpreter::ParseLinkMetricsFlags(otLinkMetrics &aLinkMetrics, char *aFlags)
+{
+    otError error = OT_ERROR_NONE;
+
+    memset(&aLinkMetrics, 0, sizeof(aLinkMetrics));
+
+    for (char *arg = aFlags; *arg != '\0'; arg++)
+    {
+        switch (*arg)
+        {
+        case 'p':
+            aLinkMetrics.mPduCount = true;
+            break;
+
+        case 'q':
+            aLinkMetrics.mLqi = true;
+            break;
+
+        case 'm':
+            aLinkMetrics.mLinkMargin = true;
+            break;
+
+        case 'r':
+            aLinkMetrics.mRssi = true;
+            break;
+
+        default:
+            ExitNow(error = OT_ERROR_INVALID_ARGS);
+        }
+    }
+
+exit:
+    return error;
+}
+
+otError Interpreter::ProcessLinkMetricsMgmt(uint8_t aArgsLength, char *aArgs[])
+{
+    otError                  error = OT_ERROR_INVALID_ARGS;
+    otIp6Address             address;
+    otLinkMetricsSeriesFlags seriesFlags;
+    bool                     clear = false;
+
+    VerifyOrExit(aArgsLength >= 2);
+
+    SuccessOrExit(error = ParseAsIp6Address(aArgs[0], address));
+
+    memset(&seriesFlags, 0, sizeof(otLinkMetricsSeriesFlags));
+
+    if (strcmp(aArgs[1], "forward") == 0)
+    {
+        uint8_t       seriesId;
+        otLinkMetrics linkMetrics;
+
+        VerifyOrExit(aArgsLength >= 4);
+
+        memset(&linkMetrics, 0, sizeof(otLinkMetrics));
+        SuccessOrExit(error = ParseAsUint8(aArgs[2], seriesId));
+
+        for (char *arg = aArgs[3]; *arg != '\0'; arg++)
+        {
+            switch (*arg)
+            {
+            case 'l':
+                seriesFlags.mLinkProbe = true;
+                break;
+
+            case 'd':
+                seriesFlags.mMacData = true;
+                break;
+
+            case 'r':
+                seriesFlags.mMacDataRequest = true;
+                break;
+
+            case 'a':
+                seriesFlags.mMacAck = true;
+                break;
+
+            case 'X':
+                VerifyOrExit(arg == aArgs[3] && *(arg + 1) == '\0' && aArgsLength == 4,
+                             error = OT_ERROR_INVALID_ARGS); // Ensure the flags only contain 'X'
+                clear = true;
+                break;
+
+            default:
+                ExitNow(error = OT_ERROR_INVALID_ARGS);
+            }
+        }
+
+        if (!clear)
+        {
+            VerifyOrExit(aArgsLength == 5);
+            SuccessOrExit(error = ParseLinkMetricsFlags(linkMetrics, aArgs[4]));
+        }
+
+        error = otLinkMetricsConfigForwardTrackingSeries(mInstance, &address, seriesId, seriesFlags,
+                                                         clear ? nullptr : &linkMetrics,
+                                                         &Interpreter::HandleLinkMetricsMgmtResponse, this);
+    }
+
+exit:
+    return error;
+}
+
+otError Interpreter::ProcessLinkMetricsProbe(uint8_t aArgsLength, char *aArgs[])
+{
+    otError      error = OT_ERROR_INVALID_ARGS;
+    otIp6Address address;
+    uint8_t      seriesId = 0;
+    uint8_t      length   = 0;
+
+    VerifyOrExit(aArgsLength == 3);
+
+    SuccessOrExit(error = ParseAsIp6Address(aArgs[0], address));
+    SuccessOrExit(error = ParseAsUint8(aArgs[1], seriesId));
+    SuccessOrExit(error = ParseAsUint8(aArgs[2], length));
+
+    error = otLinkMetricsSendLinkProbe(mInstance, &address, seriesId, length);
+
+exit:
+    return error;
+}
 #endif // OPENTHREAD_CONFIG_MLE_LINK_METRICS_ENABLE
 
 #if OPENTHREAD_FTD
@@ -2196,15 +2386,15 @@ otError Interpreter::ProcessMode(uint8_t aArgsLength, char *aArgs[])
             switch (*arg)
             {
             case 'r':
-                linkMode.mRxOnWhenIdle = 1;
+                linkMode.mRxOnWhenIdle = true;
                 break;
 
             case 'd':
-                linkMode.mDeviceType = 1;
+                linkMode.mDeviceType = true;
                 break;
 
             case 'n':
-                linkMode.mNetworkData = 1;
+                linkMode.mNetworkData = true;
                 break;
 
             default:
@@ -3701,7 +3891,7 @@ otError Interpreter::ProcessUnsecurePort(uint8_t aArgsLength, char *aArgs[])
 
         ports = otIp6GetUnsecurePorts(mInstance, &numPorts);
 
-        if (ports != NULL)
+        if (ports != nullptr)
         {
             for (uint8_t i = 0; i < numPorts; i++)
             {
@@ -4249,28 +4439,34 @@ exit:
     return error;
 }
 
-void Interpreter::HandleDiagnosticGetResponse(otMessage *aMessage, const otMessageInfo *aMessageInfo, void *aContext)
+void Interpreter::HandleDiagnosticGetResponse(otError              aError,
+                                              otMessage *          aMessage,
+                                              const otMessageInfo *aMessageInfo,
+                                              void *               aContext)
 {
     static_cast<Interpreter *>(aContext)->HandleDiagnosticGetResponse(
-        *aMessage, *static_cast<const Ip6::MessageInfo *>(aMessageInfo));
+        aError, aMessage, static_cast<const Ip6::MessageInfo *>(aMessageInfo));
 }
 
-void Interpreter::HandleDiagnosticGetResponse(const otMessage &aMessage, const Ip6::MessageInfo &)
+void Interpreter::HandleDiagnosticGetResponse(otError aError, const otMessage *aMessage, const Ip6::MessageInfo *)
 {
     uint8_t               buf[16];
     uint16_t              bytesToPrint;
     uint16_t              bytesPrinted = 0;
-    uint16_t              length       = otMessageGetLength(&aMessage) - otMessageGetOffset(&aMessage);
+    uint16_t              length;
     otNetworkDiagTlv      diagTlv;
     otNetworkDiagIterator iterator = OT_NETWORK_DIAGNOSTIC_ITERATOR_INIT;
-    otError               error    = OT_ERROR_NONE;
+
+    SuccessOrExit(aError);
 
     OutputFormat("DIAG_GET.rsp/ans: ");
+
+    length = otMessageGetLength(aMessage) - otMessageGetOffset(aMessage);
 
     while (length > 0)
     {
         bytesToPrint = (length < sizeof(buf)) ? length : sizeof(buf);
-        otMessageRead(&aMessage, otMessageGetOffset(&aMessage) + bytesPrinted, buf, bytesToPrint);
+        otMessageRead(aMessage, otMessageGetOffset(aMessage) + bytesPrinted, buf, bytesToPrint);
 
         OutputBytes(buf, static_cast<uint8_t>(bytesToPrint));
 
@@ -4281,7 +4477,7 @@ void Interpreter::HandleDiagnosticGetResponse(const otMessage &aMessage, const I
     OutputLine("");
 
     // Output Network Diagnostic TLV values in standard YAML format.
-    while ((error = otThreadGetNextDiagnosticTlv(&aMessage, &iterator, &diagTlv)) == OT_ERROR_NONE)
+    while ((aError = otThreadGetNextDiagnosticTlv(aMessage, &iterator, &diagTlv)) == OT_ERROR_NONE)
     {
         uint16_t column = 0;
         switch (diagTlv.mType)
@@ -4358,7 +4554,13 @@ void Interpreter::HandleDiagnosticGetResponse(const otMessage &aMessage, const I
         }
     }
 
-    OutputResult(error == OT_ERROR_NOT_FOUND ? OT_ERROR_NONE : error);
+    if (aError == OT_ERROR_NOT_FOUND)
+    {
+        aError = OT_ERROR_NONE;
+    }
+
+exit:
+    OutputResult(aError);
 }
 
 void Interpreter::OutputSpaces(uint16_t aCount)
@@ -4637,6 +4839,18 @@ extern "C" void otCliPlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, cons
 
     Interpreter::GetInterpreter().OutputFormatV(aFormat, aArgs);
     Interpreter::GetInterpreter().OutputLine("");
+exit:
+    return;
+}
+
+extern "C" void otCliPlatLogLine(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aLogLine)
+{
+    OT_UNUSED_VARIABLE(aLogLevel);
+    OT_UNUSED_VARIABLE(aLogRegion);
+
+    VerifyOrExit(Interpreter::IsInitialized());
+    Interpreter::GetInterpreter().OutputLine(aLogLine);
+
 exit:
     return;
 }

@@ -104,7 +104,7 @@ otError NetworkDiagnostic::SendDiagnosticGet(const Ip6::Address &aDestination,
 
     if (aCount > 0)
     {
-        SuccessOrExit(error = Tlv::AppendTlv(*message, NetworkDataTlv::kTypeList, aTlvTypes, aCount));
+        SuccessOrExit(error = Tlv::Append<TypeListTlv>(*message, aTlvTypes, aCount));
     }
 
     if (aDestination.IsLinkLocal() || aDestination.IsLinkLocalMulticast())
@@ -141,17 +141,18 @@ void NetworkDiagnostic::HandleDiagnosticGetResponse(Coap::Message *         aMes
                                                     const Ip6::MessageInfo *aMessageInfo,
                                                     otError                 aResult)
 {
-    VerifyOrExit(aResult == OT_ERROR_NONE);
-    VerifyOrExit(aMessage && aMessage->GetCode() == Coap::kCodeChanged);
-
-    otLogInfoNetDiag("Received diagnostic get response");
-
-    if (mReceiveDiagnosticGetCallback)
-    {
-        mReceiveDiagnosticGetCallback(aMessage, aMessageInfo, mReceiveDiagnosticGetCallbackContext);
-    }
+    SuccessOrExit(aResult);
+    VerifyOrExit(aMessage->GetCode() == Coap::kCodeChanged, aResult = OT_ERROR_FAILED);
 
 exit:
+    if (mReceiveDiagnosticGetCallback)
+    {
+        mReceiveDiagnosticGetCallback(aResult, aMessage, aMessageInfo, mReceiveDiagnosticGetCallbackContext);
+    }
+    else
+    {
+        otLogDebgNetDiag("Received diagnostic get response, error = %s", otThreadErrorToString(aResult));
+    }
     return;
 }
 
@@ -171,7 +172,7 @@ void NetworkDiagnostic::HandleDiagnosticGetAnswer(Coap::Message &aMessage, const
 
     if (mReceiveDiagnosticGetCallback)
     {
-        mReceiveDiagnosticGetCallback(&aMessage, &aMessageInfo, mReceiveDiagnosticGetCallbackContext);
+        mReceiveDiagnosticGetCallback(OT_ERROR_NONE, &aMessage, &aMessageInfo, mReceiveDiagnosticGetCallbackContext);
     }
 
     SuccessOrExit(Get<Tmf::TmfAgent>().SendEmptyAck(aMessage, aMessageInfo));
@@ -297,22 +298,21 @@ otError NetworkDiagnostic::FillRequestedTlvs(const Message &       aRequest,
         switch (type)
         {
         case NetworkDiagnosticTlv::kExtMacAddress:
-            SuccessOrExit(
-                error = Tlv::AppendTlv(aResponse, type, &Get<Mac::Mac>().GetExtAddress(), sizeof(Mac::ExtAddress)));
+            SuccessOrExit(error = Tlv::Append<ExtMacAddressTlv>(aResponse, Get<Mac::Mac>().GetExtAddress()));
             break;
 
         case NetworkDiagnosticTlv::kAddress16:
-            SuccessOrExit(error = Tlv::AppendUint16Tlv(aResponse, type, Get<Mle::MleRouter>().GetRloc16()));
+            SuccessOrExit(error = Tlv::Append<Address16Tlv>(aResponse, Get<Mle::MleRouter>().GetRloc16()));
             break;
 
         case NetworkDiagnosticTlv::kMode:
-            SuccessOrExit(error = Tlv::AppendUint8Tlv(aResponse, type, Get<Mle::MleRouter>().GetDeviceMode().Get()));
+            SuccessOrExit(error = Tlv::Append<ModeTlv>(aResponse, Get<Mle::MleRouter>().GetDeviceMode().Get()));
             break;
 
         case NetworkDiagnosticTlv::kTimeout:
             if (!Get<Mle::MleRouter>().IsRxOnWhenIdle())
             {
-                SuccessOrExit(error = Tlv::AppendUint32Tlv(aResponse, type, Get<Mle::MleRouter>().GetTimeout()));
+                SuccessOrExit(error = Tlv::Append<TimeoutTlv>(aResponse, Get<Mle::MleRouter>().GetTimeout()));
             }
 
             break;
@@ -359,7 +359,7 @@ otError NetworkDiagnostic::FillRequestedTlvs(const Message &       aRequest,
             uint8_t length = sizeof(netData);
 
             IgnoreError(Get<NetworkData::Leader>().GetNetworkData(/* aStableOnly */ false, netData, length));
-            SuccessOrExit(error = Tlv::AppendTlv(aResponse, type, netData, length));
+            SuccessOrExit(error = Tlv::Append<NetworkDataTlv>(aResponse, netData, length));
             break;
         }
 
@@ -435,7 +435,7 @@ otError NetworkDiagnostic::FillRequestedTlvs(const Message &       aRequest,
 
             if (Get<Mle::MleRouter>().GetMaxChildTimeout(maxTimeout) == OT_ERROR_NONE)
             {
-                SuccessOrExit(error = Tlv::AppendUint32Tlv(aResponse, type, maxTimeout));
+                SuccessOrExit(error = Tlv::Append<MaxChildTimeoutTlv>(aResponse, maxTimeout));
             }
 
             break;
@@ -584,7 +584,7 @@ otError NetworkDiagnostic::SendDiagnosticReset(const Ip6::Address &aDestination,
 
     if (aCount > 0)
     {
-        SuccessOrExit(error = Tlv::AppendTlv(*message, NetworkDataTlv::kTypeList, aTlvTypes, aCount));
+        SuccessOrExit(error = Tlv::Append<TypeListTlv>(*message, aTlvTypes, aCount));
     }
 
     if (aDestination.IsLinkLocal() || aDestination.IsLinkLocalMulticast())
@@ -742,25 +742,25 @@ otError NetworkDiagnostic::GetNextDiagTlv(const Coap::Message &aMessage,
         switch (tlv.GetType())
         {
         case NetworkDiagnosticTlv::kExtMacAddress:
-            SuccessOrExit(
-                error = Tlv::ReadTlv(aMessage, offset, &aNetworkDiagTlv.mData.mExtAddress, sizeof(Mac::ExtAddress)));
+            SuccessOrExit(error = Tlv::Read<ExtMacAddressTlv>(
+                              aMessage, offset, static_cast<Mac::ExtAddress &>(aNetworkDiagTlv.mData.mExtAddress)));
             break;
 
         case NetworkDiagnosticTlv::kAddress16:
-            SuccessOrExit(error = Tlv::ReadUint16Tlv(aMessage, offset, aNetworkDiagTlv.mData.mAddr16));
+            SuccessOrExit(error = Tlv::Read<Address16Tlv>(aMessage, offset, aNetworkDiagTlv.mData.mAddr16));
             break;
 
         case NetworkDiagnosticTlv::kMode:
         {
             uint8_t mode;
 
-            SuccessOrExit(error = Tlv::ReadUint8Tlv(aMessage, offset, mode));
+            SuccessOrExit(error = Tlv::Read<ModeTlv>(aMessage, offset, mode));
             ParseMode(Mle::DeviceMode(mode), aNetworkDiagTlv.mData.mMode);
             break;
         }
 
         case NetworkDiagnosticTlv::kTimeout:
-            SuccessOrExit(error = Tlv::ReadUint32Tlv(aMessage, offset, aNetworkDiagTlv.mData.mTimeout));
+            SuccessOrExit(error = Tlv::Read<TimeoutTlv>(aMessage, offset, aNetworkDiagTlv.mData.mTimeout));
             break;
 
         case NetworkDiagnosticTlv::kConnectivity:
@@ -839,11 +839,11 @@ otError NetworkDiagnostic::GetNextDiagTlv(const Coap::Message &aMessage,
         }
 
         case NetworkDiagnosticTlv::kBatteryLevel:
-            SuccessOrExit(error = Tlv::ReadUint8Tlv(aMessage, offset, aNetworkDiagTlv.mData.mBatteryLevel));
+            SuccessOrExit(error = Tlv::Read<BatteryLevelTlv>(aMessage, offset, aNetworkDiagTlv.mData.mBatteryLevel));
             break;
 
         case NetworkDiagnosticTlv::kSupplyVoltage:
-            SuccessOrExit(error = Tlv::ReadUint16Tlv(aMessage, offset, aNetworkDiagTlv.mData.mSupplyVoltage));
+            SuccessOrExit(error = Tlv::Read<SupplyVoltageTlv>(aMessage, offset, aNetworkDiagTlv.mData.mSupplyVoltage));
             break;
 
         case NetworkDiagnosticTlv::kChildTable:
@@ -875,7 +875,8 @@ otError NetworkDiagnostic::GetNextDiagTlv(const Coap::Message &aMessage,
         }
 
         case NetworkDiagnosticTlv::kMaxChildTimeout:
-            SuccessOrExit(error = Tlv::ReadUint32Tlv(aMessage, offset, aNetworkDiagTlv.mData.mMaxChildTimeout));
+            SuccessOrExit(error =
+                              Tlv::Read<MaxChildTimeoutTlv>(aMessage, offset, aNetworkDiagTlv.mData.mMaxChildTimeout));
             break;
 
         default:

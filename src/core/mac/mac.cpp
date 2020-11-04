@@ -132,7 +132,7 @@ Mac::Mac(Instance &aInstance)
 
     randomExtAddress.GenerateRandom();
 
-    mCcaSuccessRateTracker.Reset();
+    mCcaSuccessRateTracker.Clear();
     ResetCounters();
     mExtendedPanId.Clear();
 
@@ -428,7 +428,7 @@ otError Mac::SetPanChannel(uint8_t aChannel)
 
     SuccessOrExit(Get<Notifier>().Update(mPanChannel, aChannel, kEventThreadChannelChanged));
 
-    mCcaSuccessRateTracker.Reset();
+    mCcaSuccessRateTracker.Clear();
 
     VerifyOrExit(!mUsingTemporaryChannel);
 
@@ -1086,8 +1086,10 @@ void Mac::BeginTransmit(void)
     sendFrame.SetIsARetransmission(false);
     sendFrame.SetIsSecurityProcessed(false);
 #if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
-    sendFrame.SetTxPeriod(0);
+    sendFrame.SetTxDelay(0);
+    sendFrame.SetTxDelayBaseTime(0);
 #endif
+    sendFrame.SetCsmaCaEnabled(true); // Set to true by default, only set to `false` for CSL transmission
 
     switch (mOperation)
     {
@@ -1296,6 +1298,10 @@ void Mac::RecordFrameTransmitStatus(const TxFrame &aFrame,
     if ((aError == OT_ERROR_NONE) && ackRequested && (aAckFrame != nullptr) && (neighbor != nullptr))
     {
         neighbor->GetLinkInfo().AddRss(aAckFrame->GetRssi());
+#if OPENTHREAD_CONFIG_MLE_LINK_METRICS_ENABLE
+        neighbor->AggregateLinkMetrics(/* aSeriesId */ 0, aAckFrame->GetType(), aAckFrame->GetLqi(),
+                                       aAckFrame->GetRssi());
+#endif
 #if OPENTHREAD_FTD
         if (aAckFrame->GetVersion() == Frame::kFcfFrameVersion2015)
         {
@@ -1901,6 +1907,9 @@ void Mac::HandleReceivedFrame(RxFrame *aFrame, otError aError)
     if (neighbor != nullptr)
     {
         neighbor->GetLinkInfo().AddRss(aFrame->GetRssi());
+#if OPENTHREAD_CONFIG_MLE_LINK_METRICS_ENABLE
+        neighbor->AggregateLinkMetrics(/* aSeriesId */ 0, aFrame->GetType(), aFrame->GetLqi(), aFrame->GetRssi());
+#endif
 
         if (aFrame->GetSecurityEnabled())
         {
@@ -2289,7 +2298,7 @@ void Mac::SetCslChannel(uint8_t aChannel)
     VerifyOrExit(GetCslChannel() != aChannel);
 
     mSubMac.SetCslChannel(aChannel);
-    mSubMac.SetCslChannelSpecified(aChannel != 0 ? true : false);
+    mSubMac.SetCslChannelSpecified(aChannel != 0);
 
     if (IsCslEnabled())
     {
@@ -2348,10 +2357,10 @@ void Mac::ProcessCsl(const RxFrame &aFrame, const Address &aSrcAddr)
 
     child->SetCslPeriod(csl->GetPeriod());
     // Use ceiling to ensure the the time diff will be within kUsPerTenSymbols
-    child->SetCslPhase(((aFrame.GetTimestamp() + kUsPerTenSymbols - 1) / kUsPerTenSymbols + csl->GetPhase()) %
-                       csl->GetPeriod());
+    child->SetCslPhase(csl->GetPhase());
     child->SetCslSynchronized(true);
     child->SetCslLastHeard(TimerMilli::GetNow());
+    child->SetLastRxTimestamp(aFrame.GetTimestamp());
     otLogDebgMac("Timestamp=%u Sequence=%u CslPeriod=%hu CslPhase=%hu TransmitPhase=%hu",
                  static_cast<uint32_t>(aFrame.GetTimestamp()), aFrame.GetSequence(), csl->GetPeriod(), csl->GetPhase(),
                  child->GetCslPhase());

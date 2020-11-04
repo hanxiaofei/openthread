@@ -49,8 +49,6 @@
 #include "thread/thread_netif.hpp"
 #include "thread/uri_paths.hpp"
 
-using ot::Encoding::BigEndian::HostSwap16;
-
 namespace ot {
 
 AddressResolver::AddressResolver(Instance &aInstance)
@@ -535,7 +533,7 @@ otError AddressResolver::SendAddressQuery(const Ip6::Address &aEid)
     SuccessOrExit(error = message->AppendUriPathOptions(UriPath::kAddressQuery));
     SuccessOrExit(error = message->SetPayloadMarker());
 
-    SuccessOrExit(error = Tlv::AppendTlv(*message, ThreadTlv::kTarget, &aEid, sizeof(aEid)));
+    SuccessOrExit(error = Tlv::Append<ThreadTargetTlv>(*message, aEid));
 
     messageInfo.GetPeerAddr().SetToRealmLocalAllRoutersMulticast();
 
@@ -550,6 +548,18 @@ exit:
 
     Get<TimeTicker>().RegisterReceiver(TimeTicker::kAddressResolver);
     FreeMessageOnError(message, error);
+
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+    if (Get<BackboneRouter::Local>().IsPrimary() && Get<BackboneRouter::Leader>().IsDomainUnicast(aEid))
+    {
+        uint16_t selfRloc16 = Get<Mle::MleRouter>().GetRloc16();
+
+        otLogInfoArp("Extending ADDR.qry to BB.qry for target=%s, rloc16=%04x(self)", aEid.ToString().AsCString(),
+                     selfRloc16);
+        IgnoreError(Get<BackboneRouter::Manager>().SendBackboneQuery(aEid, selfRloc16));
+    }
+#endif
+
     return error;
 }
 
@@ -571,11 +581,11 @@ void AddressResolver::HandleAddressNotification(Coap::Message &aMessage, const I
 
     VerifyOrExit(aMessage.IsConfirmablePostRequest());
 
-    SuccessOrExit(Tlv::FindTlv(aMessage, ThreadTlv::kTarget, &target, sizeof(target)));
-    SuccessOrExit(Tlv::FindTlv(aMessage, ThreadTlv::kMeshLocalEid, &meshLocalIid, sizeof(meshLocalIid)));
-    SuccessOrExit(Tlv::FindUint16Tlv(aMessage, ThreadTlv::kRloc16, rloc16));
+    SuccessOrExit(Tlv::Find<ThreadTargetTlv>(aMessage, target));
+    SuccessOrExit(Tlv::Find<ThreadMeshLocalEidTlv>(aMessage, meshLocalIid));
+    SuccessOrExit(Tlv::Find<ThreadRloc16Tlv>(aMessage, rloc16));
 
-    switch (Tlv::FindUint32Tlv(aMessage, ThreadTlv::kLastTransactionTime, lastTransactionTime))
+    switch (Tlv::Find<ThreadLastTransactionTimeTlv>(aMessage, lastTransactionTime))
     {
     case OT_ERROR_NONE:
         break;
@@ -641,8 +651,8 @@ void AddressResolver::SendAddressError(const Ip6::Address &            aTarget,
     SuccessOrExit(error = message->AppendUriPathOptions(UriPath::kAddressError));
     SuccessOrExit(error = message->SetPayloadMarker());
 
-    SuccessOrExit(error = Tlv::AppendTlv(*message, ThreadTlv::kTarget, &aTarget, sizeof(aTarget)));
-    SuccessOrExit(error = Tlv::AppendTlv(*message, ThreadTlv::kMeshLocalEid, &aMeshLocalIid, sizeof(aMeshLocalIid)));
+    SuccessOrExit(error = Tlv::Append<ThreadTargetTlv>(*message, aTarget));
+    SuccessOrExit(error = Tlv::Append<ThreadMeshLocalEidTlv>(*message, aMeshLocalIid));
 
     if (aDestination == nullptr)
     {
@@ -695,8 +705,8 @@ void AddressResolver::HandleAddressError(Coap::Message &aMessage, const Ip6::Mes
         }
     }
 
-    SuccessOrExit(error = Tlv::FindTlv(aMessage, ThreadTlv::kTarget, &target, sizeof(target)));
-    SuccessOrExit(error = Tlv::FindTlv(aMessage, ThreadTlv::kMeshLocalEid, &meshLocalIid, sizeof(meshLocalIid)));
+    SuccessOrExit(error = Tlv::Find<ThreadTargetTlv>(aMessage, target));
+    SuccessOrExit(error = Tlv::Find<ThreadMeshLocalEidTlv>(aMessage, meshLocalIid));
 
     for (const Ip6::NetifUnicastAddress *address = Get<ThreadNetif>().GetUnicastAddresses(); address;
          address                                 = address->GetNext())
@@ -763,7 +773,7 @@ void AddressResolver::HandleAddressQuery(Coap::Message &aMessage, const Ip6::Mes
 
     VerifyOrExit(aMessage.IsNonConfirmablePostRequest());
 
-    SuccessOrExit(Tlv::FindTlv(aMessage, ThreadTlv::kTarget, &target, sizeof(target)));
+    SuccessOrExit(Tlv::Find<ThreadTargetTlv>(aMessage, target));
 
     otLogInfoArp("Received address query from 0x%04x for target %s", aMessageInfo.GetPeerAddr().GetIid().GetLocator(),
                  target.ToString().AsCString());
@@ -790,6 +800,17 @@ void AddressResolver::HandleAddressQuery(Coap::Message &aMessage, const Ip6::Mes
         }
     }
 
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+    if (Get<BackboneRouter::Local>().IsPrimary() && Get<BackboneRouter::Leader>().IsDomainUnicast(target))
+    {
+        uint16_t srcRloc16 = aMessageInfo.GetPeerAddr().GetIid().GetLocator();
+
+        otLogInfoArp("Extending ADDR.qry to BB.qry for target=%s, rloc16=%04x", target.ToString().AsCString(),
+                     srcRloc16);
+        IgnoreError(Get<BackboneRouter::Manager>().SendBackboneQuery(target, srcRloc16));
+    }
+#endif
+
 exit:
     return;
 }
@@ -809,13 +830,13 @@ void AddressResolver::SendAddressQueryResponse(const Ip6::Address &            a
     SuccessOrExit(error = message->AppendUriPathOptions(UriPath::kAddressNotify));
     SuccessOrExit(error = message->SetPayloadMarker());
 
-    SuccessOrExit(error = Tlv::AppendTlv(*message, ThreadTlv::kTarget, &aTarget, sizeof(aTarget)));
-    SuccessOrExit(error = Tlv::AppendTlv(*message, ThreadTlv::kMeshLocalEid, &aMeshLocalIid, sizeof(aMeshLocalIid)));
-    SuccessOrExit(error = Tlv::AppendUint16Tlv(*message, ThreadTlv::kRloc16, Get<Mle::MleRouter>().GetRloc16()));
+    SuccessOrExit(error = Tlv::Append<ThreadTargetTlv>(*message, aTarget));
+    SuccessOrExit(error = Tlv::Append<ThreadMeshLocalEidTlv>(*message, aMeshLocalIid));
+    SuccessOrExit(error = Tlv::Append<ThreadRloc16Tlv>(*message, Get<Mle::MleRouter>().GetRloc16()));
 
     if (aLastTransactionTime != nullptr)
     {
-        SuccessOrExit(error = Tlv::AppendUint32Tlv(*message, ThreadTlv::kLastTransactionTime, *aLastTransactionTime));
+        SuccessOrExit(error = Tlv::Append<ThreadLastTransactionTimeTlv>(*message, *aLastTransactionTime));
     }
 
     messageInfo.SetPeerAddr(aDestination);

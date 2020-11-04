@@ -96,9 +96,7 @@ static void Log(otLogLevel  aLogLevel,
             break;
         }
 
-#if OPENTHREAD_CONFIG_LOG_PREPEND_REGION
-        IgnoreError(logString.Append("[%s]", levelStr));
-#endif
+        IgnoreError(logString.Append("%s", levelStr));
     }
 #endif // OPENTHREAD_CONFIG_LOG_PREPEND_LEVEL
 
@@ -389,6 +387,11 @@ void otPlatLog(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aFormat
     OT_UNUSED_VARIABLE(aFormat);
 }
 #endif
+
+OT_TOOL_WEAK void otPlatLogLine(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aLogLine)
+{
+    otPlatLog(aLogLevel, aLogRegion, "%s", aLogLine);
+}
 
 #ifdef __cplusplus
 }

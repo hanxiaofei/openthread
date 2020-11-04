@@ -107,14 +107,14 @@ otError DatasetManager::HandleSet(Coap::Message &aMessage, const Ip6::MessageInf
 
     type = (GetType() == Dataset::kActive) ? Tlv::kActiveTimestamp : Tlv::kPendingTimestamp;
 
-    if (Tlv::FindTlv(aMessage, Tlv::kActiveTimestamp, sizeof(activeTimestamp), activeTimestamp) != OT_ERROR_NONE)
+    if (Tlv::FindTlv(aMessage, activeTimestamp) != OT_ERROR_NONE)
     {
         ExitNow();
     }
 
     VerifyOrExit(activeTimestamp.IsValid());
 
-    if (Tlv::FindTlv(aMessage, Tlv::kPendingTimestamp, sizeof(pendingTimestamp), pendingTimestamp) == OT_ERROR_NONE)
+    if (Tlv::FindTlv(aMessage, pendingTimestamp) == OT_ERROR_NONE)
     {
         VerifyOrExit(pendingTimestamp.IsValid());
     }
@@ -126,7 +126,7 @@ otError DatasetManager::HandleSet(Coap::Message &aMessage, const Ip6::MessageInf
     VerifyOrExit(mLocal.Compare(timestamp) > 0);
 
     // check channel
-    if (Tlv::FindTlv(aMessage, Tlv::kChannel, sizeof(channel), channel) == OT_ERROR_NONE)
+    if (Tlv::FindTlv(aMessage, channel) == OT_ERROR_NONE)
     {
         VerifyOrExit(channel.IsValid());
 
@@ -137,20 +137,20 @@ otError DatasetManager::HandleSet(Coap::Message &aMessage, const Ip6::MessageInf
     }
 
     // check PAN ID
-    if (Tlv::FindUint16Tlv(aMessage, Tlv::kPanId, panId) == OT_ERROR_NONE && panId != Get<Mac::Mac>().GetPanId())
+    if (Tlv::Find<PanIdTlv>(aMessage, panId) == OT_ERROR_NONE && panId != Get<Mac::Mac>().GetPanId())
     {
         doesAffectConnectivity = true;
     }
 
     // check mesh local prefix
-    if (Tlv::FindTlv(aMessage, Tlv::kMeshLocalPrefix, &meshLocalPrefix, sizeof(meshLocalPrefix)) == OT_ERROR_NONE &&
+    if (Tlv::Find<MeshLocalPrefixTlv>(aMessage, meshLocalPrefix) == OT_ERROR_NONE &&
         meshLocalPrefix != Get<Mle::MleRouter>().GetMeshLocalPrefix())
     {
         doesAffectConnectivity = true;
     }
 
     // check network master key
-    if (Tlv::FindTlv(aMessage, Tlv::kNetworkMasterKey, &masterKey, sizeof(masterKey)) == OT_ERROR_NONE)
+    if (Tlv::Find<NetworkMasterKeyTlv>(aMessage, masterKey) == OT_ERROR_NONE)
     {
         hasMasterKey = true;
 
@@ -171,7 +171,7 @@ otError DatasetManager::HandleSet(Coap::Message &aMessage, const Ip6::MessageInf
     }
 
     // check commissioner session id
-    if (Tlv::FindUint16Tlv(aMessage, Tlv::kCommissionerSessionId, sessionId) == OT_ERROR_NONE)
+    if (Tlv::Find<CommissionerSessionIdTlv>(aMessage, sessionId) == OT_ERROR_NONE)
     {
         const CommissionerSessionIdTlv *localId;
 
@@ -281,7 +281,7 @@ void DatasetManager::SendSetResponse(const Coap::Message &   aRequest,
     SuccessOrExit(error = message->SetDefaultResponseHeader(aRequest));
     SuccessOrExit(error = message->SetPayloadMarker());
 
-    SuccessOrExit(error = Tlv::AppendUint8Tlv(*message, Tlv::kState, static_cast<uint8_t>(aState)));
+    SuccessOrExit(error = Tlv::Append<StateTlv>(*message, aState));
 
     SuccessOrExit(error = Get<Tmf::TmfAgent>().SendMessage(*message, aMessageInfo));
 
@@ -299,57 +299,6 @@ otError DatasetManager::DatasetTlv::ReadFromMessage(const Message &aMessage, uin
     VerifyOrExit(GetLength() <= kMaxValueSize, error = OT_ERROR_PARSE);
     SuccessOrExit(error = aMessage.Read(aOffset + sizeof(Tlv), mValue, GetLength()));
     VerifyOrExit(Tlv::IsValid(*this), error = OT_ERROR_PARSE);
-
-exit:
-    return error;
-}
-
-otError ActiveDataset::CreateNewNetwork(otOperationalDataset &aDataset)
-{
-    otError          error             = OT_ERROR_NONE;
-    Mac::ChannelMask supportedChannels = Get<Mac::Mac>().GetSupportedChannelMask();
-    Mac::ChannelMask preferredChannels(Get<Radio>().GetPreferredChannelMask());
-
-    memset(&aDataset, 0, sizeof(aDataset));
-
-    aDataset.mActiveTimestamp = 1;
-
-    SuccessOrExit(error = static_cast<MasterKey &>(aDataset.mMasterKey).GenerateRandom());
-    SuccessOrExit(error = static_cast<Pskc &>(aDataset.mPskc).GenerateRandom());
-    SuccessOrExit(error = Random::Crypto::FillBuffer(aDataset.mExtendedPanId.m8, sizeof(aDataset.mExtendedPanId)));
-
-    SuccessOrExit(error = static_cast<Ip6::NetworkPrefix &>(aDataset.mMeshLocalPrefix).GenerateRandomUla());
-
-    aDataset.mSecurityPolicy.mFlags = Get<KeyManager>().GetSecurityPolicyFlags();
-
-    // If the preferred channel mask is not empty, select a random
-    // channel from it, otherwise choose one from the supported
-    // channel mask.
-
-    preferredChannels.Intersect(supportedChannels);
-
-    if (preferredChannels.IsEmpty())
-    {
-        preferredChannels = supportedChannels;
-    }
-
-    aDataset.mChannel     = preferredChannels.ChooseRandomChannel();
-    aDataset.mChannelMask = supportedChannels.GetMask();
-
-    aDataset.mPanId = Mac::GenerateRandomPanId();
-
-    snprintf(aDataset.mNetworkName.m8, sizeof(aDataset.mNetworkName), "OpenThread-%04x", aDataset.mPanId);
-
-    aDataset.mComponents.mIsActiveTimestampPresent = true;
-    aDataset.mComponents.mIsMasterKeyPresent       = true;
-    aDataset.mComponents.mIsNetworkNamePresent     = true;
-    aDataset.mComponents.mIsExtendedPanIdPresent   = true;
-    aDataset.mComponents.mIsMeshLocalPrefixPresent = true;
-    aDataset.mComponents.mIsPanIdPresent           = true;
-    aDataset.mComponents.mIsChannelPresent         = true;
-    aDataset.mComponents.mIsPskcPresent            = true;
-    aDataset.mComponents.mIsSecurityPolicyPresent  = true;
-    aDataset.mComponents.mIsChannelMaskPresent     = true;
 
 exit:
     return error;
@@ -392,19 +341,17 @@ otError ActiveDataset::GenerateLocal(void)
 
     if (dataset.GetTlv<ExtendedPanIdTlv>() == nullptr)
     {
-        IgnoreError(
-            dataset.SetTlv(Tlv::kExtendedPanId, &Get<Mac::Mac>().GetExtendedPanId(), sizeof(Mac::ExtendedPanId)));
+        IgnoreError(dataset.SetTlv(Tlv::kExtendedPanId, Get<Mac::Mac>().GetExtendedPanId()));
     }
 
     if (dataset.GetTlv<MeshLocalPrefixTlv>() == nullptr)
     {
-        IgnoreError(dataset.SetTlv(Tlv::kMeshLocalPrefix, &Get<Mle::MleRouter>().GetMeshLocalPrefix(),
-                                   sizeof(Mle::MeshLocalPrefix)));
+        IgnoreError(dataset.SetTlv(Tlv::kMeshLocalPrefix, Get<Mle::MleRouter>().GetMeshLocalPrefix()));
     }
 
     if (dataset.GetTlv<NetworkMasterKeyTlv>() == nullptr)
     {
-        IgnoreError(dataset.SetTlv(Tlv::kNetworkMasterKey, &Get<KeyManager>().GetMasterKey(), sizeof(MasterKey)));
+        IgnoreError(dataset.SetTlv(Tlv::kNetworkMasterKey, Get<KeyManager>().GetMasterKey()));
     }
 
     if (dataset.GetTlv<NetworkNameTlv>() == nullptr)
@@ -416,14 +363,14 @@ otError ActiveDataset::GenerateLocal(void)
 
     if (dataset.GetTlv<PanIdTlv>() == nullptr)
     {
-        IgnoreError(dataset.SetUint16Tlv(Tlv::kPanId, Get<Mac::Mac>().GetPanId()));
+        IgnoreError(dataset.SetTlv(Tlv::kPanId, Get<Mac::Mac>().GetPanId()));
     }
 
     if (dataset.GetTlv<PskcTlv>() == nullptr)
     {
         if (Get<KeyManager>().IsPskcSet())
         {
-            IgnoreError(dataset.SetTlv(Tlv::kPskc, &Get<KeyManager>().GetPskc(), sizeof(Pskc)));
+            IgnoreError(dataset.SetTlv(Tlv::kPskc, Get<KeyManager>().GetPskc()));
         }
         else
         {
@@ -431,7 +378,7 @@ otError ActiveDataset::GenerateLocal(void)
             Pskc pskc;
 
             SuccessOrExit(error = pskc.GenerateRandom());
-            IgnoreError(dataset.SetTlv(Tlv::kPskc, &pskc, sizeof(Pskc)));
+            IgnoreError(dataset.SetTlv(Tlv::kPskc, pskc));
         }
     }
 
@@ -522,7 +469,7 @@ void PendingDataset::ApplyActiveDataset(const Timestamp &aTimestamp, Coap::Messa
     }
 
     // add delay timer tlv
-    IgnoreError(dataset.SetUint32Tlv(Tlv::kDelayTimer, Get<Leader>().GetDelayTimerMinimal()));
+    IgnoreError(dataset.SetTlv(Tlv::kDelayTimer, Get<Leader>().GetDelayTimerMinimal()));
 
     // add pending timestamp tlv
     dataset.SetTimestamp(aTimestamp);

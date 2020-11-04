@@ -358,11 +358,14 @@ private:
 #if OPENTHREAD_CONFIG_MLE_LINK_METRICS_ENABLE
     otError ProcessLinkMetrics(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessLinkMetricsQuery(uint8_t aArgsLength, char *aArgs[]);
+    otError ProcessLinkMetricsMgmt(uint8_t aArgsLength, char *aArgs[]);
+    otError ProcessLinkMetricsProbe(uint8_t aArgsLength, char *aArgs[]);
+
+    otError ParseLinkMetricsFlags(otLinkMetrics &aLinkMetrics, char *aFlags);
 #endif
-#if OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
+#if OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE && OPENTHREAD_CONFIG_COMMISSIONER_ENABLE
     otError ProcessMlr(uint8_t aArgsLength, char *aArgs[]);
 
-#if OPENTHREAD_CONFIG_COMMISSIONER_ENABLE
     otError ProcessMlrReg(uint8_t aArgsLength, char *aArgs[]);
 
     static void HandleMlrRegResult(void *              aContext,
@@ -374,7 +377,6 @@ private:
                                    uint8_t             aMlrStatus,
                                    const otIp6Address *aFailedAddresses,
                                    uint8_t             aFailedAddressNum);
-#endif
 #endif
     otError ProcessMode(uint8_t aArgsLength, char *aArgs[]);
 #if OPENTHREAD_FTD
@@ -487,8 +489,11 @@ private:
     static void HandleLinkPcapReceive(const otRadioFrame *aFrame, bool aIsTx, void *aContext);
 
 #if OPENTHREAD_FTD || OPENTHREAD_CONFIG_TMF_NETWORK_DIAG_MTD_ENABLE
-    void        HandleDiagnosticGetResponse(const otMessage &aMessage, const Ip6::MessageInfo &aMessageInfo);
-    static void HandleDiagnosticGetResponse(otMessage *aMessage, const otMessageInfo *aMessageInfo, void *aContext);
+    void HandleDiagnosticGetResponse(otError aError, const otMessage *aMessage, const Ip6::MessageInfo *aMessageInfo);
+    static void HandleDiagnosticGetResponse(otError              aError,
+                                            otMessage *          aMessage,
+                                            const otMessageInfo *aMessageInfo,
+                                            void *               aContext);
     void        OutputSpaces(uint16_t aCount);
     void        OutputMode(const otLinkModeConfig &aMode, uint16_t aColumn);
     void        OutputConnectivity(const otNetworkDiagConnectivity &aConnectivity, uint16_t aColumn);
@@ -525,9 +530,18 @@ private:
 #if OPENTHREAD_CONFIG_MLE_LINK_METRICS_ENABLE
     static void HandleLinkMetricsReport(const otIp6Address *       aAddress,
                                         const otLinkMetricsValues *aMetricsValues,
+                                        uint8_t                    aStatus,
                                         void *                     aContext);
 
-    void HandleLinkMetricsReport(const otIp6Address *aAddress, const otLinkMetricsValues *aMetricsValues);
+    void HandleLinkMetricsReport(const otIp6Address *       aAddress,
+                                 const otLinkMetricsValues *aMetricsValues,
+                                 uint8_t                    aStatus);
+
+    static void HandleLinkMetricsMgmtResponse(const otIp6Address *aAddress, uint8_t aStatus, void *aContext);
+
+    void HandleLinkMetricsMgmtResponse(const otIp6Address *aAddress, uint8_t aStatus);
+
+    const char *LinkMetricsStatusToStr(uint8_t aStatus);
 #endif
 
     static Interpreter &GetOwner(OwnerLocator &aOwnerLocator);

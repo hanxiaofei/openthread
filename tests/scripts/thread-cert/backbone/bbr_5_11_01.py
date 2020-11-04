@@ -122,8 +122,8 @@ class BBR_5_11_01(thread_cert.TestCase):
                                               backbone=True))
 
         # Step 23: Host sends ping packet to destination Dg
-        self.assertFalse(self.nodes[HOST].ping(Dg,
-                                               backbone=True))  # Must fail since ND Proxying is not implemented yet
+        # TODO: (DUA) implement DUA routing on OTBR
+        self.assertFalse(self.nodes[HOST].ping(Dg, backbone=True))
 
     def verify(self, pv: PacketVerifier):
         pkts = pv.pkts
@@ -139,6 +139,7 @@ class BBR_5_11_01(thread_cert.TestCase):
         BR_1_BGUA = pv.vars['BR_1_BGUA']
         Host_BGUA = pv.vars['Host_BGUA']
         Dg = pv.vars['Dg']  # DUA of Router_2
+        ROUTER2 = pv.vars['Router_2']
 
         # Step 3: BR_1: Checks received Network Data and determines that it needs to send its BBR Dataset to the
         #               leader to become primary BBR.
@@ -149,12 +150,7 @@ class BBR_5_11_01(thread_cert.TestCase):
             and thread_nwd.tlv.service.s_data.mlrtimeout is not null
         """)
 
-        # Step 9: BR_1: Responds to the DUA registration.
-        pkts.filter_wpan_src64(BR_1).filter_coap_ack('/n/dr',
-                                                     port=MM).must_next().must_verify('thread_nm.tlv.status == 0')
-
-        # TODO: (DUA) Step 10: BR_1: Performs DAD on the backbone link.
-        pkts.filter_eth_src(BR_1_ETH).filter_coap_request('/b/bq', port=BB).must_not_next()
+        pv.verify_dua_registration(ROUTER2, Dg, pbbr_eth=BR_1_ETH, pbbr_src64=BR_1)
 
         # Verify Host ping BBR
         pkts.filter_eth_src(Host_ETH).filter_ipv6_src_dst(Host_BGUA, BR_1_BGUA).filter_ping_request().must_next()
@@ -165,12 +161,10 @@ class BBR_5_11_01(thread_cert.TestCase):
         pkts.filter_eth_src(Host_ETH).filter_ipv6_src_dst(Host_BGUA, BR_1_BGUA).filter_ping_reply().must_next()
 
         # Step 16: Host: Queries DUA, Dg, with ND-NS
-        # TODO: setup radvd on Host
-        pkts.filter_eth_src(Host_ETH).filter_icmpv6_nd_ns(Dg).must_not_next()
+        pkts.filter_eth_src(Host_ETH).filter_icmpv6_nd_ns(Dg).must_next()
 
         # Step 17: BR_1: Responds with a neighbor advertisement.
-        # TODO: (DUA) implement ND proxy on PBBR
-        pkts.filter_eth_src(BR_1_ETH).filter_icmpv6_nd_na(Dg).must_not_next()
+        pkts.filter_eth_src(BR_1_ETH).filter_icmpv6_nd_na(Dg).must_next()
 
 
 if __name__ == '__main__':

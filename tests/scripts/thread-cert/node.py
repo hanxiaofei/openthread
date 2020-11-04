@@ -93,6 +93,7 @@ class OtbrDocker:
     def _launch_docker(self):
         subprocess.check_call(f"docker rm -f {self._docker_name} || true", shell=True)
         CI_ENV = os.getenv('CI_ENV', '').split()
+        os.makedirs('/tmp/coverage/', exist_ok=True)
         self._docker_proc = subprocess.Popen(['docker', 'run'] + CI_ENV + [
             '--rm',
             '--name',
@@ -107,7 +108,7 @@ class OtbrDocker:
             '--volume',
             f'{self._rcp_device}:/dev/ttyUSB0',
             '-v',
-            '/tmp/codecov.bash:/tmp/codecov.bash',
+            '/tmp/coverage/:/tmp/coverage/',
             config.OTBR_DOCKER_IMAGE,
             '-B',
             config.BACKBONE_IFNAME,
@@ -160,10 +161,14 @@ class OtbrDocker:
             if COVERAGE or OTBR_COVERAGE:
                 self.bash('service otbr-agent stop')
 
-                codecov_cmd = 'bash /tmp/codecov.bash -Z'
+                test_name = os.getenv('TEST_NAME')
+                cov_file_path = f'/tmp/coverage/coverage-{test_name}-{PORT_OFFSET}-{self.nodeid}.info'
                 # Upload OTBR code coverage if OTBR_COVERAGE=1, otherwise OpenThread code coverage.
-                if not OTBR_COVERAGE:
-                    codecov_cmd += ' -R third_party/openthread/repo'
+                if OTBR_COVERAGE:
+                    codecov_cmd = f'lcov --directory . --capture --output-file {cov_file_path}'
+                else:
+                    codecov_cmd = ('lcov --directory build/otbr/third_party/openthread/repo --capture '
+                                   f'--output-file {cov_file_path}')
 
                 self.bash(codecov_cmd)
 
@@ -211,6 +216,9 @@ class OtbrDocker:
                 raise subprocess.CalledProcessError(proc.returncode, cmd, ''.join(lines))
             else:
                 return lines
+
+    def _setup_sysctl(self):
+        self.bash(f'sysctl net.ipv6.conf.{self.ETH_DEV}.accept_ra=2')
 
 
 class OtCli:
@@ -743,7 +751,10 @@ class NodeImpl:
         self.send_command(cmd)
         self._expect('Done')
 
-    def set_dua_iid(self, iid):
+    def set_dua_iid(self, iid: str):
+        assert len(iid) == 16
+        int(iid, 16)
+
         cmd = 'dua iid {}'.format(iid)
         self.send_command(cmd)
         self._expect('Done')
@@ -1915,8 +1926,29 @@ class NodeImpl:
         self.send_command(cmd)
         self._expect('Done')
 
+    def link_metrics_query_forward_tracking_series(self, dst_addr: str, series_id: int):
+        cmd = 'linkmetrics query %s forward %d' % (dst_addr, series_id)
+        self.send_command(cmd)
+        self._expect('Done')
+
+    def link_metrics_mgmt_req_forward_tracking_series(self, dst_addr: str, series_id: int, series_flags: str,
+                                                      metrics_flags: str):
+        cmd = "linkmetrics mgmt %s forward %d %s %s" % (dst_addr, series_id, series_flags, metrics_flags)
+        self.send_command(cmd)
+        self._expect('Done')
+
+    def link_metrics_send_link_probe(self, dst_addr: str, series_id: int, length: int):
+        cmd = "linkmetrics probe %s %d %d" % (dst_addr, series_id, length)
+        self.send_command(cmd)
+        self._expect('Done')
+
     def send_address_notification(self, dst: str, target: str, mliid: str):
         cmd = f'fake /a/an {dst} {target} {mliid}'
+        self.send_command(cmd)
+        self._expect("Done")
+
+    def send_proactive_backbone_notification(self, target: str, mliid: str, ltt: int):
+        cmd = f'fake /b/ba {target} {mliid} {ltt}'
         self.send_command(cmd)
         self._expect("Done")
 
@@ -1956,10 +1988,13 @@ class LinuxHost():
 
         assert False, output
 
-    def ping_ether(self, ipaddr, num_responses=1, size=None, timeout=5) -> int:
+    def ping_ether(self, ipaddr, num_responses=1, size=None, timeout=5, ttl=None) -> int:
         cmd = f'ping -6 {ipaddr} -I eth0 -c {num_responses} -W {timeout}'
         if size is not None:
             cmd += f' -s {size}'
+
+        if ttl is not None:
+            cmd += f' -t {ttl}'
 
         resp_count = 0
 
@@ -1986,16 +2021,29 @@ class LinuxHost():
         else:
             return super().ping(*args, **kwargs)
 
+    def ip_neighbors_flush(self):
+        # clear neigh cache on linux
+        self.bash(f'ip -6 neigh list dev {self.ETH_DEV}')
+        self.bash(f'ip -6 neigh flush nud all nud failed nud noarp dev {self.ETH_DEV}')
+        self.bash('ip -6 neigh list nud all dev %s | cut -d " " -f1 | sudo xargs -I{} ip -6 neigh delete {} dev %s' %
+                  (self.ETH_DEV, self.ETH_DEV))
+        self.bash(f'ip -6 neigh list dev {self.ETH_DEV}')
+
 
 class OtbrNode(LinuxHost, NodeImpl, OtbrDocker):
     is_otbr = True
     is_bbr = True  # OTBR is also BBR
+    node_type = 'otbr-docker'
 
     def __repr__(self):
         return f'Otbr<{self.nodeid}>'
 
     def get_addrs(self) -> List[str]:
         return super().get_addrs() + self.get_ether_addrs()
+
+    def start(self):
+        self._setup_sysctl()
+        super().start()
 
 
 class HostNode(LinuxHost, OtbrDocker):
@@ -2007,11 +2055,11 @@ class HostNode(LinuxHost, OtbrDocker):
         super().__init__(nodeid, **kwargs)
 
     def start(self):
-        # TODO: Use radvd to advertise the Domain Prefix on the Backbone link.
-        pass
+        self._setup_sysctl()
+        self._service_radvd_start()
 
     def stop(self):
-        pass
+        self._service_radvd_stop()
 
     def get_addrs(self) -> List[str]:
         return self.get_ether_addrs()
@@ -2034,6 +2082,31 @@ class HostNode(LinuxHost, OtbrDocker):
             return self._getBackboneGua()
         else:
             return None
+
+    def _service_radvd_start(self):
+        self.bash("""cat >/etc/radvd.conf <<EOF
+interface eth0
+{
+	AdvSendAdvert on;
+
+	MinRtrAdvInterval 3;
+	MaxRtrAdvInterval 30;
+	AdvDefaultPreference low;
+
+	prefix %s
+	{
+		AdvOnLink on;
+		AdvAutonomous off;
+		AdvRouterAddr off;
+	};
+};
+EOF
+""" % config.DOMAIN_PREFIX)
+        self.bash('service radvd start')
+        self.bash('service radvd status')  # Make sure radvd service is running
+
+    def _service_radvd_stop(self):
+        self.bash('service radvd stop')
 
 
 if __name__ == '__main__':
