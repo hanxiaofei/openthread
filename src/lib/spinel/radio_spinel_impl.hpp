@@ -256,6 +256,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::SoftReset(void)
     SuccessOrExit(error = Enable(mInstance));
     SuccessOrExit(error = SetExtendedAddress(mExtendedAddress));
 
+    Receive(mChannel);
     // Reset TX timeout
     mTxRadioEndUs = UINT64_MAX;
 
@@ -1080,7 +1081,7 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::GetIeeeEui64(uint8_t *aI
 template <typename InterfaceType, typename ProcessContextType>
 otError RadioSpinel<InterfaceType, ProcessContextType>::SetExtendedAddress(const otExtAddress &aExtAddress)
 {
-    otError error;
+    otError error = OT_ERROR_NONE;
 
     SuccessOrExit(error = Set(SPINEL_PROP_MAC_15_4_LADDR, SPINEL_DATATYPE_EUI64_S, aExtAddress.m8));
     mExtendedAddress = aExtAddress;
