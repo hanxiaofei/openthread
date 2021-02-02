@@ -37,10 +37,27 @@
 
 #include <openthread/border_router.h>
 
+#include "border_router/routing_manager.hpp"
 #include "common/debug.hpp"
 #include "common/instance.hpp"
 
 using namespace ot;
+
+#if OPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE
+otError otBorderRoutingInit(otInstance *aInstance, uint32_t aInfraIfIndex)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+
+    return instance.Get<BorderRouter::RoutingManager>().Init(aInfraIfIndex);
+}
+
+otError otBorderRoutingSetEnabled(otInstance *aInstance, bool aEnabled)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+
+    return instance.Get<BorderRouter::RoutingManager>().SetEnabled(aEnabled);
+}
+#endif
 
 otError otBorderRouterGetNetData(otInstance *aInstance, bool aStable, uint8_t *aData, uint8_t *aDataLength)
 {
@@ -53,24 +70,17 @@ otError otBorderRouterGetNetData(otInstance *aInstance, bool aStable, uint8_t *a
 
 otError otBorderRouterAddOnMeshPrefix(otInstance *aInstance, const otBorderRouterConfig *aConfig)
 {
-    otError                                error    = OT_ERROR_NONE;
+    otError                                error;
     Instance &                             instance = *static_cast<Instance *>(aInstance);
     const NetworkData::OnMeshPrefixConfig *config   = static_cast<const NetworkData::OnMeshPrefixConfig *>(aConfig);
 
     OT_ASSERT(aConfig != nullptr);
-    // Add Prefix validation check:
-    // Thread 1.1 Specification 5.13.2 says
-    // "A valid prefix MUST NOT allow both DHCPv6 and SLAAC for address configuration"
-    VerifyOrExit(!aConfig->mDhcp || !aConfig->mSlaac, error = OT_ERROR_INVALID_ARGS);
-    // RFC 4944 Section 6 says:
-    // An IPv6 address prefix used for stateless autoconfiguration [RFC4862]
-    // of an IEEE 802.15.4 interface MUST have a length of 64 bits.
-    VerifyOrExit(!aConfig->mSlaac || aConfig->mPrefix.mLength == OT_IP6_PREFIX_BITSIZE, error = OT_ERROR_INVALID_ARGS);
 
-    error = instance.Get<NetworkData::Local>().AddOnMeshPrefix(*config);
+    SuccessOrExit(error = instance.Get<NetworkData::Local>().AddOnMeshPrefix(*config));
+
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
-    // Only try to configure Domain Prefix after the parameter is vaidated via above `AddOnMeshPrefix()`.
-    if (error == OT_ERROR_NONE && aConfig->mDp)
+    // Only try to configure Domain Prefix after the parameter is validated via above `AddOnMeshPrefix()`.
+    if (aConfig->mDp)
     {
         // Restore local server data
         IgnoreError(instance.Get<NetworkData::Local>().RemoveOnMeshPrefix(config->GetPrefix()));

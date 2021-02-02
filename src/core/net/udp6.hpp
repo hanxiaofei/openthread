@@ -39,6 +39,7 @@
 #include <openthread/udp.h>
 #include <openthread/platform/udp.h>
 
+#include "common/clearable.hpp"
 #include "common/linked_list.hpp"
 #include "common/locator.hpp"
 #include "common/non_copyable.hpp"
@@ -70,7 +71,7 @@ public:
      * This class implements a UDP/IPv6 socket.
      *
      */
-    class SocketHandle : public otUdpSocket, public LinkedListEntry<SocketHandle>
+    class SocketHandle : public otUdpSocket, public LinkedListEntry<SocketHandle>, public Clearable<SocketHandle>
     {
         friend class Udp;
         friend class LinkedList<SocketHandle>;
@@ -585,6 +586,17 @@ public:
     }
 #endif
 
+    /**
+     * This method returns whether a udp port belongs to the platform or the stack.
+     *
+     * @param[in]   aPort       The udp port
+     *
+     * @retval True when the port belongs to the platform.
+     * @retval False when the port belongs to the stack.
+     *
+     */
+    bool ShouldUsePlatformUdp(uint16_t aPort) const;
+
 private:
     enum
     {
@@ -594,11 +606,14 @@ private:
 
     void AddSocket(SocketHandle &aSocket);
     void RemoveSocket(SocketHandle &aSocket);
-    bool IsMlePort(uint16_t aPort) const;
+#if OPENTHREAD_CONFIG_PLATFORM_UDP_ENABLE
+    bool ShouldUsePlatformUdp(const SocketHandle &aSocket) const;
+#endif
 
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
     void                SetBackboneSocket(SocketHandle &aSocket);
-    const SocketHandle *GetBackboneSockets(void);
+    const SocketHandle *GetBackboneSockets(void) const;
+    bool                IsBackboneSocket(const SocketHandle &aSocket) const;
 #endif
 
     uint16_t                 mEphemeralPort;

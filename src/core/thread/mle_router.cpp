@@ -67,7 +67,9 @@ MleRouter::MleRouter(Instance &aInstance)
     , mRouterUpgradeThreshold(kRouterUpgradeThreshold)
     , mRouterDowngradeThreshold(kRouterDowngradeThreshold)
     , mLeaderWeight(kLeaderWeight)
-    , mFixedLeaderPartitionId(0)
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+    , mPreferredLeaderPartitionId(0)
+#endif
     , mRouterEligible(true)
     , mAddressSolicitPending(false)
     , mAddressSolicitRejected(false)
@@ -191,7 +193,11 @@ otError MleRouter::BecomeLeader(void)
 
     mRouterTable.Clear();
 
-    partitionId = mFixedLeaderPartitionId ? mFixedLeaderPartitionId : Random::NonCrypto::GetUint32();
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+    partitionId = mPreferredLeaderPartitionId ? mPreferredLeaderPartitionId : Random::NonCrypto::GetUint32();
+#else
+    partitionId = Random::NonCrypto::GetUint32();
+#endif
 
     leaderId = IsRouterIdValid(mPreviousRouterId) ? mPreviousRouterId
                                                   : Random::NonCrypto::GetUint8InRange(0, kMaxRouterId + 1);
@@ -289,7 +295,8 @@ void MleRouter::HandleChildStart(AttachMode aMode)
             RemoveChildren();
         }
 
-        // fall through
+        OT_FALL_THROUGH;
+
     case kAttachBetter:
         if (HasChildren() && mPreviousPartitionIdRouter != mLeaderData.GetPartitionId())
         {
@@ -561,9 +568,6 @@ void MleRouter::HandleLinkRequest(const Message &aMessage, const Ip6::MessageInf
     LeaderData    leaderData;
     uint16_t      sourceAddress;
     RequestedTlvs requestedTlvs;
-#if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
-    TimeRequestTlv timeRequest;
-#endif
 
     Log(kMessageReceive, kTypeLinkRequest, aMessageInfo.GetPeerAddr());
 
@@ -647,14 +651,14 @@ void MleRouter::HandleLinkRequest(const Message &aMessage, const Ip6::MessageInf
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
     if (neighbor != nullptr)
     {
-        if (Tlv::FindTlv(aMessage, timeRequest) == OT_ERROR_NONE)
-        {
-            neighbor->SetTimeSyncEnabled(true);
-        }
-        else
-        {
-            neighbor->SetTimeSyncEnabled(false);
-        }
+        neighbor->SetTimeSyncEnabled(Tlv::Find<TimeRequestTlv>(aMessage, nullptr, 0) == OT_ERROR_NONE);
+    }
+#endif
+
+#if OPENTHREAD_CONFIG_MULTI_RADIO
+    if (neighbor != nullptr)
+    {
+        neighbor->ClearLastRxFragmentTag();
     }
 #endif
 
@@ -821,6 +825,8 @@ otError MleRouter::HandleLinkAccept(const Message &         aMessage,
     case Neighbor::kStateInvalid:
         VerifyOrExit((mChallengeTimeout > 0) && (response == mChallenge), error = OT_ERROR_SECURITY);
 
+        OT_FALL_THROUGH;
+
     case Neighbor::kStateValid:
         break;
 
@@ -938,7 +944,7 @@ otError MleRouter::HandleLinkAccept(const Message &         aMessage,
     aMessageInfo.GetPeerAddr().GetIid().ConvertToExtAddress(extAddr);
     router->SetExtAddress(extAddr);
     router->SetRloc16(sourceAddress);
-    router->SetLinkFrameCounter(linkFrameCounter);
+    router->GetLinkFrameCounters().SetAll(linkFrameCounter);
     router->SetLinkAckFrameCounter(linkFrameCounter);
     router->SetMleFrameCounter(mleFrameCounter);
     router->SetLastHeard(TimerMilli::GetNow());
@@ -1357,7 +1363,7 @@ otError MleRouter::HandleAdvertisement(const Message &         aMessage,
             mRouterSelectionJitterTimeout = 1 + Random::NonCrypto::GetUint8InRange(0, mRouterSelectionJitter);
         }
 
-        // fall through
+        OT_FALL_THROUGH;
 
     case kRoleLeader:
         router = mRouterTable.GetRouter(routerId);
@@ -1553,9 +1559,6 @@ void MleRouter::HandleParentRequest(const Message &aMessage, const Ip6::MessageI
     Challenge       challenge;
     Router *        leader;
     Child *         child;
-#if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
-    TimeRequestTlv timeRequest;
-#endif
 
     Log(kMessageReceive, kTypeParentRequest, aMessageInfo.GetPeerAddr());
 
@@ -1630,14 +1633,7 @@ void MleRouter::HandleParentRequest(const Message &aMessage, const Ip6::MessageI
         child->ResetLinkFailures();
         child->SetState(Neighbor::kStateParentRequest);
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
-        if (Tlv::FindTlv(aMessage, timeRequest) == OT_ERROR_NONE)
-        {
-            child->SetTimeSyncEnabled(true);
-        }
-        else
-        {
-            child->SetTimeSyncEnabled(false);
-        }
+        child->SetTimeSyncEnabled(Tlv::Find<TimeRequestTlv>(aMessage, nullptr, 0) == OT_ERROR_NONE);
 #endif
     }
     else if (TimerMilli::GetNow() - child->GetLastHeard() < kParentRequestRouterTimeout - kParentRequestDuplicateMargin)
@@ -1744,7 +1740,7 @@ void MleRouter::HandleTimeTick(void)
             ExitNow();
         }
 
-        // fall through
+        OT_FALL_THROUGH;
 
     case kRoleRouter:
         // verify path to leader
@@ -1793,7 +1789,7 @@ void MleRouter::HandleTimeTick(void)
             OT_UNREACHABLE_CODE(break);
         }
 
-#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+#if !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
         if (child.IsCslSynchronized() &&
             TimerMilli::GetNow() - child.GetCslLastHeard() >= Time::SecToMsec(child.GetCslTimeout()))
         {
@@ -1983,13 +1979,13 @@ otError MleRouter::UpdateChildAddresses(const Message &aMessage, uint16_t aOffse
     uint8_t                  storedCount     = 0;
     uint16_t                 offset          = 0;
     uint16_t                 end             = 0;
-#if OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
     Ip6::Address        oldDua;
     const Ip6::Address *oldDuaPtr = nullptr;
     bool                hasDua    = false;
 #endif
 
-#if OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
     Ip6::Address oldMlrRegisteredAddresses[OPENTHREAD_CONFIG_MLE_IP_ADDRS_PER_CHILD - 1];
     uint16_t     oldMlrRegisteredAddressNum = 0;
 #endif
@@ -2000,14 +1996,14 @@ otError MleRouter::UpdateChildAddresses(const Message &aMessage, uint16_t aOffse
     offset = aOffset + sizeof(tlv);
     end    = offset + tlv.GetLength();
 
-#if OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
     if ((oldDuaPtr = aChild.GetDomainUnicastAddress()) != nullptr)
     {
         oldDua = *oldDuaPtr;
     }
 #endif
 
-#if OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
     // Retrieve registered multicast addresses of the Child
     if (aChild.HasAnyMlrRegisteredAddress())
     {
@@ -2053,7 +2049,7 @@ otError MleRouter::UpdateChildAddresses(const Message &aMessage, uint16_t aOffse
             address.SetPrefix(context.mPrefix);
             address.SetIid(entry.GetIid());
 
-#if OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
             if (Get<BackboneRouter::Leader>().IsDomainUnicast(address))
             {
                 hasDua = true;
@@ -2132,7 +2128,7 @@ otError MleRouter::UpdateChildAddresses(const Message &aMessage, uint16_t aOffse
         // Clear EID-to-RLOC cache for the unicast address registered by the child.
         Get<AddressResolver>().Remove(address);
     }
-#if OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
     // Dua is removed
     if (oldDuaPtr != nullptr && !hasDua)
     {
@@ -2140,7 +2136,7 @@ otError MleRouter::UpdateChildAddresses(const Message &aMessage, uint16_t aOffse
     }
 #endif
 
-#if OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
     Get<MlrManager>().UpdateProxiedSubscriptions(aChild, oldMlrRegisteredAddresses, oldMlrRegisteredAddressNum);
 #endif
 
@@ -2262,7 +2258,7 @@ void MleRouter::HandleChildIdRequest(const Message &         aMessage,
     }
 
     child->SetLastHeard(TimerMilli::GetNow());
-    child->SetLinkFrameCounter(linkFrameCounter);
+    child->GetLinkFrameCounters().SetAll(linkFrameCounter);
     child->SetLinkAckFrameCounter(linkFrameCounter);
     child->SetMleFrameCounter(mleFrameCounter);
     child->SetKeySequence(aKeySequence);
@@ -2270,6 +2266,9 @@ void MleRouter::HandleChildIdRequest(const Message &         aMessage,
     child->SetVersion(static_cast<uint8_t>(version));
     child->GetLinkInfo().AddRss(aMessageInfo.GetThreadLinkInfo()->GetRss());
     child->SetTimeout(timeout);
+#if OPENTHREAD_CONFIG_MULTI_RADIO
+    child->ClearLastRxFragmentTag();
+#endif
 
     if (mode.IsFullNetworkData())
     {
@@ -2450,7 +2449,7 @@ void MleRouter::HandleChildUpdateRequest(const Message &         aMessage,
         ExitNow(error = OT_ERROR_PARSE);
     }
 
-#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+#if !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
     if (child->IsCslSynchronized())
     {
         CslChannelTlv cslChannel;
@@ -2471,7 +2470,7 @@ void MleRouter::HandleChildUpdateRequest(const Message &         aMessage,
             child->SetCslChannel(0);
         }
     }
-#endif // OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+#endif // !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
 
     child->SetLastHeard(TimerMilli::GetNow());
 
@@ -2481,6 +2480,14 @@ void MleRouter::HandleChildUpdateRequest(const Message &         aMessage,
                      child->GetDeviceMode().Get(), child->GetDeviceMode().ToString().AsCString());
 
         childDidChange = true;
+
+#if !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+        if (child->IsRxOnWhenIdle())
+        {
+            // Clear CSL synchronization state
+            child->SetCslSynchronized(false);
+        }
+#endif
 
         // The `IndirectSender::HandleChildModeChange()` needs to happen
         // after "Child Update" message is fully parsed to ensure that
@@ -2502,6 +2509,10 @@ void MleRouter::HandleChildUpdateRequest(const Message &         aMessage,
             IgnoreError(mChildTable.StoreChild(*child));
         }
     }
+
+#if OPENTHREAD_CONFIG_MULTI_RADIO
+    child->ClearLastRxFragmentTag();
+#endif
 
     SendChildUpdateResponse(child, aMessageInfo, tlvs, tlvslength, challenge);
 
@@ -2584,7 +2595,7 @@ void MleRouter::HandleChildUpdateResponse(const Message &         aMessage,
     switch (Tlv::Find<LinkFrameCounterTlv>(aMessage, linkFrameCounter))
     {
     case OT_ERROR_NONE:
-        child->SetLinkFrameCounter(linkFrameCounter);
+        child->GetLinkFrameCounters().SetAll(linkFrameCounter);
         child->SetLinkAckFrameCounter(linkFrameCounter);
         break;
     case OT_ERROR_NOT_FOUND:
@@ -2863,13 +2874,13 @@ void MleRouter::HandleDiscoveryRequest(const Message &aMessage, const Ip6::Messa
         }
     }
 
-    error = SendDiscoveryResponse(aMessageInfo.GetPeerAddr(), aMessage.GetPanId());
+    error = SendDiscoveryResponse(aMessageInfo.GetPeerAddr(), aMessage);
 
 exit:
     LogProcessError(kTypeDiscoveryRequest, error);
 }
 
-otError MleRouter::SendDiscoveryResponse(const Ip6::Address &aDestination, uint16_t aPanId)
+otError MleRouter::SendDiscoveryResponse(const Ip6::Address &aDestination, const Message &aDiscoverRequestMessage)
 {
     otError                       error = OT_ERROR_NONE;
     Message *                     message;
@@ -2881,7 +2892,13 @@ otError MleRouter::SendDiscoveryResponse(const Ip6::Address &aDestination, uint1
 
     VerifyOrExit((message = NewMleMessage()) != nullptr, error = OT_ERROR_NO_BUFS);
     message->SetSubType(Message::kSubTypeMleDiscoverResponse);
-    message->SetPanId(aPanId);
+    message->SetPanId(aDiscoverRequestMessage.GetPanId());
+#if OPENTHREAD_CONFIG_MULTI_RADIO
+    // Send the MLE Discovery Response message on same radio link
+    // from which the "MLE Discover Request" message was received.
+    message->SetRadioType(aDiscoverRequestMessage.GetRadioType());
+#endif
+
     SuccessOrExit(error = AppendHeader(*message, kCommandDiscoveryResponse));
 
     // Discovery TLV
@@ -4038,11 +4055,11 @@ void MleRouter::FillRouteTlv(RouteTlv &aTlv, Neighbor *aNeighbor)
 
         routerCount = mRouterTable.GetActiveRouterCount();
 
-        if (routerCount > RouteTlv::kLinkAcceptMaxRouters)
+        if (routerCount > kLinkAcceptMaxRouters)
         {
             for (uint8_t routerId = 0; routerId <= kMaxRouterId; routerId++)
             {
-                if (routerCount <= RouteTlv::kLinkAcceptMaxRouters)
+                if (routerCount <= kLinkAcceptMaxRouters)
                 {
                     break;
                 }
@@ -4065,7 +4082,7 @@ void MleRouter::FillRouteTlv(RouteTlv &aTlv, Neighbor *aNeighbor)
 
             // Ensure that the neighbor will process the current
             // Route64 TLV in a subsequent message exchange
-            routerIdSequence -= RouteTlv::kLinkAcceptSequenceRollback;
+            routerIdSequence -= kLinkAcceptSequenceRollback;
         }
     }
 
@@ -4230,10 +4247,8 @@ bool MleRouter::HasOneNeighborWithComparableConnectivity(const RouteTlv &aRoute,
                     routerCount++;
                     continue;
                 }
-                else
-                {
-                    ExitNow(rval = false);
-                }
+
+                ExitNow(rval = false);
             }
         }
 
@@ -4251,7 +4266,7 @@ void MleRouter::SetChildStateToValid(Child &aChild)
     aChild.SetState(Neighbor::kStateValid);
     IgnoreError(mChildTable.StoreChild(aChild));
 
-#if OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
     Get<MlrManager>().UpdateProxiedSubscriptions(aChild, nullptr, 0);
 #endif
 

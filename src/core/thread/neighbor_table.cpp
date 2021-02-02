@@ -137,21 +137,21 @@ Neighbor *NeighborTable::FindChildOrRouter(const Neighbor::AddressMatcher &aMatc
 Neighbor *NeighborTable::FindNeighbor(const Ip6::Address &aIp6Address, Neighbor::StateFilter aFilter)
 {
     Neighbor *   neighbor = nullptr;
-    Mac::Address macAddresss;
+    Mac::Address macAddress;
 
     if (aIp6Address.IsLinkLocal())
     {
-        aIp6Address.GetIid().ConvertToMacAddress(macAddresss);
+        aIp6Address.GetIid().ConvertToMacAddress(macAddress);
     }
 
     if (Get<Mle::Mle>().IsRoutingLocator(aIp6Address))
     {
-        macAddresss.SetShort(aIp6Address.GetIid().GetLocator());
+        macAddress.SetShort(aIp6Address.GetIid().GetLocator());
     }
 
-    if (!macAddresss.IsNone())
+    if (!macAddress.IsNone())
     {
-        neighbor = FindChildOrRouter(Neighbor::AddressMatcher(macAddresss, aFilter));
+        neighbor = FindChildOrRouter(Neighbor::AddressMatcher(macAddress, aFilter));
         ExitNow();
     }
 
@@ -291,7 +291,7 @@ void NeighborTable::Signal(Event aEvent, const Neighbor &aNeighbor)
 
     case OT_NEIGHBOR_TABLE_EVENT_CHILD_REMOVED:
         Get<Notifier>().Signal(kEventThreadChildRemoved);
-#if OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
         Get<DuaManager>().UpdateChildDomainUnicastAddress(static_cast<const Child &>(aNeighbor),
                                                           Mle::ChildDuaState::kRemoved);
 #endif

@@ -292,7 +292,10 @@
  *
  * ---------------------------------------------------------------------------
  *
- *   Spinel definition guideline:
+ *   Spinel definition compatibility guideline:
+ *
+ *   The compatibility policy for NCP versus RCP and host side are handled
+ *   differently in spinel.
  *
  *   New NCP firmware should work with an older host driver, i.e., NCP
  *   implementation should remain backward compatible.
@@ -304,6 +307,24 @@
  *      a struct) as long as the NCP implementation treats the new fields as
  *      optional (i.e., a driver not aware of and therefore not using the
  *      new fields should continue to function as before).
+ *
+ * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ *
+ *   For RCP and host, the "RCP API Version" numbers are used to check the
+ *   compatibility between host implementation and RCP firmware. Generally,
+ *   a newer host side implementation would work with a range of previous
+ *   or older RCP firmware versions.
+ *
+ *   - SPINEL_RCP_API_VERSION specifies the current spinel RCP API version.
+ *     This number MUST be incremented anytime there is a change in any of RCP
+ *     specific spinel definitions.
+ *
+ *   - SPINEL_MIN_HOST_SUPPORTED_RCP_API_VERSION specifies the minimum spinel
+ *     RCP API Version which is supported by the host-side implementation.
+ *
+ *   - On start, host implementation queries the RCP API version and accepts
+ *     any version number from SPINEL_MIN_HOST_SUPPORTED_RCP_API_VERSION up to
+ *     and including SPINEL_RCP_API_VERSION.
  *
  * ---------------------------------------------------------------------------
  */
@@ -344,6 +365,31 @@
 
 #define SPINEL_PROTOCOL_VERSION_THREAD_MAJOR 4
 #define SPINEL_PROTOCOL_VERSION_THREAD_MINOR 3
+
+/**
+ * @def SPINEL_RCP_API_VERSION
+ *
+ * The RCP API version number.
+ *
+ * This number MUST increase by one each time any of the spinel definitions used by RCP change (independent of whether
+ * the change is backward-compatible or not).
+ *
+ * Please see section "Spinel definition compatibility guideline" for more details.
+ *
+ */
+#define SPINEL_RCP_API_VERSION 3
+
+/**
+ * @def SPINEL_MIN_HOST_SUPPORTED_RCP_API_VERSION
+ *
+ * The minimum RCP API version supported by the host implementation.
+ *
+ * This number MUST increase when there is a non-compatible RCP spinel related change on host implementation.
+ *
+ * Please see section "Spinel definition compatibility guideline" for more details.
+ *
+ */
+#define SPINEL_MIN_HOST_SUPPORTED_RCP_API_VERSION 1
 
 /**
  * @def SPINEL_FRAME_MAX_SIZE
@@ -646,6 +692,9 @@ enum
     SPINEL_NCP_LOG_REGION_OT_BBR      = 17,
     SPINEL_NCP_LOG_REGION_OT_MLR      = 18,
     SPINEL_NCP_LOG_REGION_OT_DUA      = 19,
+    SPINEL_NCP_LOG_REGION_OT_BR       = 20,
+    SPINEL_NCP_LOG_REGION_OT_SRP      = 21,
+    SPINEL_NCP_LOG_REGION_OT_DNS      = 22,
 };
 
 enum
@@ -662,6 +711,38 @@ enum
     SPINEL_ADDRESS_CACHE_ENTRY_STATE_QUERY       = 2, // Entry represents an ongoing query for the EID.
     SPINEL_ADDRESS_CACHE_ENTRY_STATE_RETRY_QUERY = 3, // Entry is in retry mode (a prior query did not  a response).
 };
+
+enum
+{
+    SPINEL_RADIO_LINK_IEEE_802_15_4 = 0,
+    SPINEL_RADIO_LINK_TREL_UDP6     = 1,
+};
+
+typedef enum
+{
+    SPINEL_SRP_CLIENT_ITEM_STATE_TO_ADD     = 0, // Item to be added/registered.
+    SPINEL_SRP_CLIENT_ITEM_STATE_ADDING     = 1, // Item is being added/registered.
+    SPINEL_SRP_CLIENT_ITEM_STATE_TO_REFRESH = 2, // Item to be refreshed (re-register to renew lease).
+    SPINEL_SRP_CLIENT_ITEM_STATE_REFRESHING = 3, // Item is being refreshed.
+    SPINEL_SRP_CLIENT_ITEM_STATE_TO_REMOVE  = 4, // Item to be removed.
+    SPINEL_SRP_CLIENT_ITEM_STATE_REMOVING   = 5, // Item is being removed.
+    SPINEL_SRP_CLIENT_ITEM_STATE_REGISTERED = 6, // Item is registered with server.
+    SPINEL_SRP_CLIENT_ITEM_STATE_REMOVED    = 7, // Item is removed.
+} spinel_srp_client_item_state_t;
+
+typedef enum
+{
+    SPINEL_SRP_CLIENT_ERROR_NONE             = 0, // No error.
+    SPINEL_SRP_CLIENT_ERROR_PARSE            = 1, // Server unable to interpret due to format error.
+    SPINEL_SRP_CLIENT_ERROR_FAILED           = 2, // Server encountered an internal failure.
+    SPINEL_SRP_CLIENT_ERROR_NOT_FOUND        = 3, // Name that ought to exist, does not exists.
+    SPINEL_SRP_CLIENT_ERROR_NOT_IMPLEMENTED  = 4, // Server does not support the query type.
+    SPINEL_SRP_CLIENT_ERROR_SECURITY         = 5, // Service is not authoritative for zone.
+    SPINEL_SRP_CLIENT_ERROR_DUPLICATED       = 6, // Some name that ought not to exist, does exist.
+    SPINEL_SRP_CLIENT_ERROR_RESPONSE_TIMEOUT = 7, // Timed out waiting for response from server (client would retry).
+    SPINEL_SRP_CLIENT_ERROR_INVALID_ARGS     = 8, // Invalid args (e.g., bad service name or TXT-DATA).
+    SPINEL_SRP_CLIENT_ERROR_NO_BUFS          = 9, // No buffer to send the SRP update message.
+} spinel_srp_client_error_t;
 
 typedef struct
 {
@@ -1079,6 +1160,10 @@ enum
     SPINEL_CAP_NET_THREAD_1_1 = (SPINEL_CAP_NET__BEGIN + 1),
     SPINEL_CAP_NET__END       = 64,
 
+    SPINEL_CAP_RCP__BEGIN      = 64,
+    SPINEL_CAP_RCP_API_VERSION = (SPINEL_CAP_RCP__BEGIN + 0),
+    SPINEL_CAP_RCP__END        = 80,
+
     SPINEL_CAP_OPENTHREAD__BEGIN       = 512,
     SPINEL_CAP_MAC_ALLOWLIST           = (SPINEL_CAP_OPENTHREAD__BEGIN + 0),
     SPINEL_CAP_MAC_RAW                 = (SPINEL_CAP_OPENTHREAD__BEGIN + 1),
@@ -1093,6 +1178,8 @@ enum
     SPINEL_CAP_SLAAC                   = (SPINEL_CAP_OPENTHREAD__BEGIN + 10),
     SPINEL_CAP_RADIO_COEX              = (SPINEL_CAP_OPENTHREAD__BEGIN + 11),
     SPINEL_CAP_MAC_RETRY_HISTOGRAM     = (SPINEL_CAP_OPENTHREAD__BEGIN + 12),
+    SPINEL_CAP_MULTI_RADIO             = (SPINEL_CAP_OPENTHREAD__BEGIN + 13),
+    SPINEL_CAP_SRP_CLIENT              = (SPINEL_CAP_OPENTHREAD__BEGIN + 14),
     SPINEL_CAP_OPENTHREAD__END         = 640,
 
     SPINEL_CAP_THREAD__BEGIN        = 1024,
@@ -1137,10 +1224,11 @@ typedef uint32_t spinel_capability_t;
  *    MeshCop      | 0x080 - 0x08F, 0x1800 - 0x18FF | Thread Mesh Commissioning
  *    OpenThread   |                0x1900 - 0x19FF | OpenThread specific
  *    Server       | 0x0A0 - 0x0AF                  | ALOC Service Server
+ *    RCP          | 0x0B0 - 0x0FF                  | RCP specific
  *    Interface    | 0x100 - 0x1FF                  | Interface (e.g., UART)
  *    PIB          | 0x400 - 0x4FF                  | 802.15.4 PIB
  *    Counter      | 0x500 - 0x7FF                  | Counters (MAC, IP, etc).
- *    RCP          | 0x800 - 0x8FF                  | RCP specific property
+ *    RCP          | 0x800 - 0x8FF                  | RCP specific property (extended)
  *    Nest         |                0x3BC0 - 0x3BFF | Nest (legacy)
  *    Vendor       |                0x3C00 - 0x3FFF | Vendor specific
  *    Debug        |                0x4000 - 0x43FF | Debug related
@@ -1517,7 +1605,22 @@ enum
     SPINEL_PROP_PHY_PCAP_ENABLED   = SPINEL_PROP_PHY__BEGIN + 8,  ///< [b]
     SPINEL_PROP_PHY_CHAN_PREFERRED = SPINEL_PROP_PHY__BEGIN + 9,  ///< [A(C)]
     SPINEL_PROP_PHY_FEM_LNA_GAIN   = SPINEL_PROP_PHY__BEGIN + 10, ///< dBm [c]
-    SPINEL_PROP_PHY__END           = 0x30,
+
+    /// Signal the max power for a channel
+    /** Format: `Cc`
+     *
+     * First byte is the channel then the max transmit power, write-only.
+     */
+    SPINEL_PROP_PHY_CHAN_MAX_POWER = SPINEL_PROP_PHY__BEGIN + 11,
+    /// Region code
+    /** Format: `S`
+     *
+     * The ascii representation of the ISO 3166 alpha-2 code.
+     *
+     */
+    SPINEL_PROP_PHY_REGION_CODE = SPINEL_PROP_PHY__BEGIN + 12,
+
+    SPINEL_PROP_PHY__END = 0x30,
 
     SPINEL_PROP_PHY_EXT__BEGIN = 0x1200,
 
@@ -3533,6 +3636,171 @@ enum
      */
     SPINEL_PROP_SLAAC_ENABLED = SPINEL_PROP_OPENTHREAD__BEGIN + 14,
 
+    // Supported Radio Links (by device)
+    /**
+     * Format `A(i)` - Read only
+     *
+     * This property returns list of supported radio links by the device itself. Enumeration `SPINEL_RADIO_LINK_{TYPE}`
+     * values indicate different radio link types.
+     *
+     */
+    SPINEL_PROP_SUPPORTED_RADIO_LINKS = SPINEL_PROP_OPENTHREAD__BEGIN + 15,
+
+    /// Neighbor Table Multi Radio Link Info
+    /** Format: `A(t(ESA(t(iC))))` - Read only
+     * Required capability: `SPINEL_CAP_MULTI_RADIO`.
+     *
+     * Each item represents info about a neighbor:
+     *
+     *  `E`: Neighbor's Extended Address
+     *  `S`: Neighbor's RLOC16
+     *
+     *  This is then followed by an array of radio link info structures indicating which radio links are supported by
+     *  the neighbor:
+     *
+     *    `i` : Radio link type (enumeration `SPINEL_RADIO_LINK_{TYPE}`).
+     *    `C` : Preference value associated with radio link.
+     *
+     */
+    SPINEL_PROP_NEIGHBOR_TABLE_MULTI_RADIO_INFO = SPINEL_PROP_OPENTHREAD__BEGIN + 16,
+
+    /// SRP Client Start
+    /** Format: `b(6Sb)` - Write only
+     * Required capability: `SPINEL_CAP_SRP_CLIENT`.
+     *
+     * Writing to this property allows user to start or stop the SRP client operation with a given SRP server.
+     *
+     * Written value format is:
+     *
+     *   `b` : TRUE to start the client, FALSE to stop the client.
+     *
+     * When used to start the SRP client, the following fields should also be included:
+     *
+     *   `6` : SRP server IPv6 address.
+     *   `U` : SRP server port number.
+     *   `b` : Boolean to indicate whether or not to emit SRP client events (using `SPINEL_PROP_SRP_CLIENT_EVENT`).
+     *
+     */
+    SPINEL_PROP_SRP_CLIENT_START = SPINEL_PROP_OPENTHREAD__BEGIN + 17,
+
+    /// SRP Client Lease Interval
+    /** Format: `L` - Read/Write
+     * Required capability: `SPINEL_CAP_SRP_CLIENT`.
+     *
+     * The lease interval used in SRP update requests (in seconds).
+     *
+     */
+    SPINEL_PROP_SRP_CLIENT_LEASE_INTERVAL = SPINEL_PROP_OPENTHREAD__BEGIN + 18,
+
+    /// SRP Client Key Lease Interval
+    /** Format: `L` - Read/Write
+     * Required capability: `SPINEL_CAP_SRP_CLIENT`.
+     *
+     * The key lease interval used in SRP update requests (in seconds).
+     *
+     */
+    SPINEL_PROP_SRP_CLIENT_KEY_LEASE_INTERVAL = SPINEL_PROP_OPENTHREAD__BEGIN + 19,
+
+    /// SRP Client Host Info
+    /** Format: `UCt(A(6))` - Read only
+     * Required capability: `SPINEL_CAP_SRP_CLIENT`.
+     *
+     * Format is:
+     *
+     *   `U`       : The host name.
+     *   `C`       : The host state (values from `spinel_srp_client_item_state_t`).
+     *   `t(A(6))` : Structure containing array of host IPv6 addresses.
+     *
+     */
+    SPINEL_PROP_SRP_CLIENT_HOST_INFO = SPINEL_PROP_OPENTHREAD__BEGIN + 20,
+
+    /// SRP Client Host Name (label).
+    /** Format: `U` - Read/Write
+     * Required capability: `SPINEL_CAP_SRP_CLIENT`.
+     *
+     */
+    SPINEL_PROP_SRP_CLIENT_HOST_NAME = SPINEL_PROP_OPENTHREAD__BEGIN + 21,
+
+    /// SRP Client Host Addresses
+    /** Format: `A(6)` - Read/Write
+     * Required capability: `SPINEL_CAP_SRP_CLIENT`.
+     *
+     */
+    SPINEL_PROP_SRP_CLIENT_HOST_ADDRESSES = SPINEL_PROP_OPENTHREAD__BEGIN + 22,
+
+    /// SRP Client Services
+    /** Format: `A(t(UUSSSd))` - Read/Insert/Remove
+     * Required capability: `SPINEL_CAP_SRP_CLIENT`.
+     *
+     * This property provide a list/array of services. Data per item is
+     *
+     *   `U` : The service name labels (e.g., "_chip._udp", not the full domain name.
+     *   `U` : The service instance name label (not the full name).
+     *   `S` : The service port number.
+     *   `S` : The service priority.
+     *   `S` : The service weight.
+     *
+     * During remove operation, only service name and service instance name would be used.
+     *
+     */
+    SPINEL_PROP_SRP_CLIENT_SERVICES = SPINEL_PROP_OPENTHREAD__BEGIN + 23,
+
+    /// SRP Client Host And Services Remove
+    /** Format: `b` : Write only
+     * Required capability: `SPINEL_CAP_SRP_CLIENT`.
+     *
+     * Writing to this property starts the remove process of the host info and all services.
+     * Please see `otSrpClientRemoveHostAndServices()` for more details.
+     *
+     * Format is:
+     *
+     *    `b` : A boolean indicating whether or not the host key lease should also be removed.
+     *
+     */
+    SPINEL_PROP_SRP_CLIENT_HOST_SERVICES_REMOVE = SPINEL_PROP_OPENTHREAD__BEGIN + 24,
+
+    /// SRP Client Host And Services Clear
+    /** Format: Empty : Write only
+     * Required capability: `SPINEL_CAP_SRP_CLIENT`.
+     *
+     * Writing to this property clears all host info and all the services.
+     * Please see `otSrpClientClearHostAndServices()` for more details.
+     *
+     */
+    SPINEL_PROP_SRP_CLIENT_HOST_SERVICES_CLEAR = SPINEL_PROP_OPENTHREAD__BEGIN + 25,
+
+    /// SRP Client Event
+    /** Format: t() : Asynchronous event only
+     * Required capability: `SPINEL_CAP_SRP_CLIENT`.
+     *
+     * This property is asynchronously emitted when there is an event from SRP client notifying some state changes or
+     * errors.
+     *
+     * The general format of this property is as follows:
+     *
+     *    `S` : Error code (see `spinel_srp_client_error_t` enumeration).
+     *    `d` : Host info data.
+     *    `d` : Active services.
+     *    `d` : Removed services.
+     *
+     * The host info data contains:
+     *
+     *   `U`       : The host name.
+     *   `C`       : The host state (values from `spinel_srp_client_item_state_t`).
+     *   `t(A(6))` : Structure containing array of host IPv6 addresses.
+     *
+     * The active or removed services data is an array of services `A(t(UUSSSd))` with each service format:
+     *
+     *   `U` : The service name labels (e.g., "_chip._udp", not the full domain name.
+     *   `U` : The service instance name label (not the full name).
+     *   `S` : The service port number.
+     *   `S` : The service priority.
+     *   `S` : The service weight.
+     *   `d` : The encoded TXT-DATA.
+     *
+     */
+    SPINEL_PROP_SRP_CLIENT_EVENT = SPINEL_PROP_OPENTHREAD__BEGIN + 26,
+
     SPINEL_PROP_OPENTHREAD__END = 0x2000,
 
     SPINEL_PROP_SERVER__BEGIN = 0xA0,
@@ -3584,6 +3852,22 @@ enum
     SPINEL_PROP_SERVER_LEADER_SERVICES = SPINEL_PROP_SERVER__BEGIN + 2,
 
     SPINEL_PROP_SERVER__END = 0xB0,
+
+    SPINEL_PROP_RCP__BEGIN = 0xB0,
+
+    /// RCP API Version number
+    /** Format: `i` (read-only)
+     *
+     * Required capability: SPINEL_CAP_RADIO and SPINEL_CAP_RCP_API_VERSION.
+     *
+     * This property gives the RCP API Version number.
+     *
+     * Please see "Spinel definition compatibility guideline" section.
+     *
+     */
+    SPINEL_PROP_RCP_API_VERSION = SPINEL_PROP_RCP__BEGIN + 0,
+
+    SPINEL_PROP_RCP__END = 0xFF,
 
     SPINEL_PROP_INTERFACE__BEGIN = 0x100,
 
@@ -3973,7 +4257,7 @@ enum
 
     SPINEL_PROP_CNTR__END = 0x800,
 
-    SPINEL_PROP_RCP__BEGIN = 0x800,
+    SPINEL_PROP_RCP_EXT__BEGIN = 0x800,
 
     /// MAC Key
     /** Format: `CCddd`.
@@ -3987,7 +4271,7 @@ enum
      * The Spinel property is used to set/get MAC key materials to and from RCP.
      *
      */
-    SPINEL_PROP_RCP_MAC_KEY = SPINEL_PROP_RCP__BEGIN + 0,
+    SPINEL_PROP_RCP_MAC_KEY = SPINEL_PROP_RCP_EXT__BEGIN + 0,
 
     /// MAC Frame Counter
     /** Format: `L`.
@@ -3997,7 +4281,7 @@ enum
      * The Spinel property is used to set MAC frame counter to RCP.
      *
      */
-    SPINEL_PROP_RCP_MAC_FRAME_COUNTER = SPINEL_PROP_RCP__BEGIN + 1,
+    SPINEL_PROP_RCP_MAC_FRAME_COUNTER = SPINEL_PROP_RCP_EXT__BEGIN + 1,
 
     /// Timestamps when Spinel frame is received and transmitted
     /** Format: `X`.
@@ -4007,9 +4291,9 @@ enum
      * The Spinel property is used to get timestamp from RCP to calculate host and RCP timer difference.
      *
      */
-    SPINEL_PROP_RCP_TIMESTAMP = SPINEL_PROP_RCP__BEGIN + 2,
+    SPINEL_PROP_RCP_TIMESTAMP = SPINEL_PROP_RCP_EXT__BEGIN + 2,
 
-    SPINEL_PROP_RCP__END = 0x900,
+    SPINEL_PROP_RCP_EXT__END = 0x900,
 
     SPINEL_PROP_NEST__BEGIN = 0x3BC0,
 
@@ -4061,6 +4345,18 @@ enum
      *
      */
     SPINEL_PROP_DEBUG_LOG_TIMESTAMP_BASE = SPINEL_PROP_DEBUG__BEGIN + 3,
+
+    /// TREL Radio Link - test mode enable
+    /** Format `b` (read-write)
+     *
+     * This property is intended for testing TREL (Thread Radio Encapsulation Link) radio type only (during simulation).
+     * It allows the TREL interface to be temporarily disabled and (re)enabled.  While disabled all traffic through
+     * TREL interface is dropped silently (to emulate a radio/interface down scenario).
+     *
+     * This property is only available when the TREL radio link type is supported.
+     *
+     */
+    SPINEL_PROP_DEBUG_TREL_TEST_MODE_ENABLE = SPINEL_PROP_DEBUG__BEGIN + 4,
 
     SPINEL_PROP_DEBUG__END = 0x4400,
 
@@ -4252,6 +4548,8 @@ SPINEL_API_EXTERN const char *spinel_mcu_power_state_to_cstr(uint8_t mcu_power_s
 SPINEL_API_EXTERN const char *spinel_status_to_cstr(spinel_status_t status);
 
 SPINEL_API_EXTERN const char *spinel_capability_to_cstr(spinel_capability_t capability);
+
+SPINEL_API_EXTERN const char *spinel_radio_link_to_cstr(uint32_t radio);
 
 // ----------------------------------------------------------------------------
 

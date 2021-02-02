@@ -242,11 +242,11 @@ void Leader::UpdateBackboneRouterPrimary(void)
     Get<BackboneRouter::Local>().HandleBackboneRouterPrimaryUpdate(state, mConfig);
 #endif
 
-#if OPENTHREAD_CONFIG_MLR_ENABLE || OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
+#if OPENTHREAD_CONFIG_MLR_ENABLE || (OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE)
     Get<MlrManager>().HandleBackboneRouterPrimaryUpdate(state, mConfig);
 #endif
 
-#if OPENTHREAD_CONFIG_DUA_ENABLE || OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
+#if OPENTHREAD_CONFIG_DUA_ENABLE || (OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE)
     Get<DuaManager>().HandleBackboneRouterPrimaryUpdate(state, mConfig);
 #endif
 }
@@ -302,10 +302,12 @@ void Leader::UpdateDomainPrefixConfig(void)
 
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
     Get<Local>().HandleDomainPrefixUpdate(state);
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_DUA_NDPROXYING_ENABLE
     Get<NdProxyTable>().HandleDomainPrefixUpdate(state);
 #endif
+#endif
 
-#if OPENTHREAD_CONFIG_DUA_ENABLE || OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
+#if OPENTHREAD_CONFIG_DUA_ENABLE || (OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE)
     Get<DuaManager>().HandleDomainPrefixUpdate(state);
 #endif
 }

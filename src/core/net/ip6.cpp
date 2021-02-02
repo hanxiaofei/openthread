@@ -51,6 +51,13 @@
 #include "net/udp6.hpp"
 #include "thread/mle.hpp"
 
+using IcmpType = ot::Ip6::Icmp::Header::Type;
+
+static const IcmpType sForwardICMPTypes[] = {
+    IcmpType::kTypeDstUnreach,       IcmpType::kTypePacketToBig, IcmpType::kTypeTimeExceeded,
+    IcmpType::kTypeParameterProblem, IcmpType::kTypeEchoRequest, IcmpType::kTypeEchoReply,
+};
+
 namespace ot {
 namespace Ip6 {
 
@@ -455,8 +462,7 @@ otError Ip6::SendDatagram(Message &aMessage, MessageInfo &aMessageInfo, uint8_t 
         header.SetHopLimit(static_cast<uint8_t>(kDefaultHopLimit));
     }
 
-    if (aMessageInfo.GetSockAddr().IsUnspecified() || aMessageInfo.GetSockAddr().IsMulticast() ||
-        Get<Mle::Mle>().IsAnycastLocator(aMessageInfo.GetSockAddr()))
+    if (aMessageInfo.GetSockAddr().IsUnspecified() || aMessageInfo.GetSockAddr().IsMulticast())
     {
         const NetifUnicastAddress *source = SelectSourceAddress(aMessageInfo);
 
@@ -501,6 +507,8 @@ otError Ip6::SendDatagram(Message &aMessage, MessageInfo &aMessageInfo, uint8_t 
         SuccessOrExit(error = AddTunneledMplOption(aMessage, header, aMessageInfo));
     }
 
+    aMessage.SetMulticastLoop(aMessageInfo.GetMulticastLoop());
+
     if (aMessage.GetLength() > kMaxDatagramLength)
     {
         error = FragmentDatagram(aMessage, aIpProto);
@@ -531,7 +539,7 @@ void Ip6::HandleSendQueue(void)
     }
 }
 
-otError Ip6::HandleOptions(Message &aMessage, Header &aHeader, bool &aForward)
+otError Ip6::HandleOptions(Message &aMessage, Header &aHeader, bool aIsOutbound, bool &aReceive)
 {
     otError        error = OT_ERROR_NONE;
     HopByHopHeader hbhHeader;
@@ -561,7 +569,7 @@ otError Ip6::HandleOptions(Message &aMessage, Header &aHeader, bool &aForward)
         switch (optionHeader.GetType())
         {
         case OptionMpl::kType:
-            SuccessOrExit(error = mMpl.ProcessOption(aMessage, aHeader.GetSource(), aForward));
+            SuccessOrExit(error = mMpl.ProcessOption(aMessage, aHeader.GetSource(), aIsOutbound, aReceive));
             break;
 
         default:
@@ -888,9 +896,9 @@ otError Ip6::HandleExtensionHeaders(Message &    aMessage,
                                     MessageInfo &aMessageInfo,
                                     Header &     aHeader,
                                     uint8_t &    aNextHeader,
-                                    bool         aForward,
+                                    bool         aIsOutbound,
                                     bool         aFromNcpHost,
-                                    bool         aReceive)
+                                    bool &       aReceive)
 {
     otError         error = OT_ERROR_NONE;
     ExtensionHeader extHeader;
@@ -902,7 +910,7 @@ otError Ip6::HandleExtensionHeaders(Message &    aMessage,
         switch (aNextHeader)
         {
         case kProtoHopOpts:
-            SuccessOrExit(error = HandleOptions(aMessage, aHeader, aForward));
+            SuccessOrExit(error = HandleOptions(aMessage, aHeader, aIsOutbound, aReceive));
             break;
 
         case kProtoFragment:
@@ -913,7 +921,7 @@ otError Ip6::HandleExtensionHeaders(Message &    aMessage,
             break;
 
         case kProtoDstOpts:
-            SuccessOrExit(error = HandleOptions(aMessage, aHeader, aForward));
+            SuccessOrExit(error = HandleOptions(aMessage, aHeader, aIsOutbound, aReceive));
             break;
 
         case kProtoIp6:
@@ -934,14 +942,31 @@ exit:
     return error;
 }
 
-otError Ip6::HandlePayload(Message &aMessage, MessageInfo &aMessageInfo, uint8_t aIpProto)
+otError Ip6::HandlePayload(Message &          aMessage,
+                           MessageInfo &      aMessageInfo,
+                           uint8_t            aIpProto,
+                           Message::Ownership aMessageOwnership)
 {
-    otError error = OT_ERROR_NONE;
+    otError  error   = OT_ERROR_NONE;
+    Message *message = nullptr;
+
+    VerifyOrExit(aIpProto == kProtoUdp || aIpProto == kProtoIcmp6);
+
+    switch (aMessageOwnership)
+    {
+    case Message::kTakeCustody:
+        message = &aMessage;
+        break;
+
+    case Message::kCopyToUse:
+        VerifyOrExit((message = aMessage.Clone()) != nullptr, error = OT_ERROR_NO_BUFS);
+        break;
+    }
 
     switch (aIpProto)
     {
     case kProtoUdp:
-        error = mUdp.HandleMessage(aMessage, aMessageInfo);
+        error = mUdp.HandleMessage(*message, aMessageInfo);
         if (error == OT_ERROR_DROP)
         {
             otLogNoteIp6("Error UDP Checksum");
@@ -949,12 +974,20 @@ otError Ip6::HandlePayload(Message &aMessage, MessageInfo &aMessageInfo, uint8_t
         break;
 
     case kProtoIcmp6:
-        error = mIcmp.HandleMessage(aMessage, aMessageInfo);
+        error = mIcmp.HandleMessage(*message, aMessageInfo);
         break;
 
     default:
         break;
     }
+
+exit:
+    if (error != OT_ERROR_NONE)
+    {
+        otLogNoteIp6("Failed to handle payload: %s", otThreadErrorToString(error));
+    }
+
+    FreeMessage(message);
 
     return error;
 }
@@ -976,8 +1009,8 @@ otError Ip6::ProcessReceiveCallback(Message &          aMessage,
 
     if (mIsReceiveIp6FilterEnabled)
     {
-        // do not pass messages sent to an RLOC/ALOC, except Service Locator
 #if !OPENTHREAD_CONFIG_PLATFORM_NETIF_ENABLE
+        // do not pass messages sent to an RLOC/ALOC, except Service Locator
         bool isLocator = Get<Mle::Mle>().IsMeshLocalAddress(aMessageInfo.GetSockAddr()) &&
                          aMessageInfo.GetSockAddr().GetIid().IsLocator();
 
@@ -1002,32 +1035,10 @@ otError Ip6::ProcessReceiveCallback(Message &          aMessage,
         case kProtoUdp:
         {
             Udp::Header udp;
-            uint16_t    destPort;
 
             IgnoreError(aMessage.Read(aMessage.GetOffset(), udp));
+            VerifyOrExit(Get<Udp>().ShouldUsePlatformUdp(udp.GetDestinationPort()), error = OT_ERROR_NO_ROUTE);
 
-            destPort = udp.GetDestinationPort();
-
-            if ((destPort == Mle::kUdpPort) &&
-                (aMessageInfo.GetSockAddr().IsLinkLocal() || aMessageInfo.GetSockAddr().IsLinkLocalMulticast()))
-            {
-                // do not pass MLE messages
-                ExitNow(error = OT_ERROR_NO_ROUTE);
-            }
-#if !OPENTHREAD_CONFIG_PLATFORM_UDP_ENABLE
-            else if ((destPort == Tmf::kUdpPort) && Get<Tmf::TmfAgent>().IsTmfMessage(aMessageInfo))
-            {
-                // do not pass TMF messages
-                ExitNow(error = OT_ERROR_NO_ROUTE);
-            }
-#endif
-
-#if OPENTHREAD_FTD
-            if (destPort == Get<MeshCoP::JoinerRouter>().GetJoinerUdpPort())
-            {
-                ExitNow(error = OT_ERROR_NO_ROUTE);
-            }
-#endif
             break;
         }
 
@@ -1104,14 +1115,16 @@ otError Ip6::HandleDatagram(Message &aMessage, Netif *aNetif, const void *aLinkM
     MessageInfo messageInfo;
     Header      header;
     bool        receive;
-    bool        forward;
+    bool        forwardThread;
+    bool        forwardHost;
     bool        multicastPromiscuous;
     bool        shouldFreeMessage;
     uint8_t     nextHeader;
 
 start:
     receive              = false;
-    forward              = false;
+    forwardThread        = false;
+    forwardHost          = false;
     multicastPromiscuous = false;
     shouldFreeMessage    = true;
 
@@ -1126,43 +1139,58 @@ start:
     // determine destination of packet
     if (header.GetDestination().IsMulticast())
     {
+        Netif *netif;
+
         if (aNetif != nullptr)
         {
-            if (aNetif->IsMulticastSubscribed(header.GetDestination()))
-            {
-                receive = true;
-            }
-            else if (aNetif->IsMulticastPromiscuousEnabled())
-            {
-                multicastPromiscuous = true;
-            }
-
 #if OPENTHREAD_FTD
             if (header.GetDestination().IsMulticastLargerThanRealmLocal() &&
                 Get<ChildTable>().HasSleepyChildWithAddress(header.GetDestination()))
             {
-                forward = true;
+                forwardThread = true;
             }
 #endif
+
+            netif = aNetif;
         }
         else
         {
-            forward = true;
+            forwardThread = true;
+
+            netif = &Get<ThreadNetif>();
+        }
+
+        forwardHost = header.GetDestination().IsMulticastLargerThanRealmLocal();
+
+        if ((aNetif != nullptr || aMessage.GetMulticastLoop()) && netif->IsMulticastSubscribed(header.GetDestination()))
+        {
+            receive = true;
+        }
+        else if (netif->IsMulticastPromiscuousEnabled())
+        {
+            multicastPromiscuous = true;
         }
     }
     else
     {
+        // unicast
         if (Get<ThreadNetif>().HasUnicastAddress(header.GetDestination()))
         {
             receive = true;
         }
         else if (!header.GetDestination().IsLinkLocal())
         {
-            forward = true;
+            forwardThread = true;
         }
         else if (aNetif == nullptr)
         {
-            forward = true;
+            forwardThread = true;
+        }
+
+        if (forwardThread && !ShouldForwardToThread(messageInfo, aFromNcpHost))
+        {
+            forwardThread = false;
+            forwardHost   = true;
         }
     }
 
@@ -1170,7 +1198,7 @@ start:
 
     // process IPv6 Extension Headers
     nextHeader = static_cast<uint8_t>(header.GetNextHeader());
-    SuccessOrExit(error = HandleExtensionHeaders(aMessage, aNetif, messageInfo, header, nextHeader, forward,
+    SuccessOrExit(error = HandleExtensionHeaders(aMessage, aNetif, messageInfo, header, nextHeader, aNetif == nullptr,
                                                  aFromNcpHost, receive));
 
     // process IPv6 Payload
@@ -1199,25 +1227,33 @@ start:
         }
 #endif
 
-        IgnoreError(ProcessReceiveCallback(aMessage, messageInfo, nextHeader, aFromNcpHost, Message::kCopyToUse));
+        error = ProcessReceiveCallback(aMessage, messageInfo, nextHeader, aFromNcpHost, Message::kCopyToUse);
 
-        SuccessOrExit(error = HandlePayload(aMessage, messageInfo, nextHeader));
+        if ((error == OT_ERROR_NONE || error == OT_ERROR_NO_ROUTE) && forwardHost)
+        {
+            forwardHost = false;
+        }
+
+        error             = HandlePayload(aMessage, messageInfo, nextHeader,
+                              (forwardThread || forwardHost ? Message::kCopyToUse : Message::kTakeCustody));
+        shouldFreeMessage = forwardThread || forwardHost;
     }
     else if (multicastPromiscuous)
     {
         IgnoreError(ProcessReceiveCallback(aMessage, messageInfo, nextHeader, aFromNcpHost, Message::kCopyToUse));
     }
 
-    if (forward)
+    if (forwardHost)
+    {
+        // try passing to host
+        error             = ProcessReceiveCallback(aMessage, messageInfo, nextHeader, aFromNcpHost,
+                                       forwardThread ? Message::kCopyToUse : Message::kTakeCustody);
+        shouldFreeMessage = forwardThread;
+    }
+
+    if (forwardThread)
     {
         uint8_t hopLimit;
-
-        if (!ShouldForwardToThread(messageInfo, aFromNcpHost))
-        {
-            // try passing to host
-            error = ProcessReceiveCallback(aMessage, messageInfo, nextHeader, aFromNcpHost, Message::kTakeCustody);
-            ExitNow(shouldFreeMessage = false);
-        }
 
         if (aNetif != nullptr)
         {
@@ -1230,22 +1266,47 @@ start:
         hopLimit = header.GetHopLimit();
         aMessage.Write(Header::kHopLimitFieldOffset, hopLimit);
 
-#if OPENTHREAD_CONFIG_UNSECURE_TRAFFIC_MANAGED_BY_STACK_ENABLE
-        // check whether source port is an unsecure port
+        if (aFromNcpHost && nextHeader == kProtoIcmp6)
+        {
+            uint8_t icmpType;
+            bool    isAllowedType = false;
+
+            SuccessOrExit(error = aMessage.Read(aMessage.GetOffset(), icmpType));
+            for (IcmpType type : sForwardICMPTypes)
+            {
+                if (icmpType == type)
+                {
+                    isAllowedType = true;
+                    break;
+                }
+            }
+            VerifyOrExit(isAllowedType, error = OT_ERROR_DROP);
+        }
         if (aFromNcpHost && (nextHeader == kProtoTcp || nextHeader == kProtoUdp))
         {
-            uint16_t sourcePort;
+            uint16_t sourcePort, destPort;
 
             SuccessOrExit(error = aMessage.Read(aMessage.GetOffset(), sourcePort));
+            SuccessOrExit(error = aMessage.Read(aMessage.GetOffset() + sizeof(sourcePort), destPort));
             sourcePort = HostSwap16(sourcePort);
+            destPort   = HostSwap16(destPort);
 
+            if (nextHeader == kProtoUdp)
+            {
+                VerifyOrExit(Get<Udp>().ShouldUsePlatformUdp(destPort), error = OT_ERROR_DROP);
+            }
+
+#if OPENTHREAD_CONFIG_UNSECURE_TRAFFIC_MANAGED_BY_STACK_ENABLE
+            // check whether source port is an unsecure port
             if (Get<Filter>().IsUnsecurePort(sourcePort))
             {
                 aMessage.SetLinkSecurityEnabled(false);
                 otLogInfoIp6("Disabled link security for packet to %s", header.GetDestination().ToString().AsCString());
             }
-        }
+#else
+            OT_UNUSED_VARIABLE(sourcePort);
 #endif
+        }
 
         // `SendMessage()` takes custody of message in the success case
         SuccessOrExit(error = Get<ThreadNetif>().SendMessage(aMessage));
@@ -1281,7 +1342,7 @@ bool Ip6::ShouldForwardToThread(const MessageInfo &aMessageInfo, bool aFromNcpHo
     else if (IsOnLink(aMessageInfo.GetSockAddr()))
     {
         // on-link global address
-#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_DUA_NDPROXYING_ENABLE
         ExitNow(rval = (aFromNcpHost ||
                         !Get<BackboneRouter::Manager>().ShouldForwardDuaToBackbone(aMessageInfo.GetSockAddr())));
 #else

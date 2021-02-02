@@ -36,8 +36,10 @@
 
 #include <openthread/platform/radio.h>
 
+#include "openthread-spinel-config.h"
 #include "spinel.h"
 #include "spinel_interface.hpp"
+#include "core/radio/max_power_table.hpp"
 #include "ncp/ncp_config.h"
 
 namespace ot {
@@ -56,7 +58,7 @@ namespace Spinel {
  *    // @param[in] aCallbackContext  Callback context
  *    // @param[in] aFrameBuffer      A reference to a `RxFrameBuffer` object.
  *
- *    InterFaceType(Spinel::SpinelInterface::ReceiveFrameCallback aCallback,
+ *    InterfaceType(Spinel::SpinelInterface::ReceiveFrameCallback aCallback,
  *                  void *                                        aCallbackContext,
  *                  Spinel::SpinelInterface::RxFrameBuffer &      aFrameBuffer);
  *
@@ -111,13 +113,14 @@ public:
     /**
      * Initialize this radio transceiver.
      *
-     * @param[in]  aResetRadio            TRUE to reset on init, FALSE to not reset on init.
-     * @param[in]  aRestoreDatasetFromNcp TRUE to restore dataset to host from non-volatile memory
-     *                                    (only used when attempts to upgrade from NCP to RCP mode),
-     *                                    FALSE otherwise.
+     * @param[in]  aResetRadio                 TRUE to reset on init, FALSE to not reset on init.
+     * @param[in]  aRestoreDatasetFromNcp      TRUE to restore dataset to host from non-volatile memory
+     *                                         (only used when attempts to upgrade from NCP to RCP mode),
+     *                                         FALSE otherwise.
+     * @param[in]  aSkipRcpCompatibilityCheck  TRUE to skip RCP compatibility check, FALSE to perform the check.
      *
      */
-    void Init(bool aResetRadio, bool aRestoreDataSetFromNcp);
+    void Init(bool aResetRadio, bool aRestoreDataSetFromNcp, bool aSkipRcpCompatibilityCheck);
 
     /**
      * Deinitialize this radio transceiver.
@@ -351,7 +354,7 @@ public:
      *
      */
     otError GetCoexMetrics(otRadioCoexMetrics &aCoexMetrics);
-#endif
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
     /**
      * This method returns a reference to the transmit buffer.
@@ -472,8 +475,7 @@ public:
      * @retval  OT_ERROR_NONE               Successfully transitioned to Transmit.
      * @retval  OT_ERROR_BUSY               Failed due to another transmission is on going.
      * @retval  OT_ERROR_RESPONSE_TIMEOUT   Failed due to no response received from the transceiver.
-     *
-     * @retval OT_ERROR_INVALID_STATE The radio was not in the Receive state.
+     * @retval  OT_ERROR_INVALID_STATE      The radio was not in the Receive state.
      */
     otError Transmit(otRadioFrame &aFrame);
 
@@ -650,13 +652,39 @@ public:
     otError SetMacFrameCounter(uint32_t aMacFrameCounter);
 
     /**
-     * This method checks whether the spinel interface is radio-only
+     * This method sets the radio region code.
+     *
+     * @param[in]   aRegionCode  The radio region code.
+     *
+     * @retval  OT_ERROR_NONE             Successfully set region code.
+     * @retval  OT_ERROR_FAILED           Other platform specific errors.
+     *
+     */
+    otError SetRadioRegion(uint16_t aRegionCode);
+
+    /**
+     * This method gets the radio region code.
+     *
+     * @param[out]   aRegionCode  The radio region code.
+     *
+     * @retval  OT_ERROR_INVALID_ARGS     @p aRegionCode is nullptr.
+     * @retval  OT_ERROR_NONE             Successfully got region code.
+     * @retval  OT_ERROR_FAILED           Other platform specific errors.
+     *
+     */
+    otError GetRadioRegion(uint16_t *aRegionCode);
+
+    /**
+     * This method checks whether the spinel interface is radio-only.
+     *
+     * @param[out] aSupportsRcpApiVersion   A reference to a boolean variable to update whether the list of spinel
+     *                                      capabilities include `SPINEL_CAP_RCP_API_VERSION`.
      *
      * @retval  TRUE    The radio chip is in radio-only mode.
      * @retval  FALSE   Otherwise.
      *
      */
-    bool IsRcp(void);
+    bool IsRcp(bool &aSupportsRcpApiVersion);
 
     /**
      * This method checks whether there is pending frame in the buffer.
@@ -701,6 +729,18 @@ public:
      */
     uint32_t GetBusSpeed(void) const;
 
+    /**
+     * This method sets the max transmit power.
+     *
+     * @param[in] aChannel    The radio channel.
+     * @param[in] aPower      The max transmit power in dBm.
+     *
+     * @retval  OT_ERROR_NONE           Succesfully set the max transmit power.
+     * @retval  OT_ERROR_INVALID_ARGS   Channel is not in valid range.
+     *
+     */
+    otError SetChannelMaxTransmitPower(uint8_t aChannel, int8_t aPower);
+
 private:
     enum
     {
@@ -726,6 +766,7 @@ private:
 
     otError CheckSpinelVersion(void);
     otError CheckRadioCapabilities(void);
+    otError CheckRcpApiVersion(bool aSupportsRcpApiVersion);
 
     /**
      * This method triggers a state transfer of the state machine.
@@ -818,8 +859,23 @@ private:
     spinel_tid_t GetNextTid(void);
     void         FreeTid(spinel_tid_t tid) { mCmdTidsInUse &= ~(1 << tid); }
 
-    otError RequestV(bool aWait, uint32_t aCommand, spinel_prop_key_t aKey, const char *aFormat, va_list aArgs);
-    otError Request(bool aWait, uint32_t aCommand, spinel_prop_key_t aKey, const char *aFormat, ...);
+    otError RequestV(uint32_t aCommand, spinel_prop_key_t aKey, const char *aFormat, va_list aArgs);
+    otError Request(uint32_t aCommand, spinel_prop_key_t aKey, const char *aFormat, ...);
+    otError RequestWithPropertyFormat(const char *      aPropertyFormat,
+                                      uint32_t          aCommand,
+                                      spinel_prop_key_t aKey,
+                                      const char *      aFormat,
+                                      ...);
+    otError RequestWithPropertyFormatV(const char *      aPropertyFormat,
+                                       uint32_t          aCommand,
+                                       spinel_prop_key_t aKey,
+                                       const char *      aFormat,
+                                       va_list           aArgs);
+    otError RequestWithExpectedCommandV(uint32_t          aExpectedCommand,
+                                        uint32_t          aCommand,
+                                        spinel_prop_key_t aKey,
+                                        const char *      aFormat,
+                                        va_list           aArgs);
     otError WaitResponse(void);
     otError SendReset(void);
     otError SendCommand(uint32_t          command,
@@ -859,6 +915,14 @@ private:
     void TransmitDone(otRadioFrame *aFrame, otRadioFrame *aAckFrame, otError aError);
 
     void CalcRcpTimeOffset(void);
+
+    void HandleRcpUnexpectedReset(spinel_status_t aStatus);
+    void HandleRcpTimeout(void);
+    void RecoverFromRcpFailure(void);
+
+#if OPENTHREAD_SPINEL_CONFIG_RCP_RESTORATION_MAX_COUNT > 0
+    void RestoreProperties(void);
+#endif
 
     otInstance *mInstance;
 
@@ -900,6 +964,38 @@ private:
     bool  mSupportsLogStream : 1; ///< RCP supports `LOG_STREAM` property with OpenThread log meta-data format.
     bool  mIsTimeSynced : 1;      ///< Host has calculated the time difference between host and RCP.
 
+#if OPENTHREAD_SPINEL_CONFIG_RCP_RESTORATION_MAX_COUNT > 0
+
+    bool    mResetRadioOnStartup : 1; ///< Whether should send reset command when init.
+    int16_t mRcpFailureCount;         ///< Count of consecutive RCP failures.
+
+    // Properties set by core.
+    uint8_t      mKeyIdMode;
+    uint8_t      mKeyId;
+    otMacKey     mPrevKey;
+    otMacKey     mCurrKey;
+    otMacKey     mNextKey;
+    uint16_t     mSrcMatchShortEntries[OPENTHREAD_CONFIG_MLE_MAX_CHILDREN];
+    int16_t      mSrcMatchShortEntryCount;
+    otExtAddress mSrcMatchExtEntries[OPENTHREAD_CONFIG_MLE_MAX_CHILDREN];
+    int16_t      mSrcMatchExtEntryCount;
+    uint8_t      mScanChannel;
+    uint16_t     mScanDuration;
+    int8_t       mCcaEnergyDetectThreshold;
+    int8_t       mTransmitPower;
+    int8_t       mFemLnaGain;
+    bool         mCoexEnabled : 1;
+
+    bool mMacKeySet : 1;                   ///< Whether MAC key has been set.
+    bool mCcaEnergyDetectThresholdSet : 1; ///< Whether CCA energy detect threshold has been set.
+    bool mTransmitPowerSet : 1;            ///< Whether transmit power has been set.
+    bool mCoexEnabledSet : 1;              ///< Whether coex enabled has been set.
+    bool mFemLnaGainSet : 1;               ///< Whether FEM LNA gain has benn set.
+    bool mRcpFailed : 1;                   ///< RCP failure happened, should recover and retry operation.
+    bool mEnergyScanning : 1;              ///< If fails while scanning, restarts scanning.
+
+#endif // OPENTHREAD_SPINEL_CONFIG_RCP_RESTORATION_MAX_COUNT > 0
+
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     bool   mDiagMode;
     char * mDiagOutput;
@@ -909,6 +1005,8 @@ private:
     uint64_t mTxRadioEndUs;
     uint64_t mRadioTimeRecalcStart; ///< When to recalculate RCP time offset.
     int64_t  mRadioTimeOffset;      ///< Time difference with estimated RCP time minus host time.
+
+    MaxPowerTable mMaxPowerTable;
 };
 
 } // namespace Spinel

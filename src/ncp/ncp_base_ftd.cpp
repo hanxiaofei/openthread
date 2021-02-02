@@ -131,7 +131,9 @@ void NcpBase::HandleNeighborTableChanged(otNeighborTableEvent aEvent, const otNe
     {
     case OT_NEIGHBOR_TABLE_EVENT_CHILD_ADDED:
         command = SPINEL_CMD_PROP_VALUE_INSERTED;
-        // Fall through
+
+        OT_FALL_THROUGH;
+
     case OT_NEIGHBOR_TABLE_EVENT_CHILD_REMOVED:
         property = SPINEL_PROP_THREAD_CHILD_TABLE;
         VerifyOrExit(!aEntry.mInfo.mChild.mIsStateRestoring);
@@ -139,7 +141,9 @@ void NcpBase::HandleNeighborTableChanged(otNeighborTableEvent aEvent, const otNe
 
     case OT_NEIGHBOR_TABLE_EVENT_ROUTER_ADDED:
         command = SPINEL_CMD_PROP_VALUE_INSERTED;
-        // Fall through
+
+        OT_FALL_THROUGH;
+
     case OT_NEIGHBOR_TABLE_EVENT_ROUTER_REMOVED:
         property = SPINEL_PROP_THREAD_NEIGHBOR_TABLE;
         break;
@@ -348,6 +352,7 @@ exit:
     return error;
 }
 
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
 template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_NET_PARTITION_ID>(void)
 {
     uint32_t partitionId = 0;
@@ -355,11 +360,12 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_NET_PARTITION_ID>(voi
 
     SuccessOrExit(error = mDecoder.ReadUint32(partitionId));
 
-    otThreadSetLocalLeaderPartitionId(mInstance, partitionId);
+    otThreadSetPreferredLeaderPartitionId(mInstance, partitionId);
 
 exit:
     return error;
 }
+#endif
 
 template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_THREAD_CHILD_COUNT_MAX>(void)
 {

@@ -288,6 +288,15 @@ public:
     otError Sleep(void);
 
     /**
+     * This method indicates whether the sub-mac is busy transmitting or scanning.
+     *
+     * @retval TRUE if the sub-mac is busy transmitting or scanning.
+     * @retval FALSE if the sub-mac is not busy transmitting or scanning.
+     *
+     */
+    bool IsTransmittingOrScanning(void) const { return (mState == kStateTransmit) || (mState == kStateEnergyScan); }
+
+    /**
      * This method transitions the radio to Receive.
      *
      * @param[in]  aChannel   The channel to use for receiving.
@@ -339,7 +348,7 @@ public:
     otError Send(void);
 
     /**
-     * This method gets the number of transmit retries of last transmit packet.
+     * This method gets the number of transmit retries of last transmitted frame.
      *
      * @returns Number of transmit retries.
      *
@@ -438,14 +447,6 @@ public:
      *
      */
     void SetCslTimeout(uint32_t aTimeout);
-
-    /**
-     * This method fills the CSL parameter to the frame.
-     *
-     * @param[inout]    aFrame  A reference to the frame to fill CSL parameter.
-     *
-     */
-    void FillCsl(Frame &aFrame);
 #endif // OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
 
     /**
@@ -504,16 +505,16 @@ private:
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
     static void HandleCslTimer(Timer &aTimer);
     void        HandleCslTimer(void);
-    uint16_t    GetCslPhase(void) const;
 #endif
 
     enum
     {
-        kMinBE             = 3,  ///< macMinBE (IEEE 802.15.4-2006).
-        kMaxBE             = 5,  ///< macMaxBE (IEEE 802.15.4-2006).
-        kUnitBackoffPeriod = 20, ///< Number of symbols (IEEE 802.15.4-2006).
-        kMinBackoff        = 1,  ///< Minimum backoff (milliseconds).
-        kAckTimeout        = 16, ///< Timeout for waiting on an ACK (milliseconds).
+        kMinBE             = 3,   ///< macMinBE (IEEE 802.15.4-2006).
+        kMaxBE             = 5,   ///< macMaxBE (IEEE 802.15.4-2006).
+        kUnitBackoffPeriod = 20,  ///< Number of symbols (IEEE 802.15.4-2006).
+        kMinBackoff        = 1,   ///< Minimum backoff (milliseconds).
+        kAckTimeout        = 16,  ///< Timeout for waiting on an ACK (milliseconds).
+        kCcaSampleInterval = 128, ///< CCA sample interval, 128 usec.
 
 #if OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
         kEnergyScanRssiSampleInterval = 128, ///< RSSI sample interval during energy scan, 128 usec
@@ -530,7 +531,7 @@ private:
         kStateCsmaBackoff, ///< CSMA backoff before transmission.
         kStateTransmit,    ///< Radio is transmitting.
         kStateEnergyScan,  ///< Energy scan.
-#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+#if !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
         kStateCslTransmit, ///< CSL transmission.
 #endif
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
@@ -540,8 +541,8 @@ private:
 
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
     enum : uint32_t{
-        kCslSampleWindow =
-            OPENTHREAD_CONFIG_CSL_SAMPLE_WINDOW * kUsPerTenSymbols, ///< The SSED sample window in units of 10 symbols.
+        kCslSampleWindow = OPENTHREAD_CONFIG_CSL_SAMPLE_WINDOW *
+                           kUsPerTenSymbols, ///< The SSED sample window in units of microseconds.
         kCslReceiveTimeAhead =
             OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD, ///< CSL receivers would wake up `kCslReceiveTimeAhead` earlier
                                                       ///< than expected sample window. The time is in unit of 10
@@ -585,7 +586,7 @@ private:
 
     void HandleReceiveDone(RxFrame *aFrame, otError aError);
     void HandleTransmitStarted(TxFrame &aFrame);
-    void HandleTransmitDone(TxFrame &aTxFrame, RxFrame *aAckFrame, otError aError);
+    void HandleTransmitDone(TxFrame &aFrame, RxFrame *aAckFrame, otError aError);
     void UpdateFrameCounterOnTxDone(const TxFrame &aFrame);
     void HandleEnergyScanDone(int8_t aMaxRssi);
 

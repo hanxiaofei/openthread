@@ -33,6 +33,7 @@ from typing import Optional, Callable, Tuple
 
 from pktverify import consts, errors
 from pktverify.addrs import EthAddr, ExtAddr, Ipv6Addr
+from pktverify.bytes import Bytes
 from pktverify.packet import Packet
 from pktverify.utils import make_filter_func
 
@@ -351,6 +352,21 @@ class PacketFilter(object):
         if self._parent is not None:
             self._parent._set_found_index(last_index, index)
 
+    def filter_mle_advertisement(self, role: str, **kwargs):
+        assert role in ('Leader', 'Router', 'REED'), role
+
+        tlv_set = {consts.LEADER_DATA_TLV, consts.SOURCE_ADDRESS_TLV}
+
+        if role != 'REED':
+            tlv_set.add(consts.ROUTE64_TLV)
+
+        return self.filter_LLANMA(). \
+            filter_mle_cmd(consts.MLE_ADVERTISEMENT). \
+            filter(lambda p: tlv_set ==
+                             set(p.mle.tlv.type) and \
+                             p.ipv6.hlim == 255, **kwargs
+                   )
+
     def filter_coap(self, **kwargs):
         """
         Create a new PacketFilter to filter COAP packets.
@@ -420,6 +436,43 @@ class PacketFilter(object):
         """
         return self.filter(attrgetter('wpan'), **kwargs)
 
+    def filter_wpan_ack(self, **kwargs):
+        """
+        Create a new PacketFilter for filter WPAN ACK packets.
+
+        :param kwargs: Extra arguments for `filter`.
+        :return: The new PacketFilter to filter WPAN packets.
+        """
+        return self.filter(lambda p: p.wpan.frame_type == consts.MAC_FRAME_TYPE_ACK, **kwargs)
+
+    def filter_wpan_beacon(self, **kwargs):
+        """
+        Create a new PacketFilter for filter WPAN beacon.
+
+        :param kwargs: Extra arguments for `filter`.
+        :return: The new PacketFilter to filter WPAN packets.
+        """
+        return self.filter(lambda p: p.wpan.frame_type == consts.MAC_FRAME_TYPE_BEACON, **kwargs)
+
+    def filter_wpan_data(self, **kwargs):
+        """
+        Create a new PacketFilter for filter WPAN data packets.
+
+        :param kwargs: Extra arguments for `filter`.
+        :return: The new PacketFilter to filter WPAN packets.
+        """
+        return self.filter(lambda p: p.wpan.frame_type == consts.MAC_FRAME_TYPE_DATA, **kwargs)
+
+    def filter_wpan_seq(self, seq, **kwargs):
+        """
+        Create a new PacketFilter for filter WPAN packets of a sequence number.
+
+        :param seq: The sequence number to filter.
+        :param kwargs: Extra arguments for `filter`.
+        :return: The new PacketFilter to filter WPAN packets.
+        """
+        return self.filter(lambda p: p.wpan.seq_no == seq, **kwargs)
+
     def filter_wpan_version(self, version: int, **kwargs):
         """
         Create a new PacketFilter for filter WPAN packets of a given version.
@@ -457,6 +510,15 @@ class PacketFilter(object):
         assert isinstance(addr, (str, ExtAddr)), addr
         return self.filter(lambda p: p.wpan.dst64 == addr, **kwargs)
 
+    def filter_dst16(self, rloc16: int, **kwargs):
+        return self.filter(lambda p: p.lowpan.mesh.dest16 == rloc16 or p.wpan.dst16 == rloc16, **kwargs)
+
+    def filter_wpan_ie_present(self, **kwargs):
+        return self.filter(lambda p: p.wpan.ie_present == 1)
+
+    def filter_wpan_ie_not_present(self, **kwargs):
+        return self.filter(lambda p: p.wpan.ie_present == 0)
+
     def filter_ping_request(self, identifier=None, **kwargs):
         return self.filter(
             lambda p: p.icmpv6.is_ping_request and (identifier is None or p.icmpv6.echo.identifier == identifier),
@@ -489,8 +551,17 @@ class PacketFilter(object):
         assert isinstance(dst_addr, (str, Ipv6Addr))
         return self.filter(lambda p: p.ipv6.src == src_addr and p.ipv6.dst == dst_addr, **kwargs)
 
+    def filter_LLATNMA(self, **kwargs):
+        return self.filter(lambda p: p.ipv6.dst == consts.LINK_LOCAL_All_THREAD_NODES_MULTICAST_ADDRESS, **kwargs)
+
+    def filter_RLANMA(self, **kwargs):
+        return self.filter(lambda p: p.ipv6.dst == consts.REALM_LOCAL_ALL_NODES_ADDRESS, **kwargs)
+
     def filter_RLARMA(self, **kwargs):
         return self.filter(lambda p: p.ipv6.dst == consts.REALM_LOCAL_ALL_ROUTERS_ADDRESS, **kwargs)
+
+    def filter_RLATNMA(self, **kwargs):
+        return self.filter(lambda p: p.ipv6.dst == consts.REALM_LOCAL_All_THREAD_NODES_MULTICAST_ADDRESS, **kwargs)
 
     def filter_LLANMA(self, **kwargs):
         return self.filter(lambda p: p.ipv6.dst == consts.LINK_LOCAL_ALL_NODES_MULTICAST_ADDRESS, **kwargs)
@@ -501,11 +572,19 @@ class PacketFilter(object):
     def filter_LLARMA(self, **kwargs):
         return self.filter(lambda p: p.ipv6.dst == consts.LINK_LOCAL_ALL_ROUTERS_MULTICAST_ADDRESS, **kwargs)
 
-    def filter_AMPLFMA(self, **kwargs):
-        return self.filter(lambda p: p.ipv6.dst == consts.ALL_MPL_FORWARDERS_MA, **kwargs)
+    def filter_AMPLFMA(self, mpl_seed_id: int = None, **kwargs):
+        f = self.filter(lambda p: p.ipv6.dst == consts.ALL_MPL_FORWARDERS_MA, **kwargs)
+        if mpl_seed_id is not None:
+            mpl_seed_id = Bytes([mpl_seed_id >> 8, mpl_seed_id & 0xFF])
+            f = f.filter(lambda p: p.ipv6.opt.mpl.seed_id == mpl_seed_id)
+        return f
 
     def filter_mle(self, **kwargs):
         return self.filter(attrgetter('mle'), **kwargs)
+
+    def filter_wpan_cmd(self, cmd, **kwargs):
+        assert isinstance(cmd, int), cmd
+        return self.filter(lambda p: p.wpan.cmd == cmd, **kwargs)
 
     def filter_mle_cmd(self, cmd, **kwargs):
         assert isinstance(cmd, int), cmd

@@ -62,6 +62,9 @@ ThreadNetif::ThreadNetif(Instance &aInstance)
 #if OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
     , mDnsClient(aInstance)
 #endif
+#if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+    , mSrpClient(aInstance)
+#endif
 #if OPENTHREAD_CONFIG_SNTP_CLIENT_ENABLE
     , mSntpClient(aInstance)
 #endif
@@ -73,6 +76,9 @@ ThreadNetif::ThreadNetif(Instance &aInstance)
     , mMeshForwarder(aInstance)
     , mMleRouter(aInstance)
     , mDiscoverScanner(aInstance)
+#if OPENTHREAD_CONFIG_MULTI_RADIO
+    , mRadioSelector(aInstance)
+#endif
 #if OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE || OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     , mNetworkDataLocal(aInstance)
 #endif
@@ -111,13 +117,17 @@ ThreadNetif::ThreadNetif(Instance &aInstance)
     , mBackboneRouterLocal(aInstance)
     , mBackboneRouterManager(aInstance)
 #endif
-#if OPENTHREAD_CONFIG_MLR_ENABLE || OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
+#if OPENTHREAD_CONFIG_MLR_ENABLE || (OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE)
     , mMlrManager(aInstance)
 #endif
 
-#if OPENTHREAD_CONFIG_DUA_ENABLE || OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
+#if OPENTHREAD_CONFIG_DUA_ENABLE || (OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE)
     , mDuaManager(aInstance)
 #endif
+#if OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
+    , mSrpServer(aInstance)
+#endif
+
     , mChildSupervisor(aInstance)
     , mSupervisionListener(aInstance)
     , mAnnounceBegin(aInstance)

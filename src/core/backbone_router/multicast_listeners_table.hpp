@@ -36,7 +36,7 @@
 
 #include "openthread-core-config.h"
 
-#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_MULTICAST_ROUTING_ENABLE
 
 #include <openthread/backbone_router_ftd.h>
 
@@ -175,7 +175,6 @@ public:
      */
     void SetCallback(otBackboneRouterMulticastListenerCallback aCallback, void *aContext);
 
-#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
     /**
      * This method gets the next Multicast Listener.
      *
@@ -188,7 +187,6 @@ public:
      */
     otError GetNext(otBackboneRouterMulticastListenerIterator &aIterator,
                     otBackboneRouterMulticastListenerInfo &    aListenerInfo);
-#endif
 
 private:
     enum
@@ -237,6 +235,6 @@ private:
 
 } // namespace ot
 
-#endif // OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+#endif // OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_MULTICAST_ROUTING_ENABLE
 
 #endif // MULTICAST_LISTENERS_TABLE_HPP

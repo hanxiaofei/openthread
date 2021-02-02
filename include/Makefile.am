@@ -49,6 +49,7 @@ openthread_headers                      = \
     openthread/crypto.h                   \
     openthread/dataset.h                  \
     openthread/dataset_ftd.h              \
+    openthread/dataset_updater.h          \
     openthread/diag.h                     \
     openthread/dns.h                      \
     openthread/entropy.h                  \
@@ -64,6 +65,7 @@ openthread_headers                      = \
     openthread/link_raw.h                 \
     openthread/logging.h                  \
     openthread/message.h                  \
+    openthread/multi_radio.h              \
     openthread/ncp.h                      \
     openthread/netdata.h                  \
     openthread/netdiag.h                  \
@@ -72,6 +74,8 @@ openthread_headers                      = \
     openthread/random_noncrypto.h         \
     openthread/server.h                   \
     openthread/sntp.h                     \
+    openthread/srp_client.h               \
+    openthread/srp_server.h               \
     openthread/tasklet.h                  \
     openthread/thread.h                   \
     openthread/thread_ftd.h               \
@@ -87,6 +91,7 @@ ot_platform_headers                     = \
     openthread/platform/diag.h            \
     openthread/platform/flash.h           \
     openthread/platform/entropy.h         \
+    openthread/platform/infra_if.h        \
     openthread/platform/memory.h          \
     openthread/platform/misc.h            \
     openthread/platform/logging.h         \
@@ -99,6 +104,7 @@ ot_platform_headers                     = \
     openthread/platform/settings.h        \
     openthread/platform/messagepool.h     \
     openthread/platform/toolchain.h       \
+    openthread/platform/trel-udp6.h       \
     $(NULL)
 
 ot_platformdir = $(includedir)/openthread/platform

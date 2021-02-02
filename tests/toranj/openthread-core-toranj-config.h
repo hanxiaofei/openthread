@@ -40,6 +40,14 @@
 #endif
 
 /**
+ * @def OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+ *
+ * Define to 1 to enable Thread Test Harness reference device support.
+ *
+ */
+#define OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE 1
+
+/**
  * @def OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE
  *
  * Define to 1 to enable Border Router support.
@@ -104,6 +112,14 @@
 #define OPENTHREAD_CONFIG_LEGACY_ENABLE 1
 
 /**
+ * @def OPENTHREAD_CONFIG_ECDSA_ENABLE
+ *
+ * Define to 1 to enable ECDSA support.
+ *
+ */
+#define OPENTHREAD_CONFIG_ECDSA_ENABLE 1
+
+/**
  * @def OPENTHREAD_CONFIG_JAM_DETECTION_ENABLE
  *
  * Define to 1 to enable the Jam Detection service.
@@ -118,6 +134,14 @@
  *
  */
 #define OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS 256
+
+/**
+ * @def OPENTHREAD_CONFIG_MESSAGE_USE_HEAP_ENABLE
+ *
+ * Whether use heap allocator for message buffers.
+ *
+ */
+#define OPENTHREAD_CONFIG_MESSAGE_USE_HEAP_ENABLE 0
 
 /**
  * @def OPENTHREAD_CONFIG_TMF_ADDRESS_CACHE_ENTRIES
@@ -437,6 +461,30 @@
  *
  */
 #define OPENTHREAD_CONFIG_IP6_SLAAC_ENABLE 1
+
+/**
+ * @def OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
+ *
+ * Define to 1 to enable DNS Client support.
+ *
+ */
+#define OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE 1
+
+/**
+ * @def OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+ *
+ * Define to 1 to enable SRP Client support.
+ *
+ */
+#define OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE 1
+
+/**
+ * @def OPENTHREAD_CONFIG_SRP_CLIENT_DOMAIN_NAME_CHANGE_ENABLE
+ *
+ * Define to 1 for the SRP client implementation to provides APIs to allow domain name to be set/changed.
+ *
+ */
+#define OPENTHREAD_CONFIG_SRP_CLIENT_DOMAIN_NAME_API_ENABLE 1
 
 #if OPENTHREAD_RADIO
 /**

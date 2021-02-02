@@ -39,6 +39,7 @@
 
 #include <errno.h>
 #include <net/if.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/select.h>
@@ -271,6 +272,15 @@ void platformNetifUpdateFdSet(fd_set *aReadFdSet, fd_set *aWriteFdSet, fd_set *a
 void platformNetifProcess(const fd_set *aReadFdSet, const fd_set *aWriteFdSet, const fd_set *aErrorFdSet);
 
 /**
+ * This function performs notifies state changes to platform netif.
+ *
+ * @param[in]   aInstance       A pointer to the OpenThread instance.
+ * @param[in]   aFlags          Flags that denote the state change events.
+ *
+ */
+void platformNetifStateChange(otInstance *aInstance, otChangedFlags aFlags);
+
+/**
  * This function initialize virtual time simulation.
  *
  * @params[in]  aNodeId     Node id of this simulated device.
@@ -381,6 +391,41 @@ enum SocketBlockOption
 };
 
 /**
+ * This function initializes platform TREL UDP6 driver.
+ *
+ * @param[in]   aInterfaceName   The name of network interface.
+ *
+ */
+void platformTrelInit(const char *aInterfaceName);
+
+/**
+ * This function shuts down the platform TREL UDP6 platform driver.
+ *
+ */
+void platformTrelDeinit(void);
+
+/**
+ * This function updates the file descriptor sets with file descriptors used by the TREL driver.
+ *
+ * @param[inout]  aReadFdSet   A pointer to the read file descriptors.
+ * @param[inout]  aWriteFdSet  A pointer to the write file descriptors.
+ * @param[inout]  aMaxFd       A pointer to the max file descriptor.
+ * @param[inout]  aTimeout     A pointer to the timeout.
+ *
+ */
+void platformTrelUpdateFdSet(fd_set *aReadFdSet, fd_set *aWriteFdSet, int *aMaxFd, struct timeval *aTimeout);
+
+/**
+ * This function performs TREL driver processing.
+ *
+ * @param[in]   aInstance       A pointer to the OpenThread instance.
+ * @param[in]   aReadFdSet      A pointer to the read file descriptors.
+ * @param[in]   aWriteFdSet     A pointer to the write file descriptors.
+ *
+ */
+void platformTrelProcess(otInstance *aInstance, const fd_set *aReadFdSet, const fd_set *aWriteFdSet);
+
+/**
  * This function creates a socket with SOCK_CLOEXEC flag set.
  *
  * @param[in]   aDomain       The communication domain.
@@ -407,7 +452,6 @@ extern char gNetifName[IFNAMSIZ];
  */
 extern unsigned int gNetifIndex;
 
-#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
 /**
  * This function initializes platform Backbone network.
  *
@@ -416,6 +460,32 @@ extern unsigned int gNetifIndex;
  *
  */
 void platformBackboneInit(otInstance *aInstance, const char *aInterfaceName);
+
+/**
+ * This function updates the file descriptor sets with file descriptors used by the platform Backbone network.
+ *
+ * @param[inout]  aReadFdSet   A reference to the read file descriptors.
+ * @param[inout]  aMaxFd       A reference to the max file descriptor.
+ *
+ */
+void platformBackboneUpdateFdSet(fd_set &aReadFdSet, int &aMaxFd);
+
+/**
+ * This function performs platform Backbone network processing.
+ *
+ * @param[in]   aReadFdSet  A reference to the read file descriptors.
+ *
+ */
+void platformBackboneProcess(const fd_set &aReadSet);
+
+/**
+ * This function performs notifies state changes to platform Backbone network.
+ *
+ * @param[in]   aInstance       A pointer to the OpenThread instance.
+ * @param[in]   aFlags          Flags that denote the state change events.
+ *
+ */
+void platformBackboneStateChange(otInstance *aInstance, otChangedFlags aFlags);
 
 /**
  * The name of Backbone network interface.
@@ -428,7 +498,47 @@ extern char gBackboneNetifName[IFNAMSIZ];
  *
  */
 extern unsigned int gBackboneNetifIndex;
-#endif
+
+/**
+ * This function initializes the infrastructure interface.
+ *
+ * @param[in]  aInstance  The OpenThread instance.
+ * @param[in]  aIfName    The name of the infrastructure interface.
+ *
+ */
+void platformInfraIfInit(otInstance *aInstance, const char *aIfName);
+
+/**
+ * This function deinitializes the infrastructure interface.
+ *
+ */
+void platformInfraIfDeinit(void);
+
+/**
+ * This function updates the read fd set.
+ *
+ * @param[out]  aReadFdSet  The fd set to be updated.
+ * @param[out]  aMaxFd      The maximum fd to be updated.
+ *
+ */
+void platformInfraIfUpdateFdSet(fd_set &aReadFdSet, int &aMaxFd);
+
+/**
+ * This function processes possible events on the infrastructure interface.
+ *
+ * @param[in]  aInstance   The OpenThread instance.
+ * @param[in]  aReadFdSet  The fd set which may contain read vents.
+ *
+ */
+void platformInfraIfProcess(otInstance *aInstance, const fd_set &aReadFdSet);
+
+/**
+ * This function returns the index of the infrastructure interface.
+ *
+ * @returns  The index of the infrastructure interface. 0 indicates invalid index.
+ *
+ */
+uint32_t platformInfraIfGetIndex(void);
 
 #ifdef __cplusplus
 }

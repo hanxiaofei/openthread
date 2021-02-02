@@ -43,6 +43,7 @@ set(COMMON_SOURCES
     api/crypto_api.cpp
     api/dataset_api.cpp
     api/dataset_ftd_api.cpp
+    api/dataset_updater_api.cpp
     api/diags_api.cpp
     api/dns_api.cpp
     api/entropy_api.cpp
@@ -57,6 +58,7 @@ set(COMMON_SOURCES
     api/link_raw_api.cpp
     api/logging_api.cpp
     api/message_api.cpp
+    api/multi_radio_api.cpp
     api/netdata_api.cpp
     api/netdiag_api.cpp
     api/network_time_api.cpp
@@ -64,6 +66,8 @@ set(COMMON_SOURCES
     api/random_noncrypto_api.cpp
     api/server_api.cpp
     api/sntp_api.cpp
+    api/srp_client_api.cpp
+    api/srp_server_api.cpp
     api/tasklet_api.cpp
     api/thread_api.cpp
     api/thread_ftd_api.cpp
@@ -74,6 +78,9 @@ set(COMMON_SOURCES
     backbone_router/bbr_manager.cpp
     backbone_router/multicast_listeners_table.cpp
     backbone_router/ndproxy_table.cpp
+    border_router/infra_if_platform.cpp
+    border_router/router_advertisement.cpp
+    border_router/routing_manager.cpp
     coap/coap.cpp
     coap/coap_message.cpp
     coap/coap_secure.cpp
@@ -93,6 +100,7 @@ set(COMMON_SOURCES
     crypto/aes_ccm.cpp
     crypto/aes_ecb.cpp
     crypto/ecdsa.cpp
+    crypto/hkdf_sha256.cpp
     crypto/hmac_sha256.cpp
     crypto/mbedtls.cpp
     crypto/pbkdf2_cmac.cpp
@@ -105,6 +113,7 @@ set(COMMON_SOURCES
     mac/mac.cpp
     mac/mac_filter.cpp
     mac/mac_frame.cpp
+    mac/mac_links.cpp
     mac/mac_types.cpp
     mac/sub_mac.cpp
     mac/sub_mac_callbacks.cpp
@@ -128,6 +137,7 @@ set(COMMON_SOURCES
     net/dhcp6_client.cpp
     net/dhcp6_server.cpp
     net/dns_client.cpp
+    net/dns_headers.cpp
     net/icmp6.cpp
     net/ip6.cpp
     net/ip6_address.cpp
@@ -136,10 +146,15 @@ set(COMMON_SOURCES
     net/ip6_mpl.cpp
     net/netif.cpp
     net/sntp_client.cpp
+    net/srp_client.cpp
+    net/srp_server.cpp
     net/udp6.cpp
     radio/radio.cpp
     radio/radio_callbacks.cpp
     radio/radio_platform.cpp
+    radio/trel_interface.cpp
+    radio/trel_link.cpp
+    radio/trel_packet.cpp
     thread/address_resolver.cpp
     thread/announce_begin_server.cpp
     thread/announce_sender.cpp
@@ -168,6 +183,7 @@ set(COMMON_SOURCES
     thread/network_data_notifier.cpp
     thread/network_diagnostic.cpp
     thread/panid_query_server.cpp
+    thread/radio_selector.cpp
     thread/router_table.cpp
     thread/src_match_controller.cpp
     thread/thread_netif.cpp
@@ -178,6 +194,7 @@ set(COMMON_SOURCES
     utils/channel_manager.cpp
     utils/channel_monitor.cpp
     utils/child_supervision.cpp
+    utils/dataset_updater.cpp
     utils/flash.cpp
     utils/heap.cpp
     utils/jam_detector.cpp

@@ -35,11 +35,12 @@
 
 #include "openthread-core-config.h"
 
-#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_DUA_NDPROXYING_ENABLE
 
 #include <openthread/backbone_router_ftd.h>
 
 #include "backbone_router/bbr_leader.hpp"
+#include "common/iterator_utils.hpp"
 #include "common/locator.hpp"
 #include "common/non_copyable.hpp"
 #include "common/time.hpp"
@@ -246,8 +247,9 @@ private:
      * This class represents an iterator for iterating through the NdProxy Table.
      *
      */
-    class Iterator : public InstanceLocator
+    class Iterator : public InstanceLocator, public ItemPtrIterator<NdProxy, Iterator>
     {
+        friend class ItemPtrIterator<NdProxy, Iterator>;
         friend class NdProxyTable;
         friend class IteratorBuilder;
 
@@ -260,18 +262,9 @@ private:
         Iterator(Instance &aInstance, Filter aFilter);
         Iterator(Instance &aInstance, IteratorType);
 
-        bool           IsDone(void) const { return (mCurrent == nullptr); }
-        void           Advance(void);
-        void           operator++(void) { Advance(); }
-        void           operator++(int) { Advance(); }
-        const NdProxy &operator*(void)const { return *mCurrent; }
-        bool           operator==(const Iterator &aOther) const { return mCurrent == aOther.mCurrent; }
-        bool           operator!=(const Iterator &aOther) const { return !(*this == aOther); }
-        NdProxy *      operator->(void) { return mCurrent; }
-        NdProxy &      operator*(void) { return *mCurrent; }
+        void Advance(void);
 
-        NdProxy *mCurrent;
-        Filter   mFilter;
+        Filter mFilter;
     };
 
     class IteratorBuilder : public InstanceLocator
@@ -311,6 +304,6 @@ private:
 
 } // namespace ot
 
-#endif // OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+#endif // OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_DUA_NDPROXYING_ENABLE
 
 #endif // NDPROXY_TABLE_HPP_

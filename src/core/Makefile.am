@@ -120,6 +120,7 @@ SOURCES_COMMON                                  = \
     api/crypto_api.cpp                            \
     api/dataset_api.cpp                           \
     api/dataset_ftd_api.cpp                       \
+    api/dataset_updater_api.cpp                   \
     api/diags_api.cpp                             \
     api/dns_api.cpp                               \
     api/entropy_api.cpp                           \
@@ -134,6 +135,7 @@ SOURCES_COMMON                                  = \
     api/link_raw_api.cpp                          \
     api/logging_api.cpp                           \
     api/message_api.cpp                           \
+    api/multi_radio_api.cpp                       \
     api/netdata_api.cpp                           \
     api/netdiag_api.cpp                           \
     api/network_time_api.cpp                      \
@@ -141,6 +143,8 @@ SOURCES_COMMON                                  = \
     api/random_noncrypto_api.cpp                  \
     api/server_api.cpp                            \
     api/sntp_api.cpp                              \
+    api/srp_client_api.cpp                        \
+    api/srp_server_api.cpp                        \
     api/tasklet_api.cpp                           \
     api/thread_api.cpp                            \
     api/thread_ftd_api.cpp                        \
@@ -151,6 +155,9 @@ SOURCES_COMMON                                  = \
     backbone_router/bbr_manager.cpp               \
     backbone_router/multicast_listeners_table.cpp \
     backbone_router/ndproxy_table.cpp             \
+    border_router/infra_if_platform.cpp           \
+    border_router/router_advertisement.cpp        \
+    border_router/routing_manager.cpp             \
     coap/coap.cpp                                 \
     coap/coap_message.cpp                         \
     coap/coap_secure.cpp                          \
@@ -170,6 +177,7 @@ SOURCES_COMMON                                  = \
     crypto/aes_ccm.cpp                            \
     crypto/aes_ecb.cpp                            \
     crypto/ecdsa.cpp                              \
+    crypto/hkdf_sha256.cpp                        \
     crypto/hmac_sha256.cpp                        \
     crypto/mbedtls.cpp                            \
     crypto/pbkdf2_cmac.cpp                        \
@@ -182,6 +190,7 @@ SOURCES_COMMON                                  = \
     mac/mac.cpp                                   \
     mac/mac_filter.cpp                            \
     mac/mac_frame.cpp                             \
+    mac/mac_links.cpp                             \
     mac/mac_types.cpp                             \
     mac/sub_mac.cpp                               \
     mac/sub_mac_callbacks.cpp                     \
@@ -205,6 +214,7 @@ SOURCES_COMMON                                  = \
     net/dhcp6_client.cpp                          \
     net/dhcp6_server.cpp                          \
     net/dns_client.cpp                            \
+    net/dns_headers.cpp                           \
     net/icmp6.cpp                                 \
     net/ip6.cpp                                   \
     net/ip6_address.cpp                           \
@@ -213,10 +223,15 @@ SOURCES_COMMON                                  = \
     net/ip6_mpl.cpp                               \
     net/netif.cpp                                 \
     net/sntp_client.cpp                           \
+    net/srp_client.cpp                            \
+    net/srp_server.cpp                            \
     net/udp6.cpp                                  \
     radio/radio.cpp                               \
     radio/radio_callbacks.cpp                     \
     radio/radio_platform.cpp                      \
+    radio/trel_interface.cpp                      \
+    radio/trel_link.cpp                           \
+    radio/trel_packet.cpp                         \
     thread/address_resolver.cpp                   \
     thread/announce_begin_server.cpp              \
     thread/announce_sender.cpp                    \
@@ -245,6 +260,7 @@ SOURCES_COMMON                                  = \
     thread/network_data_notifier.cpp              \
     thread/network_diagnostic.cpp                 \
     thread/panid_query_server.cpp                 \
+    thread/radio_selector.cpp                     \
     thread/router_table.cpp                       \
     thread/src_match_controller.cpp               \
     thread/thread_netif.cpp                       \
@@ -255,6 +271,7 @@ SOURCES_COMMON                                  = \
     utils/channel_manager.cpp                     \
     utils/channel_monitor.cpp                     \
     utils/child_supervision.cpp                   \
+    utils/dataset_updater.cpp                     \
     utils/flash.cpp                               \
     utils/heap.cpp                                \
     utils/jam_detector.cpp                        \
@@ -336,6 +353,8 @@ HEADERS_COMMON                                  = \
     backbone_router/bbr_manager.hpp               \
     backbone_router/multicast_listeners_table.hpp \
     backbone_router/ndproxy_table.hpp             \
+    border_router/router_advertisement.hpp        \
+    border_router/routing_manager.hpp             \
     coap/coap.hpp                                 \
     coap/coap_message.hpp                         \
     coap/coap_secure.hpp                          \
@@ -349,6 +368,7 @@ HEADERS_COMMON                                  = \
     common/equatable.hpp                          \
     common/extension.hpp                          \
     common/instance.hpp                           \
+    common/iterator_utils.hpp                     \
     common/linked_list.hpp                        \
     common/locator.hpp                            \
     common/locator-getters.hpp                    \
@@ -378,6 +398,7 @@ HEADERS_COMMON                                  = \
     config/child_supervision.h                    \
     config/coap.h                                 \
     config/commissioner.h                         \
+    config/dataset_updater.h                      \
     config/dhcp6_client.h                         \
     config/dhcp6_server.h                         \
     config/diag.h                                 \
@@ -393,12 +414,16 @@ HEADERS_COMMON                                  = \
     config/openthread-core-default-config.h       \
     config/parent_search.h                        \
     config/platform.h                             \
+    config/radio_link.h                           \
     config/sntp_client.h                          \
+    config/srp_client.h                           \
+    config/srp_server.h                           \
     config/time_sync.h                            \
     config/tmf.h                                  \
     crypto/aes_ccm.hpp                            \
     crypto/aes_ecb.hpp                            \
     crypto/ecdsa.hpp                              \
+    crypto/hkdf_sha256.hpp                        \
     crypto/hmac_sha256.hpp                        \
     crypto/mbedtls.hpp                            \
     crypto/pbkdf2_cmac.h                          \
@@ -411,6 +436,7 @@ HEADERS_COMMON                                  = \
     mac/mac.hpp                                   \
     mac/mac_filter.hpp                            \
     mac/mac_frame.hpp                             \
+    mac/mac_links.hpp                             \
     mac/mac_types.hpp                             \
     mac/sub_mac.hpp                               \
     meshcop/announce_begin_client.hpp             \
@@ -443,9 +469,14 @@ HEADERS_COMMON                                  = \
     net/netif.hpp                                 \
     net/sntp_client.hpp                           \
     net/socket.hpp                                \
+    net/srp_client.hpp                            \
+    net/srp_server.hpp                            \
     net/tcp.hpp                                   \
     net/udp6.hpp                                  \
     radio/radio.hpp                               \
+    radio/trel_interface.hpp                      \
+    radio/trel_link.hpp                           \
+    radio/trel_packet.hpp                         \
     thread/address_resolver.hpp                   \
     thread/announce_begin_server.hpp              \
     thread/announce_sender.hpp                    \
@@ -479,6 +510,7 @@ HEADERS_COMMON                                  = \
     thread/network_diagnostic.hpp                 \
     thread/network_diagnostic_tlvs.hpp            \
     thread/panid_query_server.hpp                 \
+    thread/radio_selector.hpp                     \
     thread/router_table.hpp                       \
     thread/src_match_controller.hpp               \
     thread/thread_netif.hpp                       \
@@ -490,6 +522,7 @@ HEADERS_COMMON                                  = \
     utils/channel_manager.hpp                     \
     utils/channel_monitor.hpp                     \
     utils/child_supervision.hpp                   \
+    utils/dataset_updater.hpp                     \
     utils/flash.hpp                               \
     utils/heap.hpp                                \
     utils/jam_detector.hpp                        \

@@ -41,11 +41,17 @@
 #include "net/checksum.hpp"
 #include "net/ip6.hpp"
 
+#if OPENTHREAD_MTD || OPENTHREAD_FTD
+
+#if OPENTHREAD_CONFIG_MESSAGE_USE_HEAP_ENABLE && !OPENTHREAD_CONFIG_DTLS_ENABLE
+#error "OPENTHREAD_CONFIG_MESSAGE_USE_HEAP_ENABLE is strongly discouraged when OPENTHREAD_CONFIG_DTLS_ENABLE is off."
+#endif
+
 namespace ot {
 
 MessagePool::MessagePool(Instance &aInstance)
     : InstanceLocator(aInstance)
-#if !OPENTHREAD_CONFIG_PLATFORM_MESSAGE_MANAGEMENT
+#if !OPENTHREAD_CONFIG_PLATFORM_MESSAGE_MANAGEMENT && !OPENTHREAD_CONFIG_MESSAGE_USE_HEAP_ENABLE
     , mNumFreeBuffers(kNumBuffers)
 #endif
 {
@@ -103,21 +109,24 @@ Buffer *MessagePool::NewBuffer(Message::Priority aPriority)
 {
     Buffer *buffer = nullptr;
 
-    SuccessOrExit(ReclaimBuffers(1, aPriority));
-
-#if OPENTHREAD_CONFIG_PLATFORM_MESSAGE_MANAGEMENT
-
-    buffer = static_cast<Buffer *>(otPlatMessagePoolNew(&GetInstance()));
-
+    while ((
+#if OPENTHREAD_CONFIG_MESSAGE_USE_HEAP_ENABLE
+               buffer = static_cast<Buffer *>(GetInstance().HeapCAlloc(sizeof(Buffer), 1))
+#elif OPENTHREAD_CONFIG_PLATFORM_MESSAGE_MANAGEMENT
+               buffer = static_cast<Buffer *>(otPlatMessagePoolNew(&GetInstance()))
 #else
-
-    buffer = mBufferPool.Allocate();
-    VerifyOrExit(buffer != nullptr);
-
-    mNumFreeBuffers--;
-    buffer->SetNextBuffer(nullptr);
-
+               buffer = mBufferPool.Allocate()
 #endif
+                   ) == nullptr)
+    {
+        SuccessOrExit(ReclaimBuffers(aPriority));
+    }
+
+#if !OPENTHREAD_CONFIG_PLATFORM_MESSAGE_MANAGEMENT && !OPENTHREAD_CONFIG_MESSAGE_USE_HEAP_ENABLE
+    mNumFreeBuffers--;
+#endif
+
+    buffer->SetNextBuffer(nullptr);
 
 exit:
     if (buffer == nullptr)
@@ -133,7 +142,9 @@ void MessagePool::FreeBuffers(Buffer *aBuffer)
     while (aBuffer != nullptr)
     {
         Buffer *next = aBuffer->GetNextBuffer();
-#if OPENTHREAD_CONFIG_PLATFORM_MESSAGE_MANAGEMENT
+#if OPENTHREAD_CONFIG_MESSAGE_USE_HEAP_ENABLE
+        GetInstance().HeapFree(aBuffer);
+#elif OPENTHREAD_CONFIG_PLATFORM_MESSAGE_MANAGEMENT
         otPlatMessagePoolFree(&GetInstance(), aBuffer);
 #else
         mBufferPool.Free(*aBuffer);
@@ -143,36 +154,33 @@ void MessagePool::FreeBuffers(Buffer *aBuffer)
     }
 }
 
-otError MessagePool::ReclaimBuffers(int aNumBuffers, Message::Priority aPriority)
+otError MessagePool::ReclaimBuffers(Message::Priority aPriority)
 {
-#if OPENTHREAD_MTD || OPENTHREAD_FTD
-    while (aNumBuffers > GetFreeBufferCount())
-    {
-        SuccessOrExit(Get<MeshForwarder>().EvictMessage(aPriority));
-    }
-
-exit:
-#else
-    OT_UNUSED_VARIABLE(aPriority);
-#endif
-
-    // First comparison is to get around issues with comparing
-    // signed and unsigned numbers, if aNumBuffers is negative then
-    // the second comparison wont be attempted.
-    return (aNumBuffers < 0 || aNumBuffers <= GetFreeBufferCount()) ? OT_ERROR_NONE : OT_ERROR_NO_BUFS;
+    return Get<MeshForwarder>().EvictMessage(aPriority);
 }
 
 uint16_t MessagePool::GetFreeBufferCount(void) const
 {
     uint16_t rval;
 
-#if OPENTHREAD_CONFIG_PLATFORM_MESSAGE_MANAGEMENT
+#if OPENTHREAD_CONFIG_MESSAGE_USE_HEAP_ENABLE
+    rval = static_cast<uint16_t>(GetInstance().GetHeap().GetFreeSize() / sizeof(Buffer));
+#elif OPENTHREAD_CONFIG_PLATFORM_MESSAGE_MANAGEMENT
     rval = otPlatMessagePoolNumFreeBuffers(&GetInstance());
 #else
     rval = mNumFreeBuffers;
 #endif
 
     return rval;
+}
+
+uint16_t MessagePool::GetTotalBufferCount(void) const
+{
+#if OPENTHREAD_CONFIG_MESSAGE_USE_HEAP_ENABLE
+    return static_cast<uint16_t>(GetInstance().GetHeap().GetCapacity() / sizeof(Buffer));
+#else
+    return OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS;
+#endif
 }
 
 const Message::Settings Message::Settings::kDefault(Message::kWithLinkSecurity, Message::kPriorityNormal);
@@ -254,22 +262,8 @@ otError Message::SetLength(uint16_t aLength)
 {
     otError  error              = OT_ERROR_NONE;
     uint16_t totalLengthRequest = GetReserved() + aLength;
-    uint16_t totalLengthCurrent = GetReserved() + GetLength();
-    int      bufs               = 0;
 
     VerifyOrExit(totalLengthRequest >= GetReserved(), error = OT_ERROR_INVALID_ARGS);
-
-    if (totalLengthRequest > kHeadBufferDataSize)
-    {
-        bufs = (((totalLengthRequest - kHeadBufferDataSize) - 1) / kBufferDataSize) + 1;
-    }
-
-    if (totalLengthCurrent > kHeadBufferDataSize)
-    {
-        bufs -= (((totalLengthCurrent - kHeadBufferDataSize) - 1) / kBufferDataSize) + 1;
-    }
-
-    SuccessOrExit(error = GetMessagePool()->ReclaimBuffers(bufs, GetPriority()));
 
     SuccessOrExit(error = ResizeMessage(totalLengthRequest));
     GetMetadata().mLength = aLength;
@@ -531,6 +525,48 @@ otError Message::Read(uint16_t aOffset, void *aBuf, uint16_t aLength) const
     return (ReadBytes(aOffset, aBuf, aLength) == aLength) ? OT_ERROR_NONE : OT_ERROR_PARSE;
 }
 
+bool Message::CompareBytes(uint16_t aOffset, const void *aBuf, uint16_t aLength) const
+{
+    uint16_t       bytesToCompare = aLength;
+    const uint8_t *bufPtr         = reinterpret_cast<const uint8_t *>(aBuf);
+    Chunk          chunk;
+
+    GetFirstChunk(aOffset, aLength, chunk);
+
+    while (chunk.GetLength() > 0)
+    {
+        VerifyOrExit(memcmp(bufPtr, chunk.GetData(), chunk.GetLength()) == 0);
+        bufPtr += chunk.GetLength();
+        bytesToCompare -= chunk.GetLength();
+        GetNextChunk(aLength, chunk);
+    }
+
+exit:
+    return (bytesToCompare == 0);
+}
+
+bool Message::CompareBytes(uint16_t       aOffset,
+                           const Message &aOtherMessage,
+                           uint16_t       aOtherOffset,
+                           uint16_t       aLength) const
+{
+    uint16_t bytesToCompare = aLength;
+    Chunk    chunk;
+
+    GetFirstChunk(aOffset, aLength, chunk);
+
+    while (chunk.GetLength() > 0)
+    {
+        VerifyOrExit(aOtherMessage.CompareBytes(aOtherOffset, chunk.GetData(), chunk.GetLength()));
+        aOtherOffset += chunk.GetLength();
+        bytesToCompare -= chunk.GetLength();
+        GetNextChunk(aLength, chunk);
+    }
+
+exit:
+    return (bytesToCompare == 0);
+}
+
 void Message::WriteBytes(uint16_t aOffset, const void *aBuf, uint16_t aLength)
 {
     const uint8_t *bufPtr = reinterpret_cast<const uint8_t *>(aBuf);
@@ -630,6 +666,9 @@ void Message::SetLinkInfo(const ThreadLinkInfo &aLinkInfo)
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
     SetTimeSyncSeq(aLinkInfo.mTimeSyncSeq);
     SetNetworkTimeOffset(aLinkInfo.mNetworkTimeOffset);
+#endif
+#if OPENTHREAD_CONFIG_MULTI_RADIO
+    SetRadioType(static_cast<Mac::RadioType>(aLinkInfo.mRadioType));
 #endif
 }
 
@@ -871,3 +910,4 @@ void PriorityQueue::GetInfo(uint16_t &aMessageCount, uint16_t &aBufferCount) con
 }
 
 } // namespace ot
+#endif // OPENTHREAD_MTD || OPENTHREAD_FTD

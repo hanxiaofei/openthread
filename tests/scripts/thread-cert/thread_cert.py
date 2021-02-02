@@ -27,6 +27,7 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
+import binascii
 import json
 import logging
 import os
@@ -91,6 +92,7 @@ class TestCase(NcpSupportMixin, unittest.TestCase):
 
     USE_MESSAGE_FACTORY = True
     TOPOLOGY = None
+    CASE_WIRESHARK_PREFS = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -156,11 +158,12 @@ class TestCase(NcpSupportMixin, unittest.TestCase):
             if node.is_host:
                 continue
 
+            self.nodes[i].set_masterkey(binascii.hexlify(config.DEFAULT_MASTER_KEY).decode())
             self.nodes[i].set_panid(params['panid'])
             self.nodes[i].set_mode(params['mode'])
 
             if 'partition_id' in params:
-                self.nodes[i].set_partition_id(params['partition_id'])
+                self.nodes[i].set_preferred_partition_id(params['partition_id'])
             if 'channel' in params:
                 self.nodes[i].set_channel(params['channel'])
             if 'masterkey' in params:
@@ -183,11 +186,14 @@ class TestCase(NcpSupportMixin, unittest.TestCase):
                 self.nodes[i].set_timeout(params['timeout'])
 
             if 'active_dataset' in params:
+                if 'master_key' not in params['active_dataset']:
+                    params['active_dataset']['master_key'] = binascii.hexlify(config.DEFAULT_MASTER_KEY).decode()
                 self.nodes[i].set_active_dataset(params['active_dataset']['timestamp'],
                                                  panid=params['active_dataset'].get('panid'),
                                                  channel=params['active_dataset'].get('channel'),
                                                  channel_mask=params['active_dataset'].get('channel_mask'),
-                                                 master_key=params['active_dataset'].get('master_key'))
+                                                 master_key=params['active_dataset'].get('master_key'),
+                                                 security_policy=params['active_dataset'].get('security_policy'))
 
             if 'pending_dataset' in params:
                 self.nodes[i].set_pending_dataset(params['pending_dataset']['pendingtimestamp'],
@@ -288,7 +294,7 @@ class TestCase(NcpSupportMixin, unittest.TestCase):
         os.system(f"rm -f tmp/{PORT_OFFSET}_*.flash tmp/{PORT_OFFSET}_*.data tmp/{PORT_OFFSET}_*.swap")
 
     def _verify_packets(self, test_info_path: str):
-        pv = PacketVerifier(test_info_path)
+        pv = PacketVerifier(test_info_path, self.CASE_WIRESHARK_PREFS)
         pv.add_common_vars()
         self.verify(pv)
         print("Packet verification passed: %s" % test_info_path, file=sys.stderr)

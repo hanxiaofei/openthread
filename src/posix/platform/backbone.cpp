@@ -35,17 +35,21 @@
 
 #if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
 
+#include "multicast_routing.hpp"
 #include "platform-posix.h"
 #include "common/code_utils.hpp"
 
 char         gBackboneNetifName[IFNAMSIZ] = "";
 unsigned int gBackboneNetifIndex          = 0;
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_MULTICAST_ROUTING_ENABLE
+static ot::Posix::MulticastRoutingManager sMulticastRoutingManager;
+#endif
 
 void platformBackboneInit(otInstance *aInstance, const char *aInterfaceName)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    VerifyOrExit(aInterfaceName != nullptr, otLogInfoPlat("Backbone interface is not configured"));
+    VerifyOrDie(aInterfaceName != nullptr, OT_EXIT_INVALID_ARGUMENTS);
 
     VerifyOrDie(strnlen(aInterfaceName, IFNAMSIZ) <= IFNAMSIZ - 1, OT_EXIT_INVALID_ARGUMENTS);
     strcpy(gBackboneNetifName, aInterfaceName);
@@ -55,8 +59,38 @@ void platformBackboneInit(otInstance *aInstance, const char *aInterfaceName)
 
     otLogInfoPlat("Backbone interface is configured to %s (%d)", gBackboneNetifName, gBackboneNetifIndex);
 
-exit:
-    return;
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_MULTICAST_ROUTING_ENABLE
+    sMulticastRoutingManager.Init(aInstance);
+#endif
+}
+
+void platformBackboneUpdateFdSet(fd_set &aReadFdSet, int &aMaxFd)
+{
+    OT_UNUSED_VARIABLE(aReadFdSet);
+    OT_UNUSED_VARIABLE(aMaxFd);
+
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_MULTICAST_ROUTING_ENABLE
+    sMulticastRoutingManager.UpdateFdSet(aReadFdSet, aMaxFd);
+#endif
+}
+
+void platformBackboneProcess(const fd_set &aReadSet)
+{
+    OT_UNUSED_VARIABLE(aReadSet);
+
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_MULTICAST_ROUTING_ENABLE
+    sMulticastRoutingManager.Process(aReadSet);
+#endif
+}
+
+void platformBackboneStateChange(otInstance *aInstance, otChangedFlags aFlags)
+{
+    OT_UNUSED_VARIABLE(aInstance);
+    OT_UNUSED_VARIABLE(aFlags);
+
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_MULTICAST_ROUTING_ENABLE
+    sMulticastRoutingManager.HandleStateChange(aInstance, aFlags);
+#endif
 }
 
 #endif

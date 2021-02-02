@@ -124,7 +124,7 @@ public:
                      bool                    aJoiner,
                      bool                    aEnableFiltering,
                      const FilterIndexes *   aFilterIndexes,
-                     Handler                 aHandler,
+                     Handler                 aCallback,
                      void *                  aContext);
 
     /**
@@ -162,9 +162,9 @@ private:
     };
 
     // Methods used by `MeshForwarder`
-    otError PrepareDiscoveryRequestFrame(Mac::TxFrame &aFrame);
-    void    HandleDiscoveryRequestFrameTxDone(Message &aMessage);
-    void    Stop(void) { HandleDiscoverComplete(); }
+    Mac::TxFrame *PrepareDiscoveryRequestFrame(Mac::TxFrame &aFrame);
+    void          HandleDiscoveryRequestFrameTxDone(Message &aMessage);
+    void          Stop(void) { HandleDiscoverComplete(); }
 
     // Methods used from `Mle`
     void HandleDiscoveryResponse(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo) const;

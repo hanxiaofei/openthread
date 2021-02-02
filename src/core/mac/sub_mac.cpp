@@ -283,7 +283,7 @@ otError SubMac::Send(void)
     {
     case kStateDisabled:
     case kStateCsmaBackoff:
-#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+#if !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
     case kStateCslTransmit:
 #endif
     case kStateTransmit:
@@ -349,17 +349,18 @@ void SubMac::StartCsmaBackoff(void)
     uint32_t backoff;
     uint32_t backoffExponent = kMinBE + mTransmitRetries + mCsmaBackoffs;
 
-#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+#if !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
     if (mTransmitFrame.mInfo.mTxInfo.mTxDelay != 0)
     {
         SetState(kStateCslTransmit);
 
         if (ShouldHandleTransmitTargetTime())
         {
-            if (otPlatRadioGetNow(&GetInstance()) <
-                mTransmitFrame.mInfo.mTxInfo.mTxDelayBaseTime + mTransmitFrame.mInfo.mTxInfo.mTxDelay)
+            if (Time(static_cast<uint32_t>(otPlatRadioGetNow(&GetInstance()))) <
+                Time(mTransmitFrame.mInfo.mTxInfo.mTxDelayBaseTime) + mTransmitFrame.mInfo.mTxInfo.mTxDelay -
+                    kCcaSampleInterval)
             {
-                mTimer.StartAt(Time(mTransmitFrame.mInfo.mTxInfo.mTxDelayBaseTime),
+                mTimer.StartAt(Time(mTransmitFrame.mInfo.mTxInfo.mTxDelayBaseTime) - kCcaSampleInterval,
                                mTransmitFrame.mInfo.mTxInfo.mTxDelay);
             }
             else // Transmit without delay
@@ -374,7 +375,7 @@ void SubMac::StartCsmaBackoff(void)
 
         ExitNow();
     }
-#endif // OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+#endif // !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
     SetState(kStateCsmaBackoff);
 
     VerifyOrExit(ShouldHandleCsmaBackOff(), BeginTransmit());
@@ -412,7 +413,7 @@ void SubMac::BeginTransmit(void)
 
     OT_UNUSED_VARIABLE(error);
 
-#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+#if !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
     VerifyOrExit(mState == kStateCsmaBackoff || mState == kStateCslTransmit);
 #else
     VerifyOrExit(mState == kStateCsmaBackoff);
@@ -478,7 +479,7 @@ void SubMac::HandleTransmitDone(TxFrame &aFrame, RxFrame *aAckFrame, otError aEr
     case OT_ERROR_CHANNEL_ACCESS_FAILURE:
         ccaSuccess = false;
 
-        // fall through
+        OT_FALL_THROUGH;
 
     case OT_ERROR_NONE:
     case OT_ERROR_NO_ACK:
@@ -582,7 +583,7 @@ otError SubMac::EnergyScan(uint8_t aScanChannel, uint16_t aScanDuration)
     case kStateDisabled:
     case kStateCsmaBackoff:
     case kStateTransmit:
-#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+#if !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
     case kStateCslTransmit:
 #endif
     case kStateEnergyScan:
@@ -663,7 +664,7 @@ void SubMac::HandleTimer(void)
 {
     switch (mState)
     {
-#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+#if !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
     case kStateCslTransmit:
         BeginTransmit();
         break;
@@ -880,7 +881,7 @@ const char *SubMac::StateToString(State aState)
     case kStateEnergyScan:
         str = "EnergyScan";
         break;
-#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+#if !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
     case kStateCslTransmit:
         str = "CslTransmit";
         break;
@@ -968,23 +969,6 @@ void SubMac::SetCslTimeout(uint32_t aTimeout)
     mCslTimeout = aTimeout;
 }
 
-void SubMac::FillCsl(Frame &aFrame)
-{
-    uint8_t *cur = aFrame.GetHeaderIe(Frame::kHeaderIeCsl);
-
-    if (cur != nullptr)
-    {
-        CslIe *csl = reinterpret_cast<CslIe *>(cur + sizeof(HeaderIe));
-
-        csl->SetPeriod(mCslPeriod);
-        csl->SetPhase(GetCslPhase());
-#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
-        otLogDebgMac("%10u:FillCsl() seq=%u phase=%hu", static_cast<uint32_t>(otPlatTimeGet()), aFrame.GetSequence(),
-                     csl->GetPhase());
-#endif
-    }
-}
-
 void SubMac::HandleCslTimer(Timer &aTimer)
 {
     aTimer.GetOwner<SubMac>().HandleCslTimer();
@@ -1029,23 +1013,6 @@ void SubMac::HandleCslTimer(void)
         OT_ASSERT(false);
         break;
     }
-}
-
-uint16_t SubMac::GetCslPhase(void) const
-{
-    TimeMicro now = TimerMicro::GetNow();
-    uint32_t  delta;
-
-    if (mCslSampleTime < now)
-    {
-        delta = mCslSampleTime + mCslPeriod * kUsPerTenSymbols - now;
-    }
-    else
-    {
-        delta = mCslSampleTime - now;
-    }
-
-    return static_cast<uint16_t>(delta / kUsPerTenSymbols);
 }
 #endif // OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
 

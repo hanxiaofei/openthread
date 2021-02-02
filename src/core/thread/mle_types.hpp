@@ -106,6 +106,13 @@ enum
                           1000, ///< Minimum timeout(in seconds) for data poll
     kMinTimeout = (kMinTimeoutKeepAlive >= kMinTimeoutDataPoll ? kMinTimeoutKeepAlive
                                                                : kMinTimeoutDataPoll), ///< Minimum timeout(in seconds)
+
+#if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
+    kLinkAcceptMaxRouters = 3, ///< Maximum Route TLV entries in a Link Accept message.
+#else
+    kLinkAcceptMaxRouters = 20, ///< Maximum Route TLV entries in a Link Accept message.
+#endif
+    kLinkAcceptSequenceRollback = 64, ///< Route Sequence value rollback in a Link Accept message.
 };
 
 enum
@@ -338,10 +345,7 @@ public:
      * @param[in] aMode   A mode TLV bitmask to initialize the `DeviceMode` object.
      *
      */
-    explicit DeviceMode(uint8_t aMode)
-        : mMode(aMode)
-    {
-    }
+    explicit DeviceMode(uint8_t aMode) { Set(aMode); }
 
     /**
      * This constructor initializes a `DeviceMode` object from a given mode configuration structure.

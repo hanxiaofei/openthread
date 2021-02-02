@@ -67,10 +67,13 @@ typedef struct
     int8_t       mLastRssi;             ///< Last observed RSSI
     uint16_t     mFrameErrorRate;       ///< Frame error rate (0xffff->100%). Requires error tracking feature.
     uint16_t     mMessageErrorRate;     ///< (IPv6) msg error rate (0xffff->100%). Requires error tracking feature.
+    uint16_t     mQueuedMessageCnt;     ///< Number of queued messages for the child.
+    uint8_t      mVersion;              ///< MLE version
     bool         mRxOnWhenIdle : 1;     ///< rx-on-when-idle
     bool         mFullThreadDevice : 1; ///< Full Thread Device
     bool         mFullNetworkData : 1;  ///< Full Network Data
     bool         mIsStateRestoring : 1; ///< Is in restoring state
+    bool         mIsCslSynced : 1;      ///< Is child CSL synchronized
 } otChildInfo;
 
 #define OT_CHILD_IP6_ADDRESS_ITERATOR_INIT 0 ///< Initializer for otChildIP6AddressIterator
@@ -216,23 +219,23 @@ uint8_t otThreadGetLocalLeaderWeight(otInstance *aInstance);
 void otThreadSetLocalLeaderWeight(otInstance *aInstance, uint8_t aWeight);
 
 /**
- * Get the Thread Leader Partition Id used when operating in the Leader role.
+ * Get the preferred Thread Leader Partition Id used when operating in the Leader role.
  *
  * @param[in]  aInstance A pointer to an OpenThread instance.
  *
  * @returns The Thread Leader Partition Id value.
  *
  */
-uint32_t otThreadGetLocalLeaderPartitionId(otInstance *aInstance);
+uint32_t otThreadGetPreferredLeaderPartitionId(otInstance *aInstance);
 
 /**
- * Set the Thread Leader Partition Id used when operating in the Leader role.
+ * Set the preferred Thread Leader Partition Id used when operating in the Leader role.
  *
  * @param[in]  aInstance     A pointer to an OpenThread instance.
  * @param[in]  aPartitionId  The Thread Leader Partition Id value.
  *
  */
-void otThreadSetLocalLeaderPartitionId(otInstance *aInstance, uint32_t aPartitionId);
+void otThreadSetPreferredLeaderPartitionId(otInstance *aInstance, uint32_t aPartitionId);
 
 /**
  * Get the Joiner UDP Port.

@@ -69,6 +69,17 @@ namespace ot {
 uint16_t StringLength(const char *aString, uint16_t aMaxLength);
 
 /**
+ * This function finds the first occurrence of a given character in a null-terminated string.
+ *
+ * @param[in] aString     A pointer to the string.
+ * @param[in] aChar       A char to search for in the string.
+ *
+ * @returns The pointer to first occurrence of the @p aChar in @p aString, or nullptr if cannot be found.
+ *
+ */
+const char *StringFind(const char *aString, char aChar);
+
+/**
  * This class defines the base class for `String`.
  *
  */
@@ -257,6 +268,29 @@ private:
  * @}
  *
  */
+
+/**
+ * This function validates whether a given byte sequence (string) follows UTF-8 encoding.
+ *
+ * @param[in]  aString  A null-terminated byte sequence.
+ *
+ * @retval TRUE   The sequence is a valid UTF-8 string.
+ * @retval FALSE  The sequence is not a valid UTF-8 string.
+ *
+ */
+bool IsValidUtf8String(const char *aString);
+
+/**
+ * This function validates whether a given byte sequence (string) follows UTF-8 encoding.
+ *
+ * @param[in]  aString  A byte sequence.
+ * @param[in]  aLength  Length of the sequence.
+ *
+ * @retval TRUE   The sequence is a valid UTF-8 string.
+ * @retval FALSE  The sequence is not a valid UTF-8 string.
+ *
+ */
+bool IsValidUtf8String(const char *aString, size_t aLength);
 
 } // namespace ot
 

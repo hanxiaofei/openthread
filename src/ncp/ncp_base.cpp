@@ -43,6 +43,9 @@
 #include <openthread/network_time.h>
 #include <openthread/platform/misc.h>
 #include <openthread/platform/radio.h>
+#if OPENTHREAD_CONFIG_RADIO_LINK_TREL_ENABLE
+#include <openthread/platform/trel-udp6.h>
+#endif
 
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
@@ -240,12 +243,19 @@ NcpBase::NcpBase(Instance *aInstance)
     , mOutboundInsecureIpFrameCounter(0)
     , mDroppedOutboundIpFrameCounter(0)
     , mDroppedInboundIpFrameCounter(0)
+#if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+    , mSrpClientNumHostAddresses(0)
+    , mSrpClientCallbackEnabled(false)
+#endif
 #endif // OPENTHREAD_MTD || OPENTHREAD_FTD
     , mFramingErrorCounter(0)
     , mRxSpinelFrameCounter(0)
     , mRxSpinelOutOfOrderTidCounter(0)
     , mTxSpinelFrameCounter(0)
     , mDidInitialUpdates(false)
+#if OPENTHREAD_CONFIG_RADIO_LINK_TREL_ENABLE
+    , mTrelTestModeEnable(true)
+#endif
     , mLogTimestampBase(0)
 {
     OT_ASSERT(mInstance != nullptr);
@@ -275,6 +285,7 @@ NcpBase::NcpBase(Instance *aInstance)
 #endif
     otThreadRegisterParentResponseCallback(mInstance, &NcpBase::HandleParentResponseInfo, static_cast<void *>(this));
 #endif // OPENTHREAD_FTD
+
 #if OPENTHREAD_CONFIG_LEGACY_ENABLE
     mLegacyNodeDidJoin = false;
     mLegacyHandlers    = nullptr;
@@ -617,6 +628,18 @@ unsigned int NcpBase::ConvertLogRegion(otLogRegion aLogRegion)
 
     case OT_LOG_REGION_DUA:
         spinelLogRegion = SPINEL_NCP_LOG_REGION_OT_DUA;
+        break;
+
+    case OT_LOG_REGION_BR:
+        spinelLogRegion = SPINEL_NCP_LOG_REGION_OT_BR;
+        break;
+
+    case OT_LOG_REGION_SRP:
+        spinelLogRegion = SPINEL_NCP_LOG_REGION_OT_SRP;
+        break;
+
+    case OT_LOG_REGION_DNS:
+        spinelLogRegion = SPINEL_NCP_LOG_REGION_OT_DNS;
         break;
     }
 
@@ -1796,6 +1819,10 @@ template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_CAPS>(void)
     SuccessOrExit(error = mEncoder.WriteUintPacked(SPINEL_CAP_MAC_RAW));
 #endif
 
+#if OPENTHREAD_RADIO
+    SuccessOrExit(error = mEncoder.WriteUintPacked(SPINEL_CAP_RCP_API_VERSION));
+#endif
+
 #if OPENTHREAD_PLATFORM_POSIX
     SuccessOrExit(error = mEncoder.WriteUintPacked(SPINEL_CAP_POSIX));
 #endif
@@ -1883,6 +1910,14 @@ template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_CAPS>(void)
 
 #if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     SuccessOrExit(error = mEncoder.WriteUintPacked(SPINEL_CAP_THREAD_SERVICE));
+#endif
+
+#if OPENTHREAD_CONFIG_MULTI_RADIO
+    SuccessOrExit(error = mEncoder.WriteUintPacked(SPINEL_CAP_MULTI_RADIO));
+#endif
+
+#if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+    SuccessOrExit(error = mEncoder.WriteUintPacked(SPINEL_CAP_SRP_CLIENT));
 #endif
 
 #endif // OPENTHREAD_MTD || OPENTHREAD_FTD
@@ -2234,6 +2269,50 @@ exit:
     return error;
 }
 
+template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_PHY_CHAN_MAX_POWER>(void)
+{
+    uint8_t channel;
+    int8_t  maxPower;
+    otError error = OT_ERROR_NONE;
+
+    SuccessOrExit(error = mDecoder.ReadUint8(channel));
+    SuccessOrExit(error = mDecoder.ReadInt8(maxPower));
+    error = otPlatRadioSetChannelMaxTransmitPower(mInstance, channel, maxPower);
+
+exit:
+    return error;
+}
+
+template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_PHY_REGION_CODE>(void)
+{
+    uint16_t regionCode;
+    otError  error = OT_ERROR_NONE;
+
+    error = otPlatRadioGetRegion(mInstance, &regionCode);
+    if (error == OT_ERROR_NONE)
+    {
+        error = mEncoder.WriteUint16(regionCode);
+    }
+    else
+    {
+        error = mEncoder.OverwriteWithLastStatusError(ThreadErrorToSpinelStatus(error));
+    }
+
+    return error;
+}
+
+template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_PHY_REGION_CODE>(void)
+{
+    uint16_t regionCode;
+    otError  error = OT_ERROR_NONE;
+
+    SuccessOrExit(error = mDecoder.ReadUint16(regionCode));
+    error = otPlatRadioSetRegion(mInstance, regionCode);
+
+exit:
+    return error;
+}
+
 template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_DEBUG_TEST_ASSERT>(void)
 {
 #ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
@@ -2403,6 +2482,24 @@ template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_RADIO_COEX_METRICS>(v
     // Encode common metrics
     SuccessOrExit(error = mEncoder.WriteBool(coexMetrics.mStopped));
     SuccessOrExit(error = mEncoder.WriteUint32(coexMetrics.mNumGrantGlitch));
+
+exit:
+    return error;
+}
+#endif
+
+#if OPENTHREAD_CONFIG_RADIO_LINK_TREL_ENABLE
+template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_DEBUG_TREL_TEST_MODE_ENABLE>(void)
+{
+    return mEncoder.WriteBool(mTrelTestModeEnable);
+}
+
+template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_DEBUG_TREL_TEST_MODE_ENABLE>(void)
+{
+    otError error = OT_ERROR_NONE;
+
+    SuccessOrExit(error = mDecoder.ReadBool(mTrelTestModeEnable));
+    error = otPlatTrelUdp6SetTestMode(mInstance, mTrelTestModeEnable);
 
 exit:
     return error;

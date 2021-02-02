@@ -48,7 +48,7 @@ namespace Cli {
 class Interpreter;
 
 /**
- * This class implements the CLI CoAP Secure server and client.
+ * This class implements the Commissioner CLI interpreter.
  *
  */
 class Commissioner
@@ -102,11 +102,11 @@ private:
     static void HandleStateChanged(otCommissionerState aState, void *aContext);
     void        HandleStateChanged(otCommissionerState aState);
 
-    static void HandleJoinerEvent(otCommissionerJoinerEvent aJoinerEvent,
+    static void HandleJoinerEvent(otCommissionerJoinerEvent aEvent,
                                   const otJoinerInfo *      aJoinerInfo,
                                   const otExtAddress *      aJoinerId,
                                   void *                    aContext);
-    void        HandleJoinerEvent(otCommissionerJoinerEvent aJoinerEvent,
+    void        HandleJoinerEvent(otCommissionerJoinerEvent aEvent,
                                   const otJoinerInfo *      aJoinerInfo,
                                   const otExtAddress *      aJoinerId);
 

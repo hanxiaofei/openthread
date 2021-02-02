@@ -56,12 +56,16 @@
 #include "backbone_router/bbr_manager.hpp"
 #endif
 
-#if OPENTHREAD_CONFIG_MLR_ENABLE || OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
+#if OPENTHREAD_CONFIG_MLR_ENABLE || (OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE)
 #include "thread/mlr_manager.hpp"
 #endif
 
-#if OPENTHREAD_CONFIG_DUA_ENABLE || OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
+#if OPENTHREAD_CONFIG_DUA_ENABLE || (OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE)
 #include "thread/dua_manager.hpp"
+#endif
+
+#if OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
+#include "net/srp_server.hpp"
 #endif
 
 #include "meshcop/dataset_manager.hpp"
@@ -79,6 +83,7 @@
 #include "net/ip6_filter.hpp"
 #include "net/netif.hpp"
 #include "net/sntp_client.hpp"
+#include "net/srp_client.hpp"
 #include "thread/address_resolver.hpp"
 #include "thread/announce_begin_server.hpp"
 #include "thread/discover_scanner.hpp"
@@ -92,6 +97,7 @@
 #include "thread/network_data_notifier.hpp"
 #include "thread/network_diagnostic.hpp"
 #include "thread/panid_query_server.hpp"
+#include "thread/radio_selector.hpp"
 #include "thread/time_sync_service.hpp"
 #include "utils/child_supervision.hpp"
 
@@ -195,10 +201,13 @@ private:
 #endif
 #if OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
     Dns::Client mDnsClient;
-#endif // OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
+#endif
+#if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+    Srp::Client mSrpClient;
+#endif
 #if OPENTHREAD_CONFIG_SNTP_CLIENT_ENABLE
     Sntp::Client mSntpClient;
-#endif // OPENTHREAD_CONFIG_SNTP_CLIENT_ENABLE
+#endif
     MeshCoP::ActiveDataset  mActiveDataset;
     MeshCoP::PendingDataset mPendingDataset;
     Ip6::Filter             mIp6Filter;
@@ -208,6 +217,9 @@ private:
     MeshForwarder           mMeshForwarder;
     Mle::MleRouter          mMleRouter;
     Mle::DiscoverScanner    mDiscoverScanner;
+#if OPENTHREAD_CONFIG_MULTI_RADIO
+    RadioSelector mRadioSelector;
+#endif
 #if OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE || OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     NetworkData::Local mNetworkDataLocal;
 #endif // OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE || OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
@@ -252,12 +264,16 @@ private:
     BackboneRouter::Local   mBackboneRouterLocal;
     BackboneRouter::Manager mBackboneRouterManager;
 #endif
-#if OPENTHREAD_CONFIG_MLR_ENABLE || OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
+#if OPENTHREAD_CONFIG_MLR_ENABLE || (OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE)
     MlrManager mMlrManager;
 #endif
-#if OPENTHREAD_CONFIG_DUA_ENABLE || OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
+#if OPENTHREAD_CONFIG_DUA_ENABLE || (OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE)
     DuaManager mDuaManager;
 #endif
+#if OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
+    Srp::Server mSrpServer;
+#endif
+
     Utils::ChildSupervisor     mChildSupervisor;
     Utils::SupervisionListener mSupervisionListener;
     AnnounceBeginServer        mAnnounceBegin;

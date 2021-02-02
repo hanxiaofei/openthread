@@ -33,7 +33,7 @@
 
 #include "multicast_listeners_table.hpp"
 
-#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_MULTICAST_ROUTING_ENABLE
 
 #include "common/code_utils.hpp"
 #include "common/instance.hpp"
@@ -287,8 +287,6 @@ void MulticastListenersTable::SetCallback(otBackboneRouterMulticastListenerCallb
     }
 }
 
-#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
-
 otError MulticastListenersTable::GetNext(otBackboneRouterMulticastListenerIterator &aIterator,
                                          otBackboneRouterMulticastListenerInfo &    aListenerInfo)
 {
@@ -309,10 +307,8 @@ exit:
     return error;
 }
 
-#endif // OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
-
 } // namespace BackboneRouter
 
 } // namespace ot
 
-#endif // OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+#endif // OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_MULTICAST_ROUTING_ENABLE

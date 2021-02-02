@@ -28,54 +28,61 @@
 
 # OpenThread Features (Makefile default configuration).
 
-BACKBONE_ROUTER     ?= 0
-BIG_ENDIAN          ?= 0
-BORDER_AGENT        ?= 0
-BORDER_ROUTER       ?= 0
-COAP                ?= 0
-COAP_OBSERVE        ?= 0
-COAPS               ?= 0
-COMMISSIONER        ?= 0
-COVERAGE            ?= 0
-CHANNEL_MANAGER     ?= 0
-CHANNEL_MONITOR     ?= 0
-CHILD_SUPERVISION   ?= 0
-CLI_TRANSPORT       ?= UART
-DEBUG               ?= 0
-DHCP6_CLIENT        ?= 0
-DHCP6_SERVER        ?= 0
-DIAGNOSTIC          ?= 0
-DISABLE_DOC         ?= 0
-DISABLE_TOOLS       ?= 0
-DNS_CLIENT          ?= 0
-DUA                 ?= 0
-DYNAMIC_LOG_LEVEL   ?= 0
-ECDSA               ?= 0
-EXTERNAL_HEAP       ?= 0
-IP6_FRAGM           ?= 0
-JAM_DETECTION       ?= 0
-JOINER              ?= 0
-LEGACY              ?= 0
+BACKBONE_ROUTER           ?= 0
+BIG_ENDIAN                ?= 0
+BORDER_AGENT              ?= 0
+BORDER_ROUTER             ?= 0
+BORDER_ROUTING            ?= 0
+COAP                      ?= 0
+COAP_BLOCK                ?= 0
+COAP_OBSERVE              ?= 0
+COAPS                     ?= 0
+COMMISSIONER              ?= 0
+COVERAGE                  ?= 0
+CHANNEL_MANAGER           ?= 0
+CHANNEL_MONITOR           ?= 0
+CHILD_SUPERVISION         ?= 0
+CLI_TRANSPORT             ?= UART
+DATASET_UPDATER           ?= 0
+DEBUG                     ?= 0
+DHCP6_CLIENT              ?= 0
+DHCP6_SERVER              ?= 0
+DIAGNOSTIC                ?= 0
+DISABLE_DOC               ?= 0
+DISABLE_TOOLS             ?= 0
+DNS_CLIENT                ?= 0
+DUA                       ?= 0
+DYNAMIC_LOG_LEVEL         ?= 0
+ECDSA                     ?= 0
+EXTERNAL_HEAP             ?= 0
+IP6_FRAGM                 ?= 0
+JAM_DETECTION             ?= 0
+JOINER                    ?= 0
+LEGACY                    ?= 0
 ifeq ($(REFERENCE_DEVICE),1)
-LOG_OUTPUT          ?= APP
+LOG_OUTPUT                ?= APP
 endif
-LINK_RAW            ?= 0
-MAC_FILTER          ?= 0
-MLE_LONG_ROUTES     ?= 0
-MLR                 ?= 0
-MTD_NETDIAG         ?= 0
-MULTIPLE_INSTANCE   ?= 0
-OTNS                ?= 0
-PLATFORM_UDP        ?= 0
-REFERENCE_DEVICE    ?= 0
-SERVICE             ?= 0
-SETTINGS_RAM        ?= 0
+LINK_RAW                  ?= 0
+MAC_FILTER                ?= 0
+MESSAGE_USE_HEAP          ?= 0
+MLE_LONG_ROUTES           ?= 0
+MLR                       ?= 0
+MTD_NETDIAG               ?= 0
+MULTIPLE_INSTANCE         ?= 0
+OTNS                      ?= 0
+PLATFORM_UDP              ?= 0
+REFERENCE_DEVICE          ?= 0
+SERVICE                   ?= 0
+SETTINGS_RAM              ?= 0
 # SLAAC is enabled by default
-SLAAC               ?= 1
-SNTP_CLIENT         ?= 0
-THREAD_VERSION      ?= 1.1
-TIME_SYNC           ?= 0
-UDP_FORWARD         ?= 0
+SLAAC                     ?= 1
+SNTP_CLIENT               ?= 0
+SRP_CLIENT                ?= 0
+SRP_SERVER                ?= 0
+THREAD_VERSION            ?= 1.1
+TIME_SYNC                 ?= 0
+UDP_FORWARD               ?= 0
+RCP_RESTORATION_MAX_COUNT ?= 0
 
 
 ifeq ($(BACKBONE_ROUTER),1)
@@ -94,12 +101,20 @@ ifeq ($(BORDER_ROUTER),1)
 COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE=1
 endif
 
+ifeq ($(BORDER_ROUTING),1)
+COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE=1
+endif
+
 ifeq ($(COAP),1)
 COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_COAP_API_ENABLE=1
 endif
 
 ifeq ($(COAPS),1)
 COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_COAP_SECURE_API_ENABLE=1
+endif
+
+ifeq ($(COAP_BLOCK),1)
+COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_COAP_BLOCKWISE_TRANSFER_ENABLE=1
 endif
 
 ifeq ($(COAP_OBSERVE),1)
@@ -136,6 +151,10 @@ endif
 
 ifeq ($(CSL_DEBUG),1)
 COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_MAC_CSL_DEBUG_ENABLE=1
+endif
+
+ifeq ($(DATASET_UPDATER),1)
+COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_DATASET_UPDATER_ENABLE=1
 endif
 
 ifeq ($(DEBUG),1)
@@ -214,6 +233,10 @@ ifeq ($(MAC_FILTER),1)
 COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_MAC_FILTER_ENABLE=1
 endif
 
+ifeq ($(MESSAGE_USE_HEAP),1)
+COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_MESSAGE_USE_HEAP_ENABLE=1
+endif
+
 # Enable MLE long routes extension (experimental, breaks Thread conformance)
 ifeq ($(MLE_LONG_ROUTES),1)
 COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_MLE_LONG_ROUTES_ENABLE=1
@@ -250,6 +273,14 @@ endif
 
 ifeq ($(SNTP_CLIENT),1)
 COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_SNTP_CLIENT_ENABLE=1
+endif
+
+ifeq ($(SRP_CLIENT),1)
+COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_SRP_CLIENT_ENABLE=1
+endif
+
+ifeq ($(SRP_SERVER),1)
+COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_SRP_SERVER_ENABLE=1
 endif
 
 ifeq ($(THREAD_VERSION),1.1)
@@ -300,29 +331,8 @@ ifneq ($(SPINEL_ENCRYPTER_LIBS),)
 configure_OPTIONS              += --with-ncp-spinel-encrypter-libs=$(SPINEL_ENCRYPTER_LIBS)
 endif
 
-ifeq ($(FULL_LOGS),1)
-# HINT: Add more here, or comment out ones you do not need/want
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_LEVEL=OT_LOG_LEVEL_DEBG
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_API=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_ARP=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_BBR=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_CLI=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_COAP=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_DUA=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_ICMP=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_IP6=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_MAC=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_MEM=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_MESHCOP=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_MLE=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_MLR=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_NETDATA=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_NETDIAG=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_PKT_DUMP=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_PLATFORM=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_PREPEND_LEVEL=1
-LOG_FLAGS += -DOPENTHREAD_CONFIG_LOG_PREPEND_REGION=1
-endif
+COMMONCFLAGS += -DOPENTHREAD_SPINEL_CONFIG_RCP_RESTORATION_MAX_COUNT=${RCP_RESTORATION_MAX_COUNT}
 
-CFLAGS += ${LOG_FLAGS}
-CXXFLAGS += ${LOG_FLAGS}
+ifeq ($(FULL_LOGS),1)
+COMMONCFLAGS += -DOPENTHREAD_CONFIG_LOG_LEVEL=OT_LOG_LEVEL_DEBG -DOPENTHREAD_CONFIG_LOG_PREPEND_LEVEL=1 -DOPENTHREAD_CONFIG_LOG_PREPEND_REGION=1
+endif

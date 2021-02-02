@@ -22,6 +22,7 @@ Done
 ## OpenThread Command List
 
 - [bbr](#bbr)
+- [br](#br)
 - [bufferinfo](#bufferinfo)
 - [ccathreshold](#ccathreshold)
 - [channel](#channel)
@@ -57,9 +58,8 @@ Done
 - [joinerport](#joinerport-port)
 - [keysequence](#keysequence-counter)
 - [leaderdata](#leaderdata)
-- [leaderpartitionid](#leaderpartitionid)
 - [leaderweight](#leaderweight)
-- [linkmetrics](#linkmetrics-mgmt-ipaddr-forward-seriesid-ldraxpqmr)
+- [linkmetrics](#linkmetrics-mgmt-ipaddr-enhanced-ack-clear)
 - [linkquality](#linkquality-extaddr)
 - [log](#log-filename-filename)
 - [mac](#mac-retries-direct)
@@ -77,6 +77,7 @@ Done
 - [panid](#panid)
 - [parent](#parent)
 - [parentpriority](#parentpriority)
+- [partitionid](#partitionid)
 - [ping](#ping-ipaddr-sizecount-intervalhoplimit)
 - [pollperiod](#pollperiod-pollperiod)
 - [preferrouterid](#preferrouterid-routerid)
@@ -84,6 +85,7 @@ Done
 - [promiscuous](#promiscuous)
 - [pskc](#pskc--p-keypassphrase)
 - [rcp](#rcp)
+- [region](#region)
 - [releaserouterid](#releaserouterid-routerid)
 - [reset](#reset)
 - [rloc16](#rloc16)
@@ -98,6 +100,7 @@ Done
 - [singleton](#singleton)
 - [sntp](#sntp-query-sntp-server-ip-sntp-server-port)
 - [state](#state)
+- [srp](README_SRP.md)
 - [thread](#thread-start)
 - [txpower](#txpower)
 - [unsecureport](#unsecureport-add-port)
@@ -311,6 +314,20 @@ Set jitter (in seconds) for Backbone Router registration for Thread 1.2 FTD.
 Done
 ```
 
+### br
+
+Enbale/disable the Border Routing functionality.
+
+```bash
+> br enable
+Done
+```
+
+```bash
+> br disable
+Done
+```
+
 ### bufferinfo
 
 Show the current message buffer information.
@@ -326,6 +343,8 @@ mpl: 0 0
 mle: 0 0
 arp: 0 0
 coap: 0 0
+coap secure: 0 0
+application coap: 0 0
 Done
 ```
 
@@ -403,10 +422,10 @@ Print table of attached children.
 
 ```bash
 > child table
-| ID  | RLOC16 | Timeout    | Age        | LQ In | C_VN |R|S|D|N| Extended MAC     |
-+-----+--------+------------+------------+-------+------+-+-+-+-+------------------+
-|   1 | 0xe001 |        240 |         44 |     3 |  237 |1|1|1|1| d28d7f875888fccb |
-|   2 | 0xe002 |        240 |         27 |     3 |  237 |0|1|0|1| e2b3540590b0fd87 |
+| ID  | RLOC16 | Timeout    | Age        | LQ In | C_VN |R|D|N|Ver|CSL|QMsgCnt| Extended MAC     |
++-----+--------+------------+------------+-------+------+-+-+-+---+---+-------+------------------+
+|   1 | 0xc801 |        240 |         24 |     3 |  131 |1|0|0|  3| 0 |     0 | 4ecede68435358ac |
+|   2 | 0xc802 |        240 |          2 |     3 |  131 |0|0|0|  3| 1 |     0 | a672a601d2ce37d8 |
 Done
 ```
 
@@ -1091,25 +1110,6 @@ Set Thread Key Switch Guard Time (in hours) 0 means Thread Key Switch imediately
 Done
 ```
 
-### leaderpartitionid
-
-Get the Thread Leader Partition ID.
-
-```bash
-> leaderpartitionid
-4294967295
-Done
-```
-
-### leaderpartitionid \<partitionid\>
-
-Set the Thread Leader Partition ID.
-
-```bash
-> leaderpartitionid 0xffffffff
-Done
-```
-
 ### leaderdata
 
 Show the Thread Leader Data.
@@ -1141,6 +1141,42 @@ Set the Thread Leader Weight.
 ```bash
 > leaderweight 128
 Done
+```
+
+### linkmetrics mgmt \<ipaddr\> enhanced-ack clear
+
+Send a Link Metrics Management Request to clear an Enhanced-ACK Based Probing.
+
+- ipaddr: Peer address (SHOULD be link local address of the neighboring device).
+
+```bash
+> linkmetrics mgmt fe80:0:0:0:3092:f334:1455:1ad2 enhanced-ack clear
+Done
+> Received Link Metrics Management Response from: fe80:0:0:0:3092:f334:1455:1ad2
+Status: Success
+```
+
+### linkmetrics mgmt \<ipaddr\> enhanced-ack register [qmr][r]
+
+Send a Link Metrics Management Request to register an Enhanced-ACK Based Probing.
+
+- ipaddr: Peer address.
+- qmr: This specifies what metrics to query. At most two options are allowed to select (per spec 4.11.3.4.4.6).
+  - q: Layer 2 LQI.
+  - m: Link Margin.
+  - r: RSSI.
+- r: This is optional and only used for reference devices. When this option is specified, Type/Average Enum of each Type Id Flags would be set to `reserved`. This is used to verify the Probing Subject correctly handles invalid Type Id Flags. This is only available when `OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE` is enabled.
+
+```bash
+> linkmetrics mgmt fe80:0:0:0:3092:f334:1455:1ad2 enhanced-ack register qm
+Done
+> Received Link Metrics Management Response from: fe80:0:0:0:3092:f334:1455:1ad2
+Status: Success
+
+> linkmetrics mgmt fe80:0:0:0:3092:f334:1455:1ad2 enhanced-ack register qm r
+Done
+> Received Link Metrics Management Response from: fe80:0:0:0:3092:f334:1455:1ad2
+Status: Cannot support new series
 ```
 
 ### linkmetrics mgmt \<ipaddr\> forward \<seriesid\> [ldraX][pqmr]
@@ -1360,11 +1396,11 @@ Print table of neighbors.
 
 ```bash
 > neighbor table
-| Role | RLOC16 | Age | Avg RSSI | Last RSSI |R|S|D|N| Extended MAC     |
-+------+--------+-----+----------+-----------+-+-+-+-+------------------+
-|   C  | 0xcc01 |  96 |      -46 |       -46 |1|1|1|1| 1eb9ba8a6522636b |
-|   R  | 0xc800 |   2 |      -29 |       -29 |1|0|1|1| 9a91556102c39ddb |
-|   R  | 0xf000 |   3 |      -28 |       -28 |1|0|1|1| 0ad7ed6beaa6016d |
+| Role | RLOC16 | Age | Avg RSSI | Last RSSI |R|D|N| Extended MAC     |
++------+--------+-----+----------+-----------+-+-+-+------------------+
+|   C  | 0xcc01 |  96 |      -46 |       -46 |1|1|1| 1eb9ba8a6522636b |
+|   R  | 0xc800 |   2 |      -29 |       -29 |1|1|1| 9a91556102c39ddb |
+|   R  | 0xf000 |   3 |      -28 |       -28 |1|1|1| 0ad7ed6beaa6016d |
 Done
 ```
 
@@ -1516,6 +1552,39 @@ Set the assigned parent priority value: 1, 0, -1 or -2.
 Done
 ```
 
+### partitionid
+
+Get the Thread Network Partition ID.
+
+```bash
+> partitionid
+4294967295
+Done
+```
+
+### partitionid preferred
+
+Get the preferred Thread Leader Partition ID.
+
+`OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE` is required.
+
+```bash
+> partitionid preferred
+4294967295
+Done
+```
+
+### partitionid preferred \<partitionid\>
+
+Set the preferred Thread Leader Partition ID.
+
+`OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE` is required.
+
+```bash
+> partitionid preferred 0xffffffff
+Done
+```
+
 ### ping \<ipaddr\> [size][count] [interval][hoplimit]
 
 Send an ICMPv6 Echo Request.
@@ -1657,6 +1726,18 @@ Done
 
 RCP-related commands.
 
+### region
+
+Set the radio region, this can affect the transmit power limit.
+
+```bash
+> region US
+Done
+> region
+US
+Done
+```
+
 ### rcp version
 
 Print RCP version string.
@@ -1741,10 +1822,10 @@ Print table of routers.
 
 ```bash
 > router table
-| ID | RLOC16 | Next Hop | Path Cost | LQ In | LQ Out | Age | Extended MAC     |
-+----+--------+----------+-----------+-------+--------+-----+------------------+
-| 21 | 0x5400 |       21 |         0 |     3 |      3 |   5 | d28d7f875888fccb |
-| 56 | 0xe000 |       56 |         0 |     0 |      0 | 182 | f2d92a82c8d8fe43 |
+| ID | RLOC16 | Next Hop | Path Cost | LQ In | LQ Out | Age | Extended MAC     | Link |
++----+--------+----------+-----------+-------+--------+-----+------------------+------+
+| 22 | 0x5800 |       63 |         0 |     0 |      0 |   0 | 0aeb8196c9f61658 |    0 |
+| 49 | 0xc400 |       63 |         0 |     3 |      3 |   0 | faa1c03908e2dbf2 |    1 |
 Done
 ```
 

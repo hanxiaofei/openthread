@@ -50,7 +50,7 @@ namespace ot {
  * @{
  */
 
-#if OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+#if !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
 
 class Child;
 
@@ -79,9 +79,8 @@ public:
     {
     public:
         uint8_t GetCslTxAttempts(void) const { return mCslTxAttempts; }
-        void    SetCslTxAttempts(uint8_t aCslTxAttempts) { mCslTxAttempts = aCslTxAttempts; }
         void    IncrementCslTxAttempts(void) { mCslTxAttempts++; }
-        void    ResetCslTxAttempts(void) { SetCslTxAttempts(0); }
+        void    ResetCslTxAttempts(void) { mCslTxAttempts = 0; }
 
         bool IsCslSynchronized(void) const { return mCslSynchronized && mCslPeriod > 0; }
         void SetCslSynchronized(bool aCslSynchronized) { mCslSynchronized = aCslSynchronized; }
@@ -194,11 +193,11 @@ private:
     void InitFrameRequestAhead(void);
     void RescheduleCslTx(void);
 
-    uint32_t GetNextCslTransmissionDelay(const Child &aChild, uint64_t aRadioNow, uint32_t &aDelayFromLastRx) const;
+    uint32_t GetNextCslTransmissionDelay(const Child &aChild, uint32_t &aDelayFromLastRx) const;
 
     // Callbacks from `Mac`
-    otError HandleFrameRequest(Mac::TxFrame &aFrame);
-    void    HandleSentFrame(const Mac::TxFrame &aFrame, otError aError);
+    Mac::TxFrame *HandleFrameRequest(Mac::TxFrames &aTxFrames);
+    void          HandleSentFrame(const Mac::TxFrame &aFrame, otError aError);
 
     void HandleSentFrame(const Mac::TxFrame &aFrame, otError aError, Child &aChild);
 
@@ -209,7 +208,7 @@ private:
     Callbacks               mCallbacks;
 };
 
-#endif // OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+#endif // !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
 
 /**
  * @}
