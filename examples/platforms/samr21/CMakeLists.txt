@@ -38,7 +38,7 @@ list(APPEND OT_PLATFORM_DEFINES
 )
 set(OT_PLATFORM_DEFINES ${OT_PLATFORM_DEFINES} PARENT_SCOPE)
 
-list(APPEND OT_PRIVATE_DEFINES "MBEDTLS_USER_CONFIG_FILE=\"samr21-mbedtls-config.h\"")
+target_compile_definitions(ot-config INTERFACE "MBEDTLS_USER_CONFIG_FILE=\"samr21-mbedtls-config.h\"")
 list(APPEND OT_PUBLIC_INCLUDES
     "${PROJECT_SOURCE_DIR}/examples/platforms/samr21/crypto"
 )
@@ -60,7 +60,12 @@ add_library(openthread-samr21
     uart.c
 )
 
-set_property(TARGET openthread-samr21 PROPERTY C_STANDARD 99)
+set_target_properties(
+    openthread-samr21
+    PROPERTIES
+        C_STANDARD 99
+        CXX_STANDARD 11
+)
 
 if(OT_CFLAGS MATCHES "-pedantic-errors")
     string(REPLACE "-pedantic-errors" "" OT_CFLAGS "${OT_CFLAGS}")
@@ -69,21 +74,16 @@ endif()
 target_link_libraries(openthread-samr21
     PUBLIC
         samr21-driver
-    PRIVATE
-        ${OT_MBEDTLS}
-)
-
-target_link_options(openthread-samr21
-    PUBLIC
         -Wl,--gc-sections
         -Wl,-Map=$<TARGET_PROPERTY:NAME>.map
+    PRIVATE
+        ${OT_MBEDTLS}
+        ot-config
 )
 
 target_compile_definitions(openthread-samr21
     PUBLIC
         ${OT_PLATFORM_DEFINES}
-    PRIVATE
-        ${OT_PRIVATE_DEFINES}
 )
 
 target_compile_options(openthread-samr21
@@ -96,7 +96,6 @@ target_compile_options(openthread-samr21
 target_include_directories(openthread-samr21
     PRIVATE
         ${OT_PUBLIC_INCLUDES}
-        ${OT_PRIVATE_INCLUDES}
         ${PROJECT_SOURCE_DIR}/src/core
         ${PROJECT_SOURCE_DIR}/examples/platforms
 )

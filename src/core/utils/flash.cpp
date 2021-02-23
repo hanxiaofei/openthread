@@ -35,6 +35,8 @@
 #include "common/code_utils.hpp"
 #include "common/instance.hpp"
 
+#if OPENTHREAD_CONFIG_PLATFORM_FLASH_API_ENABLE
+
 namespace ot {
 
 const uint32_t ot::Flash::sSwapActive;
@@ -170,7 +172,7 @@ otError Flash::Set(uint16_t aKey, const uint8_t *aValue, uint16_t aValueLength)
 
 otError Flash::Add(uint16_t aKey, const uint8_t *aValue, uint16_t aValueLength)
 {
-    bool first = (Get(aKey, 0, NULL, NULL) == OT_ERROR_NOT_FOUND);
+    bool first = (Get(aKey, 0, nullptr, nullptr) == OT_ERROR_NOT_FOUND);
 
     return Add(aKey, first, aValue, aValueLength);
 }
@@ -233,7 +235,7 @@ void Flash::Swap(void)
     {
         otPlatFlashRead(&GetInstance(), mSwapIndex, srcOffset, &record, sizeof(RecordHeader));
 
-        VerifyOrExit(record.IsAddBeginSet(), OT_NOOP);
+        VerifyOrExit(record.IsAddBeginSet());
 
         if (!record.IsValid() || DoesValidRecordExist(srcOffset + record.GetSize(), record.GetKey()))
         {
@@ -306,3 +308,5 @@ void Flash::Wipe(void)
 }
 
 } // namespace ot
+
+#endif // OPENTHREAD_CONFIG_PLATFORM_FLASH_API_ENABLE

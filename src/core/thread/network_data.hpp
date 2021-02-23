@@ -40,6 +40,8 @@
 #include <openthread/server.h>
 
 #include "coap/coap.hpp"
+#include "common/clearable.hpp"
+#include "common/equatable.hpp"
 #include "common/locator.hpp"
 #include "common/timer.hpp"
 #include "net/udp6.hpp"
@@ -96,22 +98,165 @@ enum
 typedef otNetworkDataIterator Iterator;
 
 /**
- * This type represents an On Mesh Prefix (Border Router) configuration.
+ * This class represents an On Mesh Prefix (Border Router) configuration.
  *
  */
-typedef otBorderRouterConfig OnMeshPrefixConfig;
+class OnMeshPrefixConfig : public otBorderRouterConfig,
+                           public Clearable<OnMeshPrefixConfig>,
+                           public Equatable<OnMeshPrefixConfig>
+{
+    friend class NetworkData;
+
+public:
+    /**
+     * This method gets the prefix.
+     *
+     * @return The prefix.
+     *
+     */
+    const Ip6::Prefix &GetPrefix(void) const { return static_cast<const Ip6::Prefix &>(mPrefix); }
+
+    /**
+     * This method gets the prefix.
+     *
+     * @return The prefix.
+     *
+     */
+    Ip6::Prefix &GetPrefix(void) { return static_cast<Ip6::Prefix &>(mPrefix); }
+
+private:
+    void SetFrom(const PrefixTlv &        aPrefixTlv,
+                 const BorderRouterTlv &  aBorderRouterTlv,
+                 const BorderRouterEntry &aBorderRouterEntry);
+};
 
 /**
- * This type represents an External Route configuration.
+ * This class represents an External Route configuration.
  *
  */
-typedef otExternalRouteConfig ExternalRouteConfig;
+class ExternalRouteConfig : public otExternalRouteConfig,
+                            public Clearable<ExternalRouteConfig>,
+                            public Equatable<ExternalRouteConfig>
+{
+    friend class NetworkData;
+
+public:
+    /**
+     * This method gets the prefix.
+     *
+     * @return The prefix.
+     *
+     */
+    const Ip6::Prefix &GetPrefix(void) const { return static_cast<const Ip6::Prefix &>(mPrefix); }
+
+    /**
+     * This method gets the prefix.
+     *
+     * @return The prefix.
+     *
+     */
+    Ip6::Prefix &GetPrefix(void) { return static_cast<Ip6::Prefix &>(mPrefix); }
+
+    /**
+     * This method sets the prefix.
+     *
+     * @param[in]  aPrefix  The prefix to set to.
+     *
+     */
+    void SetPrefix(const Ip6::Prefix &aPrefix) { mPrefix = aPrefix; }
+
+private:
+    void SetFrom(Instance &           aInstance,
+                 const PrefixTlv &    aPrefixTlv,
+                 const HasRouteTlv &  aHasRouteTlv,
+                 const HasRouteEntry &aHasRouteEntry);
+};
 
 /**
  * This type represents a Service configuration.
  *
  */
-typedef otServiceConfig ServiceConfig;
+class ServiceConfig : public otServiceConfig, public Clearable<ServiceConfig>
+{
+    friend class NetworkData;
+
+public:
+    /**
+     * This class represents a Server configuration.
+     *
+     */
+    class ServerConfig : public otServerConfig
+    {
+        friend class ServiceConfig;
+
+    public:
+        /**
+         * This method overloads operator `==` to evaluate whether or not two `ServerConfig` instances are equal.
+         *
+         * @param[in]  aOther  The other `ServerConfig` instance to compare with.
+         *
+         * @retval TRUE   If the two `ServerConfig` instances are equal.
+         * @retval FALSE  If the two `ServerConfig` instances are not equal.
+         *
+         */
+        bool operator==(const ServerConfig &aOther) const;
+
+        /**
+         * This method overloads operator `!=` to evaluate whether or not two `ServerConfig` instances are unequal.
+         *
+         * @param[in]  aOther  The other `ServerConfig` instance to compare with.
+         *
+         * @retval TRUE   If the two `ServerConfig` instances are unequal.
+         * @retval FALSE  If the two `ServerConfig` instances are not unequal.
+         *
+         */
+        bool operator!=(const ServerConfig &aOther) const { return !(*this == aOther); }
+
+    private:
+        void SetFrom(const ServerTlv &aServerTlv);
+    };
+
+    /**
+     * This method gets the Server configuration.
+     *
+     * @returns The Server configuration.
+     *
+     */
+    const ServerConfig &GetServerConfig(void) const { return static_cast<const ServerConfig &>(mServerConfig); }
+
+    /**
+     * This method gets the Server configuration.
+     *
+     * @returns The Server configuration.
+     *
+     */
+    ServerConfig &GetServerConfig(void) { return static_cast<ServerConfig &>(mServerConfig); }
+
+    /**
+     * This method overloads operator `==` to evaluate whether or not two `ServiceConfig` instances are equal.
+     *
+     * @param[in]  aOther  The other `ServiceConfig` instance to compare with.
+     *
+     * @retval TRUE   If the two `ServiceConfig` instances are equal.
+     * @retval FALSE  If the two `ServiceConfig` instances are not equal.
+     *
+     */
+    bool operator==(const ServiceConfig &aOther) const;
+
+    /**
+     * This method overloads operator `!=` to evaluate whether or not two `ServiceConfig` instances are unequal.
+     *
+     * @param[in]  aOther  The other `ServiceConfig` instance to compare with.
+     *
+     * @retval TRUE   If the two `ServiceConfig` instances are unequal.
+     * @retval FALSE  If the two `ServiceConfig` instances are not unequal.
+     *
+     */
+    bool operator!=(const ServiceConfig &aOther) const { return !(*this == aOther); }
+
+private:
+    void SetFrom(const ServiceTlv &aServiceTlv, const ServerTlv &aServerTlv);
+};
 
 /**
  * This class implements Network Data processing.
@@ -354,7 +499,7 @@ protected:
      *
      * @param[in]  aPrefix  A reference to the Prefix TLV.
      *
-     * @returns A pointer to the Border Router TLV if one is found or NULL if no Border Router TLV exists.
+     * @returns A pointer to the Border Router TLV if one is found or nullptr if no Border Router TLV exists.
      *
      */
     static BorderRouterTlv *FindBorderRouter(PrefixTlv &aPrefix)
@@ -367,7 +512,7 @@ protected:
      *
      * @param[in]  aPrefix  A reference to the Prefix TLV.
      *
-     * @returns A pointer to the Border Router TLV if one is found or NULL if no Border Router TLV exists.
+     * @returns A pointer to the Border Router TLV if one is found or nullptr if no Border Router TLV exists.
      *
      */
     static const BorderRouterTlv *FindBorderRouter(const PrefixTlv &aPrefix);
@@ -378,7 +523,7 @@ protected:
      * @param[in]  aPrefix  A reference to the Prefix TLV.
      * @param[in]  aStable  TRUE to find a stable TLV, FALSE to find a TLV not marked as stable..
      *
-     * @returns A pointer to the Border Router TLV if one is found or NULL if no Border Router TLV exists.
+     * @returns A pointer to the Border Router TLV if one is found or nullptr if no Border Router TLV exists.
      *
      */
     static BorderRouterTlv *FindBorderRouter(PrefixTlv &aPrefix, bool aStable)
@@ -392,7 +537,7 @@ protected:
      * @param[in]  aPrefix  A reference to the Prefix TLV.
      * @param[in]  aStable  TRUE to find a stable TLV, FALSE to find a TLV not marked as stable..
      *
-     * @returns A pointer to the Border Router TLV if one is found or NULL if no Border Router TLV exists.
+     * @returns A pointer to the Border Router TLV if one is found or nullptr if no Border Router TLV exists.
      *
      */
     static const BorderRouterTlv *FindBorderRouter(const PrefixTlv &aPrefix, bool aStable);
@@ -402,7 +547,7 @@ protected:
      *
      * @param[in]  aPrefix  A reference to the Prefix TLV.
      *
-     * @returns A pointer to the Has Route TLV if one is found or NULL if no Has Route TLV exists.
+     * @returns A pointer to the Has Route TLV if one is found or nullptr if no Has Route TLV exists.
      *
      */
     static HasRouteTlv *FindHasRoute(PrefixTlv &aPrefix)
@@ -415,7 +560,7 @@ protected:
      *
      * @param[in]  aPrefix  A reference to the Prefix TLV.
      *
-     * @returns A pointer to the Has Route TLV if one is found or NULL if no Has Route TLV exists.
+     * @returns A pointer to the Has Route TLV if one is found or nullptr if no Has Route TLV exists.
      *
      */
     static const HasRouteTlv *FindHasRoute(const PrefixTlv &aPrefix);
@@ -426,7 +571,7 @@ protected:
      * @param[in]  aPrefix  A reference to the Prefix TLV.
      * @param[in]  aStable  TRUE to find a stable TLV, FALSE to find a TLV not marked as stable.
      *
-     * @returns A pointer to the Has Route TLV if one is found or NULL if no Has Route TLV exists.
+     * @returns A pointer to the Has Route TLV if one is found or nullptr if no Has Route TLV exists.
      *
      */
     static HasRouteTlv *FindHasRoute(PrefixTlv &aPrefix, bool aStable)
@@ -440,7 +585,7 @@ protected:
      * @param[in]  aPrefix  A reference to the Prefix TLV.
      * @param[in]  aStable  TRUE to find a stable TLV, FALSE to find a TLV not marked as stable.
      *
-     * @returns A pointer to the Has Route TLV if one is found or NULL if no Has Route TLV exists.
+     * @returns A pointer to the Has Route TLV if one is found or nullptr if no Has Route TLV exists.
      *
      */
     static const HasRouteTlv *FindHasRoute(const PrefixTlv &aPrefix, bool aStable);
@@ -450,7 +595,7 @@ protected:
      *
      * @param[in]  aPrefix  A reference to the Prefix TLV.
      *
-     * @returns A pointer to the Context TLV is one is found or NULL if no Context TLV exists.
+     * @returns A pointer to the Context TLV if one is found or nullptr if no Context TLV exists.
      *
      */
     static ContextTlv *FindContext(PrefixTlv &aPrefix)
@@ -463,7 +608,7 @@ protected:
      *
      * @param[in]  aPrefix  A reference to the Prefix TLV.
      *
-     * @returns A pointer to the Context TLV is one is found or NULL if no Context TLV exists.
+     * @returns A pointer to the Context TLV if one is found or nullptr if no Context TLV exists.
      *
      */
     static const ContextTlv *FindContext(const PrefixTlv &aPrefix);
@@ -472,9 +617,9 @@ protected:
      * This method returns a pointer to a Prefix TLV.
      *
      * @param[in]  aPrefix        A pointer to an IPv6 prefix.
-     * @param[in]  aPrefixLength  The prefix length pointed to by @p aPrefix.
+     * @param[in]  aPrefixLength  The prefix length pointed to by @p aPrefix (in bits).
      *
-     * @returns A pointer to the Prefix TLV is one is found or NULL if no matching Prefix TLV exists.
+     * @returns A pointer to the Prefix TLV if one is found or nullptr if no matching Prefix TLV exists.
      *
      */
     PrefixTlv *FindPrefix(const uint8_t *aPrefix, uint8_t aPrefixLength)
@@ -486,12 +631,35 @@ protected:
      * This method returns a pointer to a Prefix TLV.
      *
      * @param[in]  aPrefix        A pointer to an IPv6 prefix.
-     * @param[in]  aPrefixLength  The prefix length pointed to by @p aPrefix.
+     * @param[in]  aPrefixLength  The prefix length pointed to by @p aPrefix (in bits).
      *
-     * @returns A pointer to the Prefix TLV is one is found or NULL if no matching Prefix TLV exists.
+     * @returns A pointer to the Prefix TLV if one is found or nullptr if no matching Prefix TLV exists.
      *
      */
     const PrefixTlv *FindPrefix(const uint8_t *aPrefix, uint8_t aPrefixLength) const;
+
+    /**
+     * This method returns a pointer to a Prefix TLV.
+     *
+     * @param[in]  aPrefix        An IPv6 prefix.
+     *
+     * @returns A pointer to the Prefix TLV if one is found or nullptr if no matching Prefix TLV exists.
+     *
+     */
+    PrefixTlv *FindPrefix(const Ip6::Prefix &aPrefix) { return FindPrefix(aPrefix.GetBytes(), aPrefix.GetLength()); }
+
+    /**
+     * This method returns a pointer to a Prefix TLV.
+     *
+     * @param[in]  aPrefix        An IPv6 prefix.
+     *
+     * @returns A pointer to the Prefix TLV if one is found or nullptr if no matching Prefix TLV exists.
+     *
+     */
+    const PrefixTlv *FindPrefix(const Ip6::Prefix &aPrefix) const
+    {
+        return FindPrefix(aPrefix.GetBytes(), aPrefix.GetLength());
+    }
 
     /**
      * This method returns a pointer to a Prefix TLV in a specified tlvs buffer.
@@ -501,7 +669,7 @@ protected:
      * @param[in]  aTlvs          A pointer to a specified tlvs buffer.
      * @param[in]  aTlvsLength    The specified tlvs buffer length pointed to by @p aTlvs.
      *
-     * @returns A pointer to the Prefix TLV is one is found or NULL if no matching Prefix TLV exists.
+     * @returns A pointer to the Prefix TLV if one is found or nullptr if no matching Prefix TLV exists.
      *
      */
     static PrefixTlv *FindPrefix(const uint8_t *aPrefix, uint8_t aPrefixLength, uint8_t *aTlvs, uint8_t aTlvsLength)
@@ -518,7 +686,7 @@ protected:
      * @param[in]  aTlvs          A pointer to a specified tlvs buffer.
      * @param[in]  aTlvsLength    The specified tlvs buffer length pointed to by @p aTlvs.
      *
-     * @returns A pointer to the Prefix TLV is one is found or NULL if no matching Prefix TLV exists.
+     * @returns A pointer to the Prefix TLV if one is found or nullptr if no matching Prefix TLV exists.
      *
      */
     static const PrefixTlv *FindPrefix(const uint8_t *aPrefix,
@@ -533,7 +701,7 @@ protected:
      * @param[in]  aServiceData       A pointer to a Service Data.
      * @param[in]  aServiceDataLength The Service Data length pointed to by @p aServiceData.
      *
-     * @returns A pointer to the Service TLV is one is found or NULL if no matching Service TLV exists.
+     * @returns A pointer to the Service TLV if one is found or nullptr if no matching Service TLV exists.
      *
      */
     ServiceTlv *FindService(uint32_t aEnterpriseNumber, const uint8_t *aServiceData, uint8_t aServiceDataLength)
@@ -549,7 +717,7 @@ protected:
      * @param[in]  aServiceData       A pointer to a Service Data.
      * @param[in]  aServiceDataLength The Service Data length pointed to by @p aServiceData.
      *
-     * @returns A pointer to the Service TLV is one is found or NULL if no matching Service TLV exists.
+     * @returns A pointer to the Service TLV if one is found or nullptr if no matching Service TLV exists.
      *
      */
     const ServiceTlv *FindService(uint32_t       aEnterpriseNumber,
@@ -565,7 +733,7 @@ protected:
      * @param[in]  aTlvs              A pointer to a specified tlvs buffer.
      * @param[in]  aTlvsLength        The specified tlvs buffer length pointed to by @p aTlvs.
      *
-     * @returns A pointer to the Service TLV is one is found or NULL if no matching Service TLV exists.
+     * @returns A pointer to the Service TLV if one is found or nullptr if no matching Service TLV exists.
      *
      */
     static ServiceTlv *FindService(uint32_t       aEnterpriseNumber,
@@ -587,7 +755,7 @@ protected:
      * @param[in]  aTlvs              A pointer to a specified tlvs buffer.
      * @param[in]  aTlvsLength        The specified tlvs buffer length pointed to by @p aTlvs.
      *
-     * @returns A pointer to the Service TLV is one is found or NULL if no matching Service TLV exists.
+     * @returns A pointer to the Service TLV if one is found or nullptr if no matching Service TLV exists.
      *
      */
     static const ServiceTlv *FindService(uint32_t       aEnterpriseNumber,
@@ -616,7 +784,7 @@ protected:
      *
      * @param[in]  aTlvSize  The size of TLV (total number of bytes including Type, Length, and Value fields)
      *
-     * @returns A pointer to the TLV if there is space to grow Network Data, or NULL if no space to grow the Network
+     * @returns A pointer to the TLV if there is space to grow Network Data, or nullptr if no space to grow the Network
      *          Data with requested @p aTlvSize number of bytes.
      *
      */
@@ -659,18 +827,6 @@ protected:
     static void RemoveTemporaryData(uint8_t *aData, uint8_t &aDataLength);
 
     /**
-     * This method computes the number of IPv6 Prefix bits that match.
-     *
-     * @param[in]  a        A pointer to the first IPv6 Prefix.
-     * @param[in]  b        A pointer to the second IPv6 prefix.
-     * @param[in]  aLength  The maximum length in bits to compare.
-     *
-     * @returns The number of matching bits.
-     *
-     */
-    static int8_t PrefixMatch(const uint8_t *a, const uint8_t *b, uint8_t aLength);
-
-    /**
      * This method sends a Server Data Notification message to the Leader.
      *
      * @param[in]  aRloc16   The old RLOC16 value that was previously registered.
@@ -690,7 +846,7 @@ protected:
      * @param[in]  aEnd    A pointer to the end of the sequence of TLVs.
      * @param[in]  aType   The TLV type to find.
      *
-     * @returns A pointer to the TLV if found, or NULL if not found.
+     * @returns A pointer to the TLV if found, or nullptr if not found.
      *
      */
     static NetworkDataTlv *FindTlv(NetworkDataTlv *aStart, NetworkDataTlv *aEnd, NetworkDataTlv::Type aType)
@@ -706,7 +862,7 @@ protected:
      * @param[in]  aEnd    A pointer to the end of the sequence of TLVs.
      * @param[in]  aType   The TLV type to find.
      *
-     * @returns A pointer to the TLV if found, or NULL if not found.
+     * @returns A pointer to the TLV if found, or nullptr if not found.
      *
      */
     static const NetworkDataTlv *FindTlv(const NetworkDataTlv *aStart,
@@ -720,7 +876,7 @@ protected:
      * @param[in]  aStart  A pointer to the start of the sequence of TLVs to search within.
      * @param[in]  aEnd    A pointer to the end of the sequence of TLVs.
      *
-     * @returns A pointer to the TLV if found, or NULL if not found.
+     * @returns A pointer to the TLV if found, or nullptr if not found.
      *
      */
     template <typename TlvType> static TlvType *FindTlv(NetworkDataTlv *aStart, NetworkDataTlv *aEnd)
@@ -735,7 +891,7 @@ protected:
      * @param[in]  aStart  A pointer to the start of the sequence of TLVs to search within.
      * @param[in]  aEnd    A pointer to the end of the sequence of TLVs.
      *
-     * @returns A pointer to the TLV if found, or NULL if not found.
+     * @returns A pointer to the TLV if found, or nullptr if not found.
      *
      */
     template <typename TlvType> static const TlvType *FindTlv(const NetworkDataTlv *aStart, const NetworkDataTlv *aEnd)
@@ -752,7 +908,7 @@ protected:
      * @param[in]  aType   The TLV type to find.
      * @param[in]  aStable TRUE to find a stable TLV, FALSE to find a TLV not marked as stable.
      *
-     * @returns A pointer to the TLV if found, or NULL if not found.
+     * @returns A pointer to the TLV if found, or nullptr if not found.
      *
      */
     static NetworkDataTlv *FindTlv(NetworkDataTlv *     aStart,
@@ -773,7 +929,7 @@ protected:
      * @param[in]  aType   The TLV type to find.
      * @param[in]  aStable TRUE to find a stable TLV, FALSE to find a TLV not marked as stable.
      *
-     * @returns A pointer to the TLV if found, or NULL if not found.
+     * @returns A pointer to the TLV if found, or nullptr if not found.
      *
      */
     static const NetworkDataTlv *FindTlv(const NetworkDataTlv *aStart,
@@ -789,7 +945,7 @@ protected:
      * @param [in] aEnd    A pointer to the end of the sequence of TLVs.
      * @param[in]  aStable TRUE to find a stable TLV, FALSE to find a TLV not marked as stable.
      *
-     * @returns A pointer to the TLV if found, or NULL if not found.
+     * @returns A pointer to the TLV if found, or nullptr if not found.
      *
      */
     template <typename TlvType> static TlvType *FindTlv(NetworkDataTlv *aStart, NetworkDataTlv *aEnd, bool aStable)
@@ -806,7 +962,7 @@ protected:
      * @param [in] aEnd    A pointer to the end of the sequence of TLVs.
      * @param[in]  aStable TRUE to find a stable TLV, FALSE to find a TLV not marked as stable.
      *
-     * @returns A pointer to the TLV if found, or NULL if not found.
+     * @returns A pointer to the TLV if found, or nullptr if not found.
      *
      */
     template <typename TlvType>
@@ -820,13 +976,6 @@ protected:
     uint8_t mLength;         ///< The number of valid bytes in @var mTlvs.
 
 private:
-    enum
-    {
-        kDataResubmitDelay  = 300000, ///< DATA_RESUBMIT_DELAY (milliseconds) if the device itself is the server.
-        kProxyResubmitDelay = 5000,   ///< Resubmit delay (milliseconds) if deregister as the child server proxy.
-
-    };
-
     class NetworkDataIterator
     {
     public:

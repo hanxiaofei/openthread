@@ -45,12 +45,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     const otPanId panId = 0xdead;
 
-    otInstance *      instance = NULL;
-    otMessage *       message  = NULL;
+    otInstance *      instance = nullptr;
+    otMessage *       message  = nullptr;
     otError           error    = OT_ERROR_NONE;
     otMessageSettings settings;
 
-    VerifyOrExit(size > 0, OT_NOOP);
+    VerifyOrExit(size > 0);
 
     FuzzerPlatformInit();
 
@@ -64,16 +64,16 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     settings.mPriority            = OT_MESSAGE_PRIORITY_NORMAL;
 
     message = otIp6NewMessage(instance, &settings);
-    VerifyOrExit(message != NULL, error = OT_ERROR_NO_BUFS);
+    VerifyOrExit(message != nullptr, error = OT_ERROR_NO_BUFS);
 
     error = otMessageAppend(message, data + 1, static_cast<uint16_t>(size - 1));
     SuccessOrExit(error);
 
     error = otIp6Send(instance, message);
 
-    message = NULL;
+    message = nullptr;
 
-    VerifyOrExit(!FuzzerPlatformResetWasRequested(), OT_NOOP);
+    VerifyOrExit(!FuzzerPlatformResetWasRequested());
 
     for (int i = 0; i < MAX_ITERATIONS; i++)
     {
@@ -87,12 +87,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
 exit:
 
-    if (message != NULL)
+    if (message != nullptr)
     {
         otMessageFree(message);
     }
 
-    if (instance != NULL)
+    if (instance != nullptr)
     {
         otInstanceFinalize(instance);
     }

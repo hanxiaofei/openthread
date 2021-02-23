@@ -26,42 +26,16 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
-add_executable(ot-cli-ftd
-    main.c
-)
-
-add_executable(ot-cli-mtd
-    main.c
-)
-
 set(COMMON_INCLUDES
     ${OT_PUBLIC_INCLUDES}
-    ${OT_PRIVATE_INCLUDES}
     ${PROJECT_SOURCE_DIR}/examples/platforms
     ${PROJECT_SOURCE_DIR}/src/core
 )
 
-target_include_directories(ot-cli-ftd PRIVATE ${COMMON_INCLUDES})
-target_include_directories(ot-cli-mtd PRIVATE ${COMMON_INCLUDES})
+if(OT_FTD)
+    include(ftd.cmake)
+endif()
 
-target_compile_definitions(ot-cli-ftd PRIVATE ${OT_PRIVATE_DEFINES})
-target_compile_definitions(ot-cli-mtd PRIVATE ${OT_PRIVATE_DEFINES})
-
-target_link_libraries(ot-cli-ftd
-    openthread-cli-ftd
-    ${OT_PLATFORM_LIB}
-    openthread-ftd
-    ${OT_PLATFORM_LIB}
-    mbedcrypto
-)
-
-target_link_libraries(ot-cli-mtd
-    openthread-cli-mtd
-    ${OT_PLATFORM_LIB}
-    openthread-mtd
-    ${OT_PLATFORM_LIB}
-    mbedcrypto
-)
-
-install(TARGETS ot-cli-ftd ot-cli-mtd
-    DESTINATION bin)
+if(OT_MTD)
+    include(mtd.cmake)
+endif()

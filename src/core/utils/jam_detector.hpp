@@ -39,6 +39,7 @@
 #include <stdint.h>
 
 #include "common/locator.hpp"
+#include "common/non_copyable.hpp"
 #include "common/notifier.hpp"
 #include "common/timer.hpp"
 
@@ -48,8 +49,10 @@ class ThreadNetif;
 
 namespace Utils {
 
-class JamDetector : public InstanceLocator
+class JamDetector : public InstanceLocator, private NonCopyable
 {
+    friend class ot::Notifier;
+
 public:
     /**
      * This function pointer is called if jam state changes (assuming jamming detection is enabled).
@@ -190,22 +193,20 @@ private:
     void        HandleTimer(void);
     void        UpdateHistory(bool aDidExceedThreshold);
     void        UpdateJamState(void);
-    static void HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags);
-    void        HandleStateChanged(otChangedFlags aFlags);
+    void        HandleNotifierEvents(Events aEvents);
 
-    Handler            mHandler;                  // Handler/callback to inform about jamming state
-    void *             mContext;                  // Context for handler/callback
-    Notifier::Callback mNotifierCallback;         // Notifier callback
-    TimerMilli         mTimer;                    // RSSI sample timer
-    uint64_t           mHistoryBitmap;            // History bitmap, each bit correspond to 1 sec interval
-    TimeMilli          mCurSecondStartTime;       // Start time for current 1 sec interval
-    uint16_t           mSampleInterval;           // Current sample interval
-    uint8_t            mWindow : 6;               // Window (in sec) to monitor jamming
-    uint8_t            mBusyPeriod : 6;           // BusyPeriod (in sec) with mWindow to alert jamming
-    bool               mEnabled : 1;              // If jam detection is enabled
-    bool               mAlwaysAboveThreshold : 1; // State for current 1 sec interval
-    bool               mJamState : 1;             // Current jam state
-    int8_t             mRssiThreshold;            // RSSI threshold for jam detection
+    Handler    mHandler;                  // Handler/callback to inform about jamming state
+    void *     mContext;                  // Context for handler/callback
+    TimerMilli mTimer;                    // RSSI sample timer
+    uint64_t   mHistoryBitmap;            // History bitmap, each bit correspond to 1 sec interval
+    TimeMilli  mCurSecondStartTime;       // Start time for current 1 sec interval
+    uint16_t   mSampleInterval;           // Current sample interval
+    uint8_t    mWindow : 6;               // Window (in sec) to monitor jamming
+    uint8_t    mBusyPeriod : 6;           // BusyPeriod (in sec) with mWindow to alert jamming
+    bool       mEnabled : 1;              // If jam detection is enabled
+    bool       mAlwaysAboveThreshold : 1; // State for current 1 sec interval
+    bool       mJamState : 1;             // Current jam state
+    int8_t     mRssiThreshold;            // RSSI threshold for jam detection
 };
 
 /**

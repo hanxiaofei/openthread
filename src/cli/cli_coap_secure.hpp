@@ -40,6 +40,7 @@
 
 #include "coap/coap_message.hpp"
 #include "coap/coap_secure.hpp"
+#include "utils/lookup_table.hpp"
 
 #ifndef CLI_COAP_SECURE_USE_COAP_DEFAULT_HANDLER
 #define CLI_COAP_SECURE_USE_COAP_DEFAULT_HANDLER 0
@@ -86,7 +87,7 @@ private:
     struct Command
     {
         const char *mName;
-        otError (CoapSecure::*mCommand)(uint8_t aArgsLength, char *aArgs[]);
+        otError (CoapSecure::*mHandler)(uint8_t aArgsLength, char *aArgs[]);
     };
 
     void PrintPayload(otMessage *aMessage) const;
@@ -97,6 +98,7 @@ private:
     otError ProcessPsk(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessRequest(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessResource(uint8_t aArgsLength, char *aArgs[]);
+    otError ProcessSet(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessStart(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessStop(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessX509(uint8_t aArgsLength, char *aArgs[]);
@@ -109,6 +111,27 @@ private:
     static void HandleResponse(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo, otError aError);
     void        HandleResponse(otMessage *aMessage, const otMessageInfo *aMessageInfo, otError aError);
 
+#if OPENTHREAD_CONFIG_COAP_BLOCKWISE_TRANSFER_ENABLE
+
+    static otError BlockwiseReceiveHook(void *         aContext,
+                                        const uint8_t *aBlock,
+                                        uint32_t       aPosition,
+                                        uint16_t       aBlockLength,
+                                        bool           aMore,
+                                        uint32_t       aTotalLength);
+    otError        BlockwiseReceiveHook(const uint8_t *aBlock,
+                                        uint32_t       aPosition,
+                                        uint16_t       aBlockLength,
+                                        bool           aMore,
+                                        uint32_t       aTotalLength);
+    static otError BlockwiseTransmitHook(void *    aContext,
+                                         uint8_t * aBlock,
+                                         uint32_t  aPosition,
+                                         uint16_t *aBlockLength,
+                                         bool *    aMore);
+    otError        BlockwiseTransmitHook(uint8_t *aBlock, uint32_t aPosition, uint16_t *aBlockLength, bool *aMore);
+#endif
+
 #if CLI_COAP_SECURE_USE_COAP_DEFAULT_HANDLER
     static void DefaultHandler(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);
     void        DefaultHandler(otMessage *aMessage, const otMessageInfo *aMessageInfo);
@@ -117,11 +140,37 @@ private:
     static void HandleConnected(bool aConnected, void *aContext);
     void        HandleConnected(bool aConnected);
 
-    static const Command sCommands[];
-    Interpreter &        mInterpreter;
+    static constexpr Command sCommands[] = {
+        {"connect", &CoapSecure::ProcessConnect},
+        {"delete", &CoapSecure::ProcessRequest},
+        {"disconnect", &CoapSecure::ProcessDisconnect},
+        {"get", &CoapSecure::ProcessRequest},
+        {"help", &CoapSecure::ProcessHelp},
+        {"post", &CoapSecure::ProcessRequest},
+#ifdef MBEDTLS_KEY_EXCHANGE_PSK_ENABLED
+        {"psk", &CoapSecure::ProcessPsk},
+#endif
+        {"put", &CoapSecure::ProcessRequest},
+        {"resource", &CoapSecure::ProcessResource},
+        {"set", &CoapSecure::ProcessSet},
+        {"start", &CoapSecure::ProcessStart},
+        {"stop", &CoapSecure::ProcessStop},
+#ifdef MBEDTLS_KEY_EXCHANGE_ECDHE_ECDSA_ENABLED
+        {"x509", &CoapSecure::ProcessX509},
+#endif
+    };
 
+    static_assert(Utils::LookupTable::IsSorted(sCommands), "Command Table is not sorted");
+
+    Interpreter &mInterpreter;
+
+#if OPENTHREAD_CONFIG_COAP_BLOCKWISE_TRANSFER_ENABLE
+    otCoapBlockwiseResource mResource;
+#else
     otCoapResource mResource;
-    char           mUriPath[kMaxUriLength];
+#endif
+    char mUriPath[kMaxUriLength];
+    char mResourceContent[kMaxBufferSize];
 
     bool    mShutdownFlag;
     bool    mUseCertificate;
@@ -129,6 +178,9 @@ private:
     uint8_t mPskLength;
     uint8_t mPskId[kPskIdMaxLength];
     uint8_t mPskIdLength;
+#if OPENTHREAD_CONFIG_COAP_BLOCKWISE_TRANSFER_ENABLE
+    uint32_t mBlockCount;
+#endif
 };
 
 } // namespace Cli

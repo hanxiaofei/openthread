@@ -48,6 +48,35 @@
 #endif
 
 /**
+ * @def OPENTHREAD_CONFIG_POSIX_APP_TREL_INTERFACE_NAME
+ *
+ * Defines the default interface name used for TREL UDP6 platform. Empty string disables TREL platform.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_POSIX_APP_TREL_INTERFACE_NAME
+#define OPENTHREAD_CONFIG_POSIX_APP_TREL_INTERFACE_NAME ""
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_POSIX_TREL_USE_NETLINK_SOCKET
+ *
+ * Defines whether the TREL UDP6 platform uses netlink socket to add/remove addresses on the TREL netif or `ioctl()`
+ * command.
+ *
+ * When netlink is used Duplicate Address Detection (DAD) is disabled when a new address is added on the netif.
+ *
+ * Use of netlink is enabled by default on linux-based platforms.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_POSIX_TREL_USE_NETLINK_SOCKET
+#ifdef __linux__
+#define OPENTHREAD_CONFIG_POSIX_TREL_USE_NETLINK_SOCKET 1
+#else
+#define OPENTHREAD_CONFIG_POSIX_TREL_USE_NETLINK_SOCKET 0
+#endif
+#endif
+
+/**
  * @def OPENTHREAD_POSIX_CONFIG_DAEMON_SOCKET_BASENAME
  *
  * Define socket basename used by POSIX app daemon.
@@ -100,5 +129,39 @@
 #ifndef OPENTHREAD_POSIX_CONFIG_MAX_POWER_TABLE_ENABLE
 #define OPENTHREAD_POSIX_CONFIG_MAX_POWER_TABLE_ENABLE 0
 #endif
+
+/**
+ * @def OPENTHREAD_POSIX_CONFIG_MAX_MULTICAST_FORWARDING_CACHE_TABLE
+ *
+ * This setting configures the maximum number of Multicast Forwarding Cache table for POSIX native multicast routing.
+ *
+ */
+#ifndef OPENTHREAD_POSIX_CONFIG_MAX_MULTICAST_FORWARDING_CACHE_TABLE
+#define OPENTHREAD_POSIX_CONFIG_MAX_MULTICAST_FORWARDING_CACHE_TABLE (OPENTHREAD_CONFIG_MAX_MULTICAST_LISTENERS * 10)
+#endif
+
+#ifdef __APPLE__
+
+/**
+ * Use built-in utun driver on mac OS
+ */
+#define OT_POSIX_CONFIG_MACOS_UTUN 1
+
+/**
+ * Use open-source tun driver on mac OS
+ */
+#define OT_POSIX_CONFIG_MACOS_TUN 2
+
+/**
+ * @def OPENTHREAD_POSIX_CONFIG_MACOS_TUN_OPTION
+ *
+ * This setting configures which tunnel driver to use.
+ *
+ */
+#ifndef OPENTHREAD_POSIX_CONFIG_MACOS_TUN_OPTION
+#define OPENTHREAD_POSIX_CONFIG_MACOS_TUN_OPTION OT_POSIX_CONFIG_MACOS_UTUN
+#endif
+
+#endif // __APPLE__
 
 #endif // OPENTHREAD_PLATFORM_CONFIG_H_

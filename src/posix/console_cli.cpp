@@ -28,7 +28,9 @@
 
 #include "console_cli.h"
 
-#include "openthread/config.h"
+#if OPENTHREAD_CONFIG_CLI_TRANSPORT == OT_CLI_TRANSPORT_CONSOLE
+
+#include <openthread/config.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -64,7 +66,7 @@ static int sReadFd;
 
 static void InputCallback(char *aLine)
 {
-    if (aLine != NULL)
+    if (aLine != nullptr)
     {
         size_t len;
 
@@ -95,7 +97,7 @@ void otxConsoleInit(otInstance *aInstance)
     rl_inhibit_completion = true;
     sReadFd               = fileno(rl_instream);
     rl_callback_handler_install(sPrompt, InputCallback);
-    otCliConsoleInit(aInstance, OutputCallback, NULL);
+    otCliConsoleInit(aInstance, OutputCallback, nullptr);
 }
 
 void otxConsoleDeinit(void)
@@ -129,3 +131,5 @@ void otxConsoleProcess(const otSysMainloopContext *aMainloop)
 }
 
 #endif // HAVE_LIBEDIT || HAVE_LIBREADLINE
+
+#endif // OPENTHREAD_CONFIG_CLI_TRANSPORT == OT_CLI_TRANSPORT_CONSOLE

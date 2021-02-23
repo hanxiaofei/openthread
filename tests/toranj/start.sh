@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 #  Copyright (c) 2018, The OpenThread Authors.
 #  All rights reserved.
@@ -27,40 +27,57 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
-die() {
-    echo " *** ERROR: " $*
+die()
+{
+    echo " *** ERROR: " "$*"
     exit 1
 }
 
-cleanup() {
+cleanup()
+{
     # Clear logs and flash files
-    sudo rm tmp/*.flash tmp/*.data tmp/*.swap > /dev/null 2>&1
-    sudo rm *.log > /dev/null 2>&1
+    sudo rm tmp/*.flash tmp/*.data tmp/*.swap >/dev/null 2>&1
+    sudo rm ./*.log >/dev/null 2>&1
 
     # Clear any wpantund instances
-    sudo killall wpantund > /dev/null 2>&1
+    sudo killall wpantund >/dev/null 2>&1
 
-    wpan_interfaces=$(ifconfig 2>/dev/null | grep -o wpan[0-9]*)
+    while read -r interface; do
+        sudo ip link delete "$interface" >/dev/null 2>&1
+    done < <(ifconfig 2>/dev/null | grep -o "wpan[0-9]*")
 
-    for interface in $wpan_interfaces; do
-        sudo ip link delete $interface > /dev/null 2>&1
-    done
+    sudo ip address flush trel
 
     sleep 0.3
 }
 
-run() {
+prepare_trel_link()
+{
+    # Prepares a netif "trel" as virtual eth to use for
+    # testing "TREL" radio link in POSIX platform.
+
+    echo "Preparing trel netif"
+    sudo ip link delete trel
+    sudo ip link add trel type veth peer name trel-peer || die
+    sudo ip link set trel multicast on || die
+    sudo ip link set trel up || die
+    sudo ip link set trel-peer multicast on || die
+    sudo ip link set trel-peer up || die
+}
+
+run()
+{
     counter=0
     while true; do
 
-        if sudo -E python $1; then
+        if sudo -E python "$1"; then
             cleanup
             return
         fi
 
-        # We allow a failed test to be retried up to 3 attempts.
-        if [ "$counter" -lt 2 ]; then
-            counter=$((counter+1))
+        # We allow a failed test to be retried up to 7 attempts.
+        if [ "$counter" -lt 7 ]; then
+            counter=$((counter + 1))
             echo Attempt $counter running "$1" failed. Trying again.
             cleanup
             sleep 10
@@ -73,7 +90,11 @@ run() {
     done
 }
 
-cd $(dirname $0)
+cd "$(dirname "$0")" || die "cd failed"
+
+if [ -z "${top_builddir}" ]; then
+    top_builddir=.
+fi
 
 if [ "$COVERAGE" = 1 ]; then
     coverage_option="--enable-coverage"
@@ -82,7 +103,7 @@ else
 fi
 
 case $TORANJ_POSIX_RCP_MODEL in
-    1|yes)
+    1 | yes)
         use_posix_with_rcp=yes
         ;;
     *)
@@ -91,14 +112,38 @@ case $TORANJ_POSIX_RCP_MODEL in
 esac
 
 if [ "$use_posix_with_rcp" = "no" ]; then
-    ./build.sh ${coverage_option} ncp || die
-
+    if [ "$TORANJ_RADIO" = "multi" ]; then
+        # Build all combinations
+        ./build.sh ${coverage_option} ncp-15.4 || die "ncp-15.4 build failed"
+        (cd ${top_builddir} && make clean) || die "cd and clean failed"
+        ./build.sh ${coverage_option} ncp-trel || die "ncp-trel build failed"
+        (cd ${top_builddir} && make clean) || die "cd and clean failed"
+        ./build.sh ${coverage_option} ncp-15.4+trel || die "ncp-15.4+trel build failed"
+        (cd ${top_builddir} && make clean) || die "cd and clean failed"
+    else
+        ./build.sh ${coverage_option} ncp-"${TORANJ_RADIO}" || die "ncp build failed"
+    fi
 else
-    ./build.sh ${coverage_option} rcp || die
-    ./build.sh ${coverage_option} posix || die
+    ./build.sh ${coverage_option} rcp || die "rcp build failed"
+    ./build.sh ${coverage_option} posix-"${TORANJ_RADIO}" || die "posix build failed"
+
+    if [ "$TORANJ_RADIO" = "trel" ]; then
+        prepare_trel_link
+    fi
 fi
 
 cleanup
+
+if [ "$TORANJ_RADIO" = "multi" ]; then
+    run test-700-multi-radio-join.py
+    run test-701-multi-radio-probe.py
+    run test-702-multi-radio-discovery-by-rx.py
+    run test-703-multi-radio-mesh-header-msg.py
+    run test-704-multi-radio-scan.py
+    run test-705-multi-radio-discover-scan.py
+
+    exit 0
+fi
 
 run test-001-get-set.py
 run test-002-form.py
@@ -140,10 +185,20 @@ run test-037-wpantund-auto-add-route-for-on-mesh-prefix.py
 run test-038-clear-address-cache-for-sed.py
 run test-039-address-cache-table-snoop.py
 run test-040-network-data-stable-full.py
+run test-041-lowpan-fragmentation.py
+run test-042-meshcop-joiner-discerner.py
+run test-043-meshcop-joiner-router.py
 run test-100-mcu-power-state.py
 run test-600-channel-manager-properties.py
 run test-601-channel-manager-channel-change.py
-run test-602-channel-manager-channel-select.py
+
+# Skip the "channel-select" test on a TREL only radio link, since it
+# requires energy scan which is not supported in this case.
+
+if [ "$TORANJ_RADIO" != "trel" ]; then
+    run test-602-channel-manager-channel-select.py
+fi
+
 run test-603-channel-manager-announce-recovery.py
 
 exit 0

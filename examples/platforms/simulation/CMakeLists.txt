@@ -30,12 +30,17 @@ set(OT_PLATFORM_LIB "openthread-simulation" PARENT_SCOPE)
 
 option(OT_SIMULATION_VIRTUAL_TIME "enable virtual time")
 if(OT_SIMULATION_VIRTUAL_TIME)
-    list(APPEND OT_PRIVATE_DEFINES "OPENTHREAD_SIMULATION_VIRTUAL_TIME=1")
+    target_compile_definitions(ot-config INTERFACE "OPENTHREAD_SIMULATION_VIRTUAL_TIME=1")
 endif()
 
 option(OT_SIMULATION_VIRTUAL_TIME_UART "enable virtual time for UART")
 if(OT_SIMULATION_VIRTUAL_TIME_UART)
-    list(APPEND OT_PRIVATE_DEFINES "OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART=1")
+    target_compile_definitions(ot-config INTERFACE "OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART=1")
+endif()
+
+option(OT_SIMULATION_MAX_NETWORK_SIZE "set maximum network size (default: 33)")
+if(OT_SIMULATION_MAX_NETWORK_SIZE)
+    target_compile_definitions(ot-config INTERFACE "OPENTHREAD_SIMULATION_MAX_NETWORK_SIZE=${OT_SIMULATION_MAX_NETWORK_SIZE}")
 endif()
 
 if(NOT OT_CONFIG)
@@ -64,27 +69,32 @@ add_library(openthread-simulation
     radio.c
     spi-stubs.c
     system.c
+    trel.c
     uart.c
     virtual_time/alarm-sim.c
-    virtual_time/otns.c
     virtual_time/platform-sim.c
     $<TARGET_OBJECTS:openthread-platform-utils>
 )
 
-set_property(TARGET openthread-simulation PROPERTY C_STANDARD 99)
+set_target_properties(
+    openthread-simulation
+    PROPERTIES
+        C_STANDARD 99
+        CXX_STANDARD 11
+)
 
 find_library(LIBRT rt)
 if(LIBRT)
     target_link_libraries(openthread-simulation PRIVATE ${LIBRT})
 endif()
 
-target_link_libraries(openthread-simulation PRIVATE openthread-platform-utils)
+target_link_libraries(openthread-simulation PRIVATE
+    openthread-platform
+    ot-config)
 
 target_compile_definitions(openthread-simulation
     PUBLIC
         ${OT_PLATFORM_DEFINES}
-    PRIVATE
-        ${OT_PRIVATE_DEFINES}
 )
 
 target_compile_options(openthread-simulation PRIVATE
@@ -93,8 +103,8 @@ target_compile_options(openthread-simulation PRIVATE
 
 target_include_directories(openthread-simulation PRIVATE
     ${OT_PUBLIC_INCLUDES}
-    ${OT_PRIVATE_INCLUDES}
     ${PROJECT_SOURCE_DIR}/examples/platforms
+    ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/core
 )
 

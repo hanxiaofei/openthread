@@ -34,6 +34,7 @@
 #include <openthread/sntp.h>
 
 #include "common/message.hpp"
+#include "common/non_copyable.hpp"
 #include "common/timer.hpp"
 #include "net/ip6.hpp"
 #include "net/netif.hpp"
@@ -444,7 +445,7 @@ public:
      * @retval OT_ERROR_NO_BUFS  Insufficient available buffers to grow the message.
      *
      */
-    otError AppendTo(Message &aMessage) const { return aMessage.Append(this, sizeof(*this)); }
+    otError AppendTo(Message &aMessage) const { return aMessage.Append(*this); }
 
     /**
      * This method reads request data from the message.
@@ -454,9 +455,10 @@ public:
      */
     void ReadFrom(const Message &aMessage)
     {
-        uint16_t length = aMessage.Read(aMessage.GetLength() - sizeof(*this), sizeof(*this), this);
-        OT_ASSERT(length == sizeof(*this));
-        OT_UNUSED_VARIABLE(length);
+        otError error = aMessage.Read(aMessage.GetLength() - sizeof(*this), *this);
+
+        OT_ASSERT(error == OT_ERROR_NONE);
+        OT_UNUSED_VARIABLE(error);
     }
 
     /**
@@ -464,13 +466,8 @@ public:
      *
      * @param[in]  aMessage  A reference to the message.
      *
-     * @returns The number of bytes updated.
-     *
      */
-    int UpdateIn(Message &aMessage) const
-    {
-        return aMessage.Write(aMessage.GetLength() - sizeof(*this), sizeof(*this), this);
-    }
+    void UpdateIn(Message &aMessage) const { aMessage.Write(aMessage.GetLength() - sizeof(*this), *this); }
 
 private:
     uint32_t              mTransmitTimestamp;   ///< Time at the client when the request departed for the server.
@@ -487,16 +484,16 @@ private:
  * This class implements SNTP client.
  *
  */
-class Client
+class Client : private NonCopyable
 {
 public:
     /**
      * This constructor initializes the object.
      *
-     * @param[in]  aNetif    A reference to the network interface that SNTP client should be assigned to.
+     * @param[in]  aInstance     A reference to the OpenThread instance.
      *
      */
-    explicit Client(Ip6::Netif &aNetif);
+    explicit Client(Instance &aInstance);
 
     /**
      * This method starts the SNTP client.
@@ -572,7 +569,7 @@ private:
     Message *CopyAndEnqueueMessage(const Message &aMessage, const QueryMetadata &aQueryMetadata);
     void     DequeueMessage(Message &aMessage);
     otError  SendMessage(Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
-    otError  SendCopy(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
+    void     SendCopy(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
 
     Message *FindRelatedQuery(const Header &aResponseHeader, QueryMetadata &aQueryMetadata);
     void FinalizeSntpTransaction(Message &aQuery, const QueryMetadata &aQueryMetadata, uint64_t aTime, otError aResult);
@@ -583,7 +580,7 @@ private:
     static void HandleUdpReceive(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);
     void        HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
 
-    Ip6::UdpSocket mSocket;
+    Ip6::Udp::Socket mSocket;
 
     MessageQueue mPendingQueries;
     TimerMilli   mRetransmissionTimer;

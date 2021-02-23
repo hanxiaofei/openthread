@@ -100,6 +100,7 @@ coaps response sent
 - [psk](#psk-psk-pskid)
 - [put](#put-uri-path-type-payload)
 - [resource](#resource-uri-path)
+- [set](#set-new-content)
 - [start](#start)
 - [stop](#stop)
 - [x509](#x509)
@@ -119,6 +120,7 @@ post
 psk
 put
 resource
+set
 start
 stop
 x509
@@ -161,21 +163,31 @@ Done
 ### get \<uri-path\> \[type\]
 
 - uri-path: URI path of the resource.
-- type: "con" for Confirmable or "non-con" for Non-confirmable (default).
+- type: "con" for Confirmable or "non-con" for Non-confirmable (default). Use "block-<block-size>" if the response should be transferred block-wise. ("block-16","block-32","block-64","block-128","block-256","block-512","block-1024")
 
 ```bash
 > coaps get test-resource
 Done
 ```
 
+```bash
+> coaps get test-resource block-1024
+Done
+```
+
 ### post \<uri-path\> \[type\] \[payload\]
 
 - uri-path: URI path of the resource.
-- type: "con" for Confirmable or "non-con" for Non-confirmable (default).
-- payload: CoAPS request payload.
+- type: "con" for Confirmable or "non-con" for Non-confirmable (default). Use "block-<block-size>" to send blocks with random payload. ("block-16","block-32","block-64","block-128","block-256","block-512","block-1024")
+- payload: CoAP request payload. If \[type\] is "block-<block-size>", the amount of blocks to be sent can be set here.
 
 ```bash
 > coaps post test-resource con payload
+Done
+```
+
+```bash
+> coaps post test-resource block-1024 10
 Done
 ```
 
@@ -194,11 +206,16 @@ Done
 ### put \<uri-path\> \[type\] \[payload\]
 
 - uri-path: URI path of the resource.
-- type: "con" for Confirmable or "non-con" for Non-confirmable (default).
-- payload: CoAPS request payload.
+- type: "con" for Confirmable or "non-con" for Non-confirmable (default). Use "block-<block-size>" to send blocks with random payload. ("block-16","block-32","block-64","block-128","block-256","block-512","block-1024")
+- payload: CoAP request payload. If \[type\] is "block-<block-size>", the amount of blocks to be sent can be set here.
 
 ```bash
 > coaps put test-resource con payload
+Done
+```
+
+```bash
+> coaps put test-resource block-1024 10
 Done
 ```
 
@@ -211,6 +228,15 @@ Sets the URI path for the test resource.
 Done
 > coaps resource
 test-resource
+Done
+```
+
+### set \[new-content\]
+
+Sets the content sent by the test resource.
+
+```bash
+> coaps set Testing123
 Done
 ```
 

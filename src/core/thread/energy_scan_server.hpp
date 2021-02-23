@@ -38,6 +38,7 @@
 
 #include "coap/coap.hpp"
 #include "common/locator.hpp"
+#include "common/non_copyable.hpp"
 #include "common/notifier.hpp"
 #include "common/timer.hpp"
 #include "net/ip6_address.hpp"
@@ -50,8 +51,10 @@ namespace ot {
  * This class implements handling Energy Scan Requests.
  *
  */
-class EnergyScanServer : public InstanceLocator
+class EnergyScanServer : public InstanceLocator, private NonCopyable
 {
+    friend class ot::Notifier;
+
 public:
     /**
      * This constructor initializes the object.
@@ -75,10 +78,9 @@ private:
     static void HandleTimer(Timer &aTimer);
     void        HandleTimer(void);
 
-    static void HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags);
-    void        HandleStateChanged(otChangedFlags aFlags);
+    void HandleNotifierEvents(Events aEvents);
 
-    otError SendReport(void);
+    void SendReport(void);
 
     Ip6::Address mCommissioner;
     uint32_t     mChannelMask;
@@ -92,8 +94,6 @@ private:
     uint8_t mScanResultsLength;
 
     TimerMilli mTimer;
-
-    Notifier::Callback mNotifierCallback;
 
     Coap::Resource mEnergyScan;
 };

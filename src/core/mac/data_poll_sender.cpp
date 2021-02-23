@@ -52,7 +52,7 @@ DataPollSender::DataPollSender(Instance &aInstance)
     , mPollPeriod(0)
     , mExternalPollPeriod(0)
     , mFastPollsUsers(0)
-    , mTimer(aInstance, &DataPollSender::HandlePollTimer, this)
+    , mTimer(aInstance, DataPollSender::HandlePollTimer, this)
     , mEnabled(false)
     , mAttachMode(false)
     , mRetxMode(false)
@@ -69,18 +69,17 @@ const Neighbor &DataPollSender::GetParent(void) const
     return parentCandidate.IsStateValid() ? parentCandidate : Get<Mle::MleRouter>().GetParent();
 }
 
-otError DataPollSender::StartPolling(void)
+void DataPollSender::StartPolling(void)
 {
-    otError error = OT_ERROR_NONE;
+    VerifyOrExit(!mEnabled);
 
-    VerifyOrExit(!mEnabled, error = OT_ERROR_ALREADY);
-    VerifyOrExit(!Get<Mle::MleRouter>().IsRxOnWhenIdle(), error = OT_ERROR_INVALID_STATE);
+    OT_ASSERT(!Get<Mle::MleRouter>().IsRxOnWhenIdle());
 
     mEnabled = true;
     ScheduleNextPoll(kRecalculatePollPeriod);
 
 exit:
-    return error;
+    return;
 }
 
 void DataPollSender::StopPolling(void)
@@ -136,7 +135,11 @@ exit:
     return error;
 }
 
+#if OPENTHREAD_CONFIG_MULTI_RADIO
+otError DataPollSender::GetPollDestinationAddress(Mac::Address &aDest, Mac::RadioType &aRadioType) const
+#else
 otError DataPollSender::GetPollDestinationAddress(Mac::Address &aDest) const
+#endif
 {
     otError         error  = OT_ERROR_NONE;
     const Neighbor &parent = GetParent();
@@ -153,6 +156,10 @@ otError DataPollSender::GetPollDestinationAddress(Mac::Address &aDest) const
     {
         aDest.SetShort(parent.GetRloc16());
     }
+
+#if OPENTHREAD_CONFIG_MULTI_RADIO
+    aRadioType = Get<RadioSelector>().SelectPollFrameRadio(parent);
+#endif
 
 exit:
     return error;
@@ -204,7 +211,7 @@ void DataPollSender::HandlePollSent(Mac::TxFrame &aFrame, otError aError)
     Mac::Address macDest;
     bool         shouldRecalculatePollPeriod = false;
 
-    VerifyOrExit(mEnabled, OT_NOOP);
+    VerifyOrExit(mEnabled);
 
     if (!aFrame.IsEmpty())
     {
@@ -288,7 +295,7 @@ void DataPollSender::HandlePollTimeout(void)
     // a data poll indicated that a frame was pending, but no frame
     // was received after timeout interval.
 
-    VerifyOrExit(mEnabled, OT_NOOP);
+    VerifyOrExit(mEnabled);
 
     mPollTimeoutCounter++;
 
@@ -309,7 +316,7 @@ exit:
 
 void DataPollSender::ProcessFrame(const Mac::RxFrame &aFrame)
 {
-    VerifyOrExit(mEnabled, OT_NOOP);
+    VerifyOrExit(mEnabled);
 
     mPollTimeoutCounter = 0;
 
@@ -379,25 +386,23 @@ void DataPollSender::SendFastPolls(uint8_t aNumFastPolls)
     }
 }
 
-otError DataPollSender::StopFastPolls(void)
+void DataPollSender::StopFastPolls(void)
 {
-    otError error = OT_ERROR_NONE;
-
-    VerifyOrExit(mFastPollsUsers != 0, OT_NOOP);
+    VerifyOrExit(mFastPollsUsers != 0);
 
     // If `mFastPollsUsers` hits the max, let it be cleared
     // from `HandlePollSent()` (after all fast polls are sent).
-    VerifyOrExit(mFastPollsUsers < kMaxFastPollsUsers, OT_NOOP);
+    VerifyOrExit(mFastPollsUsers < kMaxFastPollsUsers);
 
     mFastPollsUsers--;
 
-    VerifyOrExit(mFastPollsUsers == 0, error = OT_ERROR_BUSY);
+    VerifyOrExit(mFastPollsUsers == 0);
 
     mRemainingFastPolls = 0;
     ScheduleNextPoll(kRecalculatePollPeriod);
 
 exit:
-    return error;
+    return;
 }
 
 void DataPollSender::ResetKeepAliveTimer(void)

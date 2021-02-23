@@ -59,8 +59,7 @@ public:
     /**
      * This method indicates whether this is an Active or Pending Dataset.
      *
-     * @retval Tlv::kActiveTimestamp when this is an Active Dataset.
-     * @retval Tlv::kPendingTimetamp when this is a Pending Dataset.
+     * @returns The Dataset type.
      *
      */
     Dataset::Type GetType(void) const { return mType; }
@@ -116,13 +115,24 @@ public:
     /**
      * This method retrieves the dataset from non-volatile memory.
      *
+     * @param[out]  aDatasetInfo  Where to place the dataset as `Dataset::Info`.
+     *
+     * @retval OT_ERROR_NONE       Successfully retrieved the dataset.
+     * @retval OT_ERROR_NOT_FOUND  There is no corresponding dataset stored in non-volatile memory.
+     *
+     */
+    otError Read(Dataset::Info &aDatasetInfo) const;
+
+    /**
+     * This method retrieves the dataset from non-volatile memory.
+     *
      * @param[out]  aDataset  Where to place the dataset.
      *
      * @retval OT_ERROR_NONE       Successfully retrieved the dataset.
      * @retval OT_ERROR_NOT_FOUND  There is no corresponding dataset stored in non-volatile memory.
      *
      */
-    otError Read(otOperationalDataset &aDataset) const;
+    otError Read(otOperationalDatasetTlvs &aDataset) const;
 
     /**
      * This method returns the local time this dataset was last updated or restored.
@@ -135,15 +145,32 @@ public:
     /**
      * This method stores the dataset into non-volatile memory.
      *
-     * @retval OT_ERROR_NONE  Successfully stored the dataset.
+     * @param[in] aDatasetInfo     The Dataset to save as `Dataset::Info`.
+     *
+     * @retval OT_ERROR_NONE              Successfully saved the dataset.
+     * @retval OT_ERROR_NOT_IMPLEMENTED   The platform does not implement settings functionality.
      *
      */
-    otError Save(const otOperationalDataset &aDataset);
+    otError Save(const Dataset::Info &aDatasetInfo);
 
     /**
      * This method stores the dataset into non-volatile memory.
      *
-     * @retval OT_ERROR_NONE  Successfully stored the dataset.
+     * @param[in]  aDataset  The Dataset to save as `otOperationalDatasetTlvs`.
+     *
+     * @retval OT_ERROR_NONE              Successfully saved the dataset.
+     * @retval OT_ERROR_NOT_IMPLEMENTED   The platform does not implement settings functionality.
+     *
+     */
+    otError Save(const otOperationalDatasetTlvs &aDataset);
+
+    /**
+     * This method stores the dataset into non-volatile memory.
+     *
+     * @param[in]  aDataset  The Dataset to save.
+     *
+     * @retval OT_ERROR_NONE              Successfully saved the dataset.
+     * @retval OT_ERROR_NOT_IMPLEMENTED   The platform does not implement settings functionality.
      *
      */
     otError Save(const Dataset &aDataset);

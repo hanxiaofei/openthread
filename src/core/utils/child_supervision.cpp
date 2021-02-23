@@ -50,8 +50,6 @@ namespace Utils {
 ChildSupervisor::ChildSupervisor(Instance &aInstance)
     : InstanceLocator(aInstance)
     , mSupervisionInterval(kDefaultSupervisionInterval)
-    , mTimer(aInstance, &ChildSupervisor::HandleTimer, this)
-    , mNotifierCallback(aInstance, &ChildSupervisor::HandleStateChanged, this)
 {
 }
 
@@ -63,12 +61,12 @@ void ChildSupervisor::SetSupervisionInterval(uint16_t aInterval)
 
 Child *ChildSupervisor::GetDestination(const Message &aMessage) const
 {
-    Child *  child = NULL;
+    Child *  child = nullptr;
     uint16_t childIndex;
 
-    VerifyOrExit(aMessage.GetType() == Message::kTypeSupervision, OT_NOOP);
+    VerifyOrExit(aMessage.GetType() == Message::kTypeSupervision);
 
-    aMessage.Read(0, sizeof(childIndex), &childIndex);
+    IgnoreError(aMessage.Read(0, childIndex));
     child = Get<ChildTable>().GetChildAtIndex(childIndex);
 
 exit:
@@ -77,13 +75,13 @@ exit:
 
 void ChildSupervisor::SendMessage(Child &aChild)
 {
-    Message *message = NULL;
+    Message *message = nullptr;
     uint16_t childIndex;
 
-    VerifyOrExit(aChild.GetIndirectMessageCount() == 0, OT_NOOP);
+    VerifyOrExit(aChild.GetIndirectMessageCount() == 0);
 
     message = Get<MessagePool>().New(Message::kTypeSupervision, sizeof(uint8_t));
-    VerifyOrExit(message != NULL, OT_NOOP);
+    VerifyOrExit(message != nullptr);
 
     // Supervision message is an empty payload 15.4 data frame.
     // The child index is stored here in the message content to allow
@@ -91,19 +89,15 @@ void ChildSupervisor::SendMessage(Child &aChild)
     // `ChildSupervisor::GetDestination(message)`.
 
     childIndex = Get<ChildTable>().GetChildIndex(aChild);
-    SuccessOrExit(message->Append(&childIndex, sizeof(childIndex)));
+    SuccessOrExit(message->Append(childIndex));
 
     SuccessOrExit(Get<ThreadNetif>().SendMessage(*message));
-    message = NULL;
+    message = nullptr;
 
     otLogInfoUtil("Sending supervision message to child 0x%04x", aChild.GetRloc16());
 
 exit:
-
-    if (message != NULL)
-    {
-        message->Free();
-    }
+    FreeMessage(message);
 }
 
 void ChildSupervisor::UpdateOnSend(Child &aChild)
@@ -111,19 +105,10 @@ void ChildSupervisor::UpdateOnSend(Child &aChild)
     aChild.ResetSecondsSinceLastSupervision();
 }
 
-void ChildSupervisor::HandleTimer(Timer &aTimer)
+void ChildSupervisor::HandleTimeTick(void)
 {
-    aTimer.GetOwner<ChildSupervisor>().HandleTimer();
-}
-
-void ChildSupervisor::HandleTimer(void)
-{
-    VerifyOrExit(mSupervisionInterval != 0, OT_NOOP);
-
-    for (ChildTable::Iterator iter(GetInstance(), Child::kInStateValid); !iter.IsDone(); iter++)
+    for (Child &child : Get<ChildTable>().Iterate(Child::kInStateValid))
     {
-        Child &child = *iter.GetChild();
-
         child.IncrementSecondsSinceLastSupervision();
 
         if ((child.GetSecondsSinceLastSupervision() >= mSupervisionInterval) && !child.IsRxOnWhenIdle())
@@ -131,11 +116,6 @@ void ChildSupervisor::HandleTimer(void)
             SendMessage(child);
         }
     }
-
-    mTimer.Start(kOneSecond);
-
-exit:
-    return;
 }
 
 void ChildSupervisor::CheckState(void)
@@ -149,27 +129,22 @@ void ChildSupervisor::CheckState(void)
     shouldRun = ((mSupervisionInterval != 0) && !Get<Mle::MleRouter>().IsDisabled() &&
                  Get<ChildTable>().HasChildren(Child::kInStateValid));
 
-    if (shouldRun && !mTimer.IsRunning())
+    if (shouldRun && !Get<TimeTicker>().IsReceiverRegistered(TimeTicker::kChildSupervisor))
     {
-        mTimer.Start(kOneSecond);
+        Get<TimeTicker>().RegisterReceiver(TimeTicker::kChildSupervisor);
         otLogInfoUtil("Starting Child Supervision");
     }
 
-    if (!shouldRun && mTimer.IsRunning())
+    if (!shouldRun && Get<TimeTicker>().IsReceiverRegistered(TimeTicker::kChildSupervisor))
     {
-        mTimer.Stop();
+        Get<TimeTicker>().UnregisterReceiver(TimeTicker::kChildSupervisor);
         otLogInfoUtil("Stopping Child Supervision");
     }
 }
 
-void ChildSupervisor::HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags)
+void ChildSupervisor::HandleNotifierEvents(Events aEvents)
 {
-    aCallback.GetOwner<ChildSupervisor>().HandleStateChanged(aFlags);
-}
-
-void ChildSupervisor::HandleStateChanged(otChangedFlags aFlags)
-{
-    if ((aFlags & (OT_CHANGED_THREAD_ROLE | OT_CHANGED_THREAD_CHILD_ADDED | OT_CHANGED_THREAD_CHILD_REMOVED)) != 0)
+    if (aEvents.ContainsAny(kEventThreadRoleChanged | kEventThreadChildAdded | kEventThreadChildRemoved))
     {
         CheckState();
     }
@@ -180,7 +155,7 @@ void ChildSupervisor::HandleStateChanged(otChangedFlags aFlags)
 SupervisionListener::SupervisionListener(Instance &aInstance)
     : InstanceLocator(aInstance)
     , mTimeout(0)
-    , mTimer(aInstance, &SupervisionListener::HandleTimer, this)
+    , mTimer(aInstance, SupervisionListener::HandleTimer, this)
 {
     SetTimeout(kDefaultTimeout);
 }
@@ -209,8 +184,7 @@ void SupervisionListener::UpdateOnReceive(const Mac::Address &aSourceAddress, bo
     // If listener is enabled and device is a child and it received a secure frame from its parent, restart the timer.
 
     VerifyOrExit(mTimer.IsRunning() && aIsSecure && Get<Mle::MleRouter>().IsChild() &&
-                     (Get<Mle::MleRouter>().GetNeighbor(aSourceAddress) == &Get<Mle::MleRouter>().GetParent()),
-                 OT_NOOP);
+                 (Get<NeighborTable>().FindNeighbor(aSourceAddress) == &Get<Mle::MleRouter>().GetParent()));
 
     RestartTimer();
 
@@ -237,7 +211,7 @@ void SupervisionListener::HandleTimer(Timer &aTimer)
 
 void SupervisionListener::HandleTimer(void)
 {
-    VerifyOrExit(Get<Mle::MleRouter>().IsChild() && !Get<MeshForwarder>().GetRxOnWhenIdle(), OT_NOOP);
+    VerifyOrExit(Get<Mle::MleRouter>().IsChild() && !Get<MeshForwarder>().GetRxOnWhenIdle());
 
     otLogWarnUtil("Supervision timeout. No frame from parent in %d sec", mTimeout);
 

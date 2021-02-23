@@ -92,7 +92,7 @@ void SourceMatchController::ResetMessageCount(Child &aChild)
 
 void SourceMatchController::SetSrcMatchAsShort(Child &aChild, bool aUseShortAddress)
 {
-    VerifyOrExit(aChild.IsIndirectSourceMatchShort() != aUseShortAddress, OT_NOOP);
+    VerifyOrExit(aChild.IsIndirectSourceMatchShort() != aUseShortAddress);
 
     if (aChild.GetIndirectMessageCount() > 0)
     {
@@ -212,12 +212,12 @@ otError SourceMatchController::AddPendingEntries(void)
 {
     otError error = OT_ERROR_NONE;
 
-    for (ChildTable::Iterator iter(GetInstance(), Child::kInStateValidOrRestoring); !iter.IsDone(); iter++)
+    for (Child &child : Get<ChildTable>().Iterate(Child::kInStateValidOrRestoring))
     {
-        if (iter.GetChild()->IsIndirectSourceMatchPending())
+        if (child.IsIndirectSourceMatchPending())
         {
-            SuccessOrExit(error = AddAddress(*iter.GetChild()));
-            iter.GetChild()->SetIndirectSourceMatchPending(false);
+            SuccessOrExit(error = AddAddress(child));
+            child.SetIndirectSourceMatchPending(false);
         }
     }
 

@@ -41,7 +41,9 @@
 
 #include "common/locator.hpp"
 #include "common/message.hpp"
+#include "common/non_copyable.hpp"
 #include "common/notifier.hpp"
+#include "common/time_ticker.hpp"
 #include "common/timer.hpp"
 #include "mac/mac_types.hpp"
 #include "thread/topology.hpp"
@@ -88,8 +90,11 @@ namespace Utils {
  * This class implements a child supervisor.
  *
  */
-class ChildSupervisor : public InstanceLocator
+class ChildSupervisor : public InstanceLocator, private NonCopyable
 {
+    friend class ot::Notifier;
+    friend class ot::TimeTicker;
+
 public:
     /**
      * This constructor initializes the object.
@@ -135,7 +140,8 @@ public:
      *
      * @param[in] aMessage The message for which to get the destination.
      *
-     * @returns  A pointer to the destination child of the message, or NULL if @p aMessage is not of supervision type.
+     * @returns  A pointer to the destination child of the message, or nullptr if @p aMessage is not of supervision
+     * type.
      *
      */
     Child *GetDestination(const Message &aMessage) const;
@@ -156,16 +162,12 @@ private:
         kOneSecond                  = 1000,                                         // One second interval (in ms).
     };
 
-    void        SendMessage(Child &aChild);
-    void        CheckState(void);
-    static void HandleTimer(Timer &aTimer);
-    void        HandleTimer(void);
-    static void HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags);
-    void        HandleStateChanged(otChangedFlags aFlags);
+    void SendMessage(Child &aChild);
+    void CheckState(void);
+    void HandleTimeTick(void);
+    void HandleNotifierEvents(Events aEvents);
 
-    uint16_t           mSupervisionInterval;
-    TimerMilli         mTimer;
-    Notifier::Callback mNotifierCallback;
+    uint16_t mSupervisionInterval;
 };
 
 #else // #if OPENTHREAD_CONFIG_CHILD_SUPERVISION_ENABLE && OPENTHREAD_FTD
@@ -178,7 +180,7 @@ public:
     void     Stop(void) {}
     void     SetSupervisionInterval(uint16_t) {}
     uint16_t GetSupervisionInterval(void) const { return 0; }
-    Child *  GetDestination(const Message &) const { return NULL; }
+    Child *  GetDestination(const Message &) const { return nullptr; }
     void     UpdateOnSend(Child &) {}
 };
 
@@ -190,7 +192,7 @@ public:
  * This class implements a child supervision listener.
  *
  */
-class SupervisionListener : public InstanceLocator
+class SupervisionListener : public InstanceLocator, private NonCopyable
 {
 public:
     /**
@@ -261,7 +263,7 @@ private:
 
 #else // #if OPENTHREAD_CONFIG_CHILD_SUPERVISION_ENABLE
 
-class SupervisionListener
+class SupervisionListener : private NonCopyable
 {
 public:
     SupervisionListener(otInstance &) {}

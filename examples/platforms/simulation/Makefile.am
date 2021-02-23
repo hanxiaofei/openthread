@@ -27,12 +27,14 @@
 #
 
 include $(abs_top_nlbuild_autotools_dir)/automake/pre.am
+include $(top_srcdir)/src/lib/common.am
 
 lib_LIBRARIES                             = libopenthread-simulation.a
 
 libopenthread_simulation_a_CPPFLAGS       = \
     -I$(top_srcdir)/include                 \
     -I$(top_srcdir)/examples/platforms      \
+    -I$(top_srcdir)/src                     \
     -I$(top_srcdir)/src/core                \
     -D_GNU_SOURCE                           \
     $(NULL)
@@ -50,9 +52,9 @@ PLATFORM_SOURCES                          = \
     radio.c                                 \
     spi-stubs.c                             \
     system.c                                \
+    trel.c                                  \
     uart.c                                  \
     virtual_time/alarm-sim.c                \
-    virtual_time/otns.c                     \
     virtual_time/platform-sim.c             \
     $(NULL)
 
@@ -62,7 +64,9 @@ libopenthread_simulation_a_SOURCES        = \
 
 Dash                                      = -
 libopenthread_simulation_a_LIBADD         = \
-    $(shell find $(top_builddir)/examples/platforms/utils $(Dash)type f $(Dash)name "*.o")
+    $(call ot_list_objects,$(top_builddir)/examples/platforms/utils/libopenthread-platform-utils.a) \
+    $(call ot_list_objects,$(top_builddir)/src/lib/platform/libopenthread-platform.a)               \
+    $(NULL)
 
 if OPENTHREAD_BUILD_COVERAGE
 libopenthread_simulation_a_CPPFLAGS      += \

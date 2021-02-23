@@ -46,8 +46,7 @@ namespace NetworkData {
 
 Notifier::Notifier(Instance &aInstance)
     : InstanceLocator(aInstance)
-    , mNotifierCallback(aInstance, &Notifier::HandleStateChanged, this)
-    , mTimer(aInstance, &Notifier::HandleTimer, this)
+    , mTimer(aInstance, Notifier::HandleTimer, this)
     , mNextDelay(0)
     , mWaitingForResponse(false)
 {
@@ -63,20 +62,20 @@ void Notifier::SynchronizeServerData(void)
 {
     otError error = OT_ERROR_NOT_FOUND;
 
-    VerifyOrExit(Get<Mle::MleRouter>().IsAttached() && !mWaitingForResponse, OT_NOOP);
+    VerifyOrExit(Get<Mle::MleRouter>().IsAttached() && !mWaitingForResponse);
 
-    VerifyOrExit((mNextDelay == 0) || !mTimer.IsRunning(), OT_NOOP);
+    VerifyOrExit((mNextDelay == 0) || !mTimer.IsRunning());
 
 #if OPENTHREAD_FTD
     mNextDelay = kDelayRemoveStaleChildren;
     error      = Get<Leader>().RemoveStaleChildEntries(&Notifier::HandleCoapResponse, this);
-    VerifyOrExit(error == OT_ERROR_NOT_FOUND, OT_NOOP);
+    VerifyOrExit(error == OT_ERROR_NOT_FOUND);
 #endif
 
 #if OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE || OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     mNextDelay = kDelaySynchronizeServerData;
     error      = Get<Local>().UpdateInconsistentServerData(&Notifier::HandleCoapResponse, this);
-    VerifyOrExit(error == OT_ERROR_NOT_FOUND, OT_NOOP);
+    VerifyOrExit(error == OT_ERROR_NOT_FOUND);
 #endif
 
 exit:
@@ -101,19 +100,14 @@ exit:
     }
 }
 
-void Notifier::HandleStateChanged(ot::Notifier::Callback &aCallback, otChangedFlags aFlags)
+void Notifier::HandleNotifierEvents(Events aEvents)
 {
-    aCallback.GetOwner<Notifier>().HandleStateChanged(aFlags);
-}
-
-void Notifier::HandleStateChanged(otChangedFlags aFlags)
-{
-    if (aFlags & (OT_CHANGED_THREAD_ROLE | OT_CHANGED_THREAD_CHILD_REMOVED))
+    if (aEvents.ContainsAny(kEventThreadRoleChanged | kEventThreadChildRemoved))
     {
         mNextDelay = 0;
     }
 
-    if (aFlags & (OT_CHANGED_THREAD_NETDATA | OT_CHANGED_THREAD_ROLE | OT_CHANGED_THREAD_CHILD_REMOVED))
+    if (aEvents.ContainsAny(kEventThreadNetdataChanged | kEventThreadRoleChanged | kEventThreadChildRemoved))
     {
         SynchronizeServerData();
     }

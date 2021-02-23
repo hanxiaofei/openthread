@@ -60,9 +60,8 @@ TimeSync::TimeSync(Instance &aInstance)
 #endif
     , mLastTimeSyncReceived(0)
     , mNetworkTimeOffset(0)
-    , mTimeSyncCallback(NULL)
-    , mTimeSyncCallbackContext(NULL)
-    , mNotifierCallback(aInstance, &TimeSync::HandleStateChanged, this)
+    , mTimeSyncCallback(nullptr)
+    , mTimeSyncCallbackContext(nullptr)
     , mTimer(aInstance, HandleTimeout, this)
     , mCurrentStatus(OT_NETWORK_TIME_UNSYNCHRONIZED)
 {
@@ -81,7 +80,7 @@ void TimeSync::HandleTimeSyncMessage(const Message &aMessage)
     const int64_t origNetworkTimeOffset = mNetworkTimeOffset;
     int8_t        timeSyncSeqDelta;
 
-    VerifyOrExit(aMessage.GetTimeSyncSeq() != OT_TIME_SYNC_INVALID_SEQ, OT_NOOP);
+    VerifyOrExit(aMessage.GetTimeSyncSeq() != OT_TIME_SYNC_INVALID_SEQ);
 
     timeSyncSeqDelta = static_cast<int8_t>(aMessage.GetTimeSyncSeq() - mTimeSyncSeq);
 
@@ -142,7 +141,7 @@ void TimeSync::IncrementTimeSyncSeq(void)
 
 void TimeSync::NotifyTimeSyncCallback(void)
 {
-    if (mTimeSyncCallback != NULL)
+    if (mTimeSyncCallback != nullptr)
     {
         mTimeSyncCallback(mTimeSyncCallbackContext);
     }
@@ -162,7 +161,7 @@ void TimeSync::ProcessTimeSync(void)
 
     if (mTimeSyncRequired)
     {
-        VerifyOrExit(Get<Mle::MleRouter>().SendTimeSync() == OT_ERROR_NONE, OT_NOOP);
+        VerifyOrExit(Get<Mle::MleRouter>().SendTimeSync() == OT_ERROR_NONE);
 
         mLastTimeSyncSent = TimerMilli::GetNow();
         mTimeSyncRequired = false;
@@ -173,16 +172,16 @@ exit:
 }
 #endif // OPENTHREAD_FTD
 
-void TimeSync::HandleStateChanged(otChangedFlags aFlags)
+void TimeSync::HandleNotifierEvents(Events aEvents)
 {
     bool stateChanged = false;
 
-    if ((aFlags & OT_CHANGED_THREAD_ROLE) != 0)
+    if (aEvents.Contains(kEventThreadRoleChanged))
     {
         stateChanged = true;
     }
 
-    if ((aFlags & OT_CHANGED_THREAD_PARTITION_ID) != 0 && !Get<Mle::MleRouter>().IsLeader())
+    if (aEvents.Contains(kEventThreadPartitionIdChanged) && !Get<Mle::MleRouter>().IsLeader())
     {
         // Partition has changed. Accept any network time currently being seeded on the new partition
         // and don't attempt to forward the currently held network time from the previous partition.
@@ -207,11 +206,6 @@ void TimeSync::HandleStateChanged(otChangedFlags aFlags)
 void TimeSync::HandleTimeout(void)
 {
     CheckAndHandleChanges(false);
-}
-
-void TimeSync::HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags)
-{
-    aCallback.GetOwner<TimeSync>().HandleStateChanged(aFlags);
 }
 
 void TimeSync::HandleTimeout(Timer &aTimer)

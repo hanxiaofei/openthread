@@ -170,17 +170,8 @@ otError otIp6Send(otInstance *aInstance, otMessage *aMessage)
 otMessage *otIp6NewMessage(otInstance *aInstance, const otMessageSettings *aSettings)
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
-    Message * message;
 
-    if (aSettings != NULL)
-    {
-        VerifyOrExit(aSettings->mPriority <= OT_MESSAGE_PRIORITY_HIGH, message = NULL);
-    }
-
-    message = instance.Get<Ip6::Ip6>().NewMessage(0, aSettings);
-
-exit:
-    return message;
+    return instance.Get<Ip6::Ip6>().NewMessage(0, Message::Settings(aSettings));
 }
 
 otMessage *otIp6NewMessageFromBuffer(otInstance *             aInstance,
@@ -191,9 +182,15 @@ otMessage *otIp6NewMessageFromBuffer(otInstance *             aInstance,
     Instance &instance = *static_cast<Instance *>(aInstance);
     Message * message;
 
-    VerifyOrExit((message = instance.Get<Ip6::Ip6>().NewMessage(aData, aDataLength, aSettings)) != NULL, OT_NOOP);
+    if (aSettings != nullptr)
+    {
+        message = instance.Get<Ip6::Ip6>().NewMessage(aData, aDataLength, Message::Settings(aSettings));
+    }
+    else
+    {
+        message = instance.Get<Ip6::Ip6>().NewMessage(aData, aDataLength);
+    }
 
-exit:
     return message;
 }
 
@@ -237,7 +234,7 @@ otError otIp6AddressFromString(const char *aString, otIp6Address *aAddress)
 
 uint8_t otIp6PrefixMatch(const otIp6Address *aFirst, const otIp6Address *aSecond)
 {
-    OT_ASSERT(aFirst != NULL && aSecond != NULL);
+    OT_ASSERT(aFirst != nullptr && aSecond != nullptr);
 
     return static_cast<const Ip6::Address *>(aFirst)->PrefixMatch(*static_cast<const Ip6::Address *>(aSecond));
 }
@@ -254,12 +251,27 @@ otError otIp6SelectSourceAddress(otInstance *aInstance, otMessageInfo *aMessageI
     const Ip6::NetifUnicastAddress *netifAddr;
 
     netifAddr = instance.Get<Ip6::Ip6>().SelectSourceAddress(*static_cast<Ip6::MessageInfo *>(aMessageInfo));
-    VerifyOrExit(netifAddr != NULL, error = OT_ERROR_NOT_FOUND);
-    memcpy(&aMessageInfo->mSockAddr, &netifAddr->mAddress, sizeof(aMessageInfo->mSockAddr));
+    VerifyOrExit(netifAddr != nullptr, error = OT_ERROR_NOT_FOUND);
+    aMessageInfo->mSockAddr = netifAddr->GetAddress();
 
 exit:
     return error;
 }
+
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE && OPENTHREAD_CONFIG_COMMISSIONER_ENABLE
+otError otIp6RegisterMulticastListeners(otInstance *                            aInstance,
+                                        const otIp6Address *                    aAddresses,
+                                        uint8_t                                 aAddressNum,
+                                        const uint32_t *                        aTimeout,
+                                        otIp6RegisterMulticastListenersCallback aCallback,
+                                        void *                                  aContext)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+
+    return instance.Get<MlrManager>().RegisterMulticastListeners(aAddresses, aAddressNum, aTimeout, aCallback,
+                                                                 aContext);
+}
+#endif
 
 #if OPENTHREAD_CONFIG_IP6_SLAAC_ENABLE
 

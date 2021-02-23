@@ -64,9 +64,9 @@ static AlarmState   sAlarmMilli;
 static AlarmState   sAlarmMicro;
 static uint32_t     sRandomState = 1;
 static uint8_t      sRadioTransmitPsdu[OT_RADIO_FRAME_MAX_SIZE];
-static otRadioFrame sRadioTransmitFrame = {.mPsdu = sRadioTransmitPsdu};
+static otRadioFrame sRadioTransmitFrame;
 static uint8_t      sRadioAckPsdu[OT_RADIO_FRAME_MAX_SIZE];
-static otRadioFrame sRadioAckFrame     = {.mPsdu = sRadioAckPsdu};
+static otRadioFrame sRadioAckFrame;
 static bool         sResetWasRequested = false;
 static otRadioState sRadioState        = OT_RADIO_STATE_DISABLED;
 
@@ -86,6 +86,9 @@ void FuzzerPlatformInit(void)
     sAlarmNow    = 0;
     memset(&sAlarmMilli, 0, sizeof(sAlarmMilli));
     memset(&sAlarmMicro, 0, sizeof(sAlarmMicro));
+
+    sRadioTransmitFrame.mPsdu = sRadioTransmitPsdu;
+    sRadioAckFrame.mPsdu      = sRadioAckPsdu;
 }
 
 void FuzzerPlatformProcess(otInstance *aInstance)
@@ -106,7 +109,7 @@ void FuzzerPlatformProcess(otInstance *aInstance)
         }
         else
         {
-            otPlatRadioTxDone(aInstance, &sRadioTransmitFrame, NULL, OT_ERROR_NONE);
+            otPlatRadioTxDone(aInstance, &sRadioTransmitFrame, nullptr, OT_ERROR_NONE);
         }
     }
 
@@ -255,10 +258,10 @@ void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aE
     OT_UNUSED_VARIABLE(aExtAddr);
 }
 
-void otPlatRadioSetShortAddress(otInstance *aInstance, uint16_t aShortAddr)
+void otPlatRadioSetShortAddress(otInstance *aInstance, uint16_t aShortAddress)
 {
     OT_UNUSED_VARIABLE(aInstance);
-    OT_UNUSED_VARIABLE(aShortAddr);
+    OT_UNUSED_VARIABLE(aShortAddress);
 }
 
 void otPlatRadioSetPromiscuous(otInstance *aInstance, bool aEnabled)

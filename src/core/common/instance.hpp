@@ -46,8 +46,10 @@
 #include <openthread/platform/memory.h>
 #endif
 
+#include "common/non_copyable.hpp"
 #include "common/random_manager.hpp"
 #include "common/tasklet.hpp"
+#include "common/time_ticker.hpp"
 #include "common/timer.hpp"
 #include "diags/factory_diags.hpp"
 #include "radio/radio.hpp"
@@ -57,9 +59,9 @@
 #include "mac/link_raw.hpp"
 #endif
 #if OPENTHREAD_FTD || OPENTHREAD_MTD
-#include "coap/coap.hpp"
 #include "common/code_utils.hpp"
 #include "crypto/mbedtls.hpp"
+#include "thread/tmf.hpp"
 #if !OPENTHREAD_CONFIG_MULTIPLE_INSTANCE_ENABLE
 #include "utils/heap.hpp"
 #endif
@@ -70,21 +72,32 @@
 #include "thread/announce_sender.hpp"
 #include "thread/link_quality.hpp"
 #include "thread/thread_netif.hpp"
-#if OPENTHREAD_CONFIG_CHANNEL_MANAGER_ENABLE
+#if OPENTHREAD_CONFIG_CHANNEL_MANAGER_ENABLE && OPENTHREAD_FTD
 #include "utils/channel_manager.hpp"
 #endif
 #if OPENTHREAD_CONFIG_CHANNEL_MONITOR_ENABLE
 #include "utils/channel_monitor.hpp"
 #endif
+#if (OPENTHREAD_CONFIG_DATASET_UPDATER_ENABLE || OPENTHREAD_CONFIG_CHANNEL_MANAGER_ENABLE) && OPENTHREAD_FTD
+#include "utils/dataset_updater.hpp"
+#endif
 
 #if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
-#include "backbone_router/leader.hpp"
+#include "backbone_router/bbr_leader.hpp"
 
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
-#include "backbone_router/local.hpp"
+#include "backbone_router/bbr_local.hpp"
+#endif
+
+#if OPENTHREAD_CONFIG_MLE_LINK_METRICS_ENABLE
+#include "thread/link_metrics.hpp"
 #endif
 
 #endif // (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
+
+#if OPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE
+#include "border_router/routing_manager.hpp"
+#endif
 
 #endif // OPENTHREAD_FTD || OPENTHREAD_MTD
 #if OPENTHREAD_ENABLE_VENDOR_EXTENSION
@@ -119,7 +132,7 @@ namespace ot {
  * This class contains all the components used by OpenThread.
  *
  */
-class Instance : public otInstance
+class Instance : public otInstance, private NonCopyable
 {
 public:
 #if OPENTHREAD_CONFIG_MULTIPLE_INSTANCE_ENABLE
@@ -236,14 +249,14 @@ public:
 #if OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE
     void HeapFree(void *aPointer)
     {
-        OT_ASSERT(mFree != NULL);
+        OT_ASSERT(mFree != nullptr);
 
         mFree(aPointer);
     }
 
     void *HeapCAlloc(size_t aCount, size_t aSize)
     {
-        OT_ASSERT(mCAlloc != NULL);
+        OT_ASSERT(mCAlloc != nullptr);
 
         return mCAlloc(aCount, aSize);
     }
@@ -342,10 +355,11 @@ private:
     Radio mRadio;
 
 #if OPENTHREAD_MTD || OPENTHREAD_FTD
-    // Notifier, Settings, and MessagePool are initialized  before
-    // other member variables since other classes/objects from their
-    // constructor may use them.
+    // Notifier, TimeTicker, Settings, and MessagePool are initialized
+    // before other member variables since other classes/objects from
+    // their constructor may use them.
     Notifier       mNotifier;
+    TimeTicker     mTimeTicker;
     Settings       mSettings;
     SettingsDriver mSettingsDriver;
     MessagePool    mMessagePool;
@@ -365,8 +379,12 @@ private:
     Utils::ChannelMonitor mChannelMonitor;
 #endif
 
-#if OPENTHREAD_CONFIG_CHANNEL_MANAGER_ENABLE
+#if OPENTHREAD_CONFIG_CHANNEL_MANAGER_ENABLE && OPENTHREAD_FTD
     Utils::ChannelManager mChannelManager;
+#endif
+
+#if (OPENTHREAD_CONFIG_DATASET_UPDATER_ENABLE || OPENTHREAD_CONFIG_CHANNEL_MANAGER_ENABLE) && OPENTHREAD_FTD
+    Utils::DatasetUpdater mDatasetUpdater;
 #endif
 
 #if OPENTHREAD_CONFIG_ANNOUNCE_SENDER_ENABLE
@@ -375,6 +393,10 @@ private:
 
 #if OPENTHREAD_CONFIG_OTNS_ENABLE
     Utils::Otns mOtns;
+#endif
+
+#if OPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE
+    BorderRouter::RoutingManager mRoutingManager;
 #endif
 
 #endif // OPENTHREAD_MTD || OPENTHREAD_FTD
@@ -412,6 +434,11 @@ template <> inline Notifier &Instance::Get(void)
     return mNotifier;
 }
 
+template <> inline TimeTicker &Instance::Get(void)
+{
+    return mTimeTicker;
+}
+
 template <> inline Settings &Instance::Get(void)
 {
     return mSettings;
@@ -427,6 +454,13 @@ template <> inline MeshForwarder &Instance::Get(void)
     return mThreadNetif.mMeshForwarder;
 }
 
+#if OPENTHREAD_CONFIG_MULTI_RADIO
+template <> inline RadioSelector &Instance::Get(void)
+{
+    return mThreadNetif.mRadioSelector;
+}
+#endif
+
 template <> inline Mle::Mle &Instance::Get(void)
 {
     return mThreadNetif.mMleRouter;
@@ -435,6 +469,16 @@ template <> inline Mle::Mle &Instance::Get(void)
 template <> inline Mle::MleRouter &Instance::Get(void)
 {
     return mThreadNetif.mMleRouter;
+}
+
+template <> inline Mle::DiscoverScanner &Instance::Get(void)
+{
+    return mThreadNetif.mDiscoverScanner;
+}
+
+template <> inline NeighborTable &Instance::Get(void)
+{
+    return mThreadNetif.mMleRouter.mNeighborTable;
 }
 
 #if OPENTHREAD_FTD
@@ -471,8 +515,20 @@ template <> inline Mac::Mac &Instance::Get(void)
 
 template <> inline Mac::SubMac &Instance::Get(void)
 {
-    return mThreadNetif.mMac.mSubMac;
+    return mThreadNetif.mMac.mLinks.mSubMac;
 }
+
+#if OPENTHREAD_CONFIG_RADIO_LINK_TREL_ENABLE
+template <> inline Trel::Link &Instance::Get(void)
+{
+    return mThreadNetif.mMac.mLinks.mTrel;
+}
+
+template <> inline Trel::Interface &Instance::Get(void)
+{
+    return mThreadNetif.mMac.mLinks.mTrel.mInterface;
+}
+#endif
 
 #if OPENTHREAD_CONFIG_MAC_FILTER_ENABLE
 template <> inline Mac::Filter &Instance::Get(void)
@@ -512,6 +568,13 @@ template <> inline DataPollHandler &Instance::Get(void)
 {
     return mThreadNetif.mMeshForwarder.mIndirectSender.mDataPollHandler;
 }
+
+#if !OPENTHREAD_MTD && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+template <> inline CslTxScheduler &Instance::Get(void)
+{
+    return mThreadNetif.mMeshForwarder.mIndirectSender.mCslTxScheduler;
+}
+#endif
 
 template <> inline AddressResolver &Instance::Get(void)
 {
@@ -583,9 +646,9 @@ template <> inline Ip6::Mpl &Instance::Get(void)
     return mIp6.mMpl;
 }
 
-template <> inline Coap::Coap &Instance::Get(void)
+template <> inline Tmf::TmfAgent &Instance::Get(void)
 {
-    return mThreadNetif.mCoap;
+    return mThreadNetif.mTmfAgent;
 }
 
 #if OPENTHREAD_CONFIG_DTLS_ENABLE
@@ -633,6 +696,13 @@ template <> inline Dns::Client &Instance::Get(void)
 }
 #endif
 
+#if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+template <> inline Srp::Client &Instance::Get(void)
+{
+    return mThreadNetif.mSrpClient;
+}
+#endif
+
 #if OPENTHREAD_FTD || OPENTHREAD_CONFIG_TMF_NETWORK_DIAG_MTD_ENABLE
 template <> inline NetworkDiagnostic::NetworkDiagnostic &Instance::Get(void)
 {
@@ -641,14 +711,14 @@ template <> inline NetworkDiagnostic::NetworkDiagnostic &Instance::Get(void)
 #endif
 
 #if OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
-template <> inline Dhcp6::Dhcp6Client &Instance::Get(void)
+template <> inline Dhcp6::Client &Instance::Get(void)
 {
     return mThreadNetif.mDhcp6Client;
 }
 #endif
 
 #if OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
-template <> inline Dhcp6::Dhcp6Server &Instance::Get(void)
+template <> inline Dhcp6::Server &Instance::Get(void)
 {
     return mThreadNetif.mDhcp6Server;
 }
@@ -692,10 +762,17 @@ template <> inline Utils::ChannelMonitor &Instance::Get(void)
 }
 #endif
 
-#if OPENTHREAD_CONFIG_CHANNEL_MANAGER_ENABLE
+#if OPENTHREAD_CONFIG_CHANNEL_MANAGER_ENABLE && OPENTHREAD_FTD
 template <> inline Utils::ChannelManager &Instance::Get(void)
 {
     return mChannelManager;
+}
+#endif
+
+#if (OPENTHREAD_CONFIG_DATASET_UPDATER_ENABLE || OPENTHREAD_CONFIG_CHANNEL_MANAGER_ENABLE) && OPENTHREAD_FTD
+template <> inline Utils::DatasetUpdater &Instance::Get(void)
+{
+    return mDatasetUpdater;
 }
 #endif
 
@@ -730,12 +807,49 @@ template <> inline BackboneRouter::Local &Instance::Get(void)
 {
     return mThreadNetif.mBackboneRouterLocal;
 }
+template <> inline BackboneRouter::Manager &Instance::Get(void)
+{
+    return mThreadNetif.mBackboneRouterManager;
+}
+
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_MULTICAST_ROUTING_ENABLE
+template <> inline BackboneRouter::MulticastListenersTable &Instance::Get(void)
+{
+    return mThreadNetif.mBackboneRouterManager.GetMulticastListenersTable();
+}
 #endif
 
-#if OPENTHREAD_CONFIG_DUA_ENABLE
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_DUA_NDPROXYING_ENABLE
+template <> inline BackboneRouter::NdProxyTable &Instance::Get(void)
+{
+    return mThreadNetif.mBackboneRouterManager.GetNdProxyTable();
+}
+#endif
+
+template <> inline BackboneRouter::BackboneTmfAgent &Instance::Get(void)
+{
+    return mThreadNetif.mBackboneRouterManager.GetBackboneTmfAgent();
+}
+#endif
+
+#if OPENTHREAD_CONFIG_MLR_ENABLE || (OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE)
+template <> inline MlrManager &Instance::Get(void)
+{
+    return mThreadNetif.mMlrManager;
+}
+#endif
+
+#if OPENTHREAD_CONFIG_DUA_ENABLE || (OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE)
 template <> inline DuaManager &Instance::Get(void)
 {
     return mThreadNetif.mDuaManager;
+}
+#endif
+
+#if OPENTHREAD_CONFIG_MLE_LINK_METRICS_ENABLE
+template <> inline LinkMetrics &Instance::Get(void)
+{
+    return mThreadNetif.mLinkMetrics;
 }
 #endif
 
@@ -745,6 +859,20 @@ template <> inline DuaManager &Instance::Get(void)
 template <> inline Utils::Otns &Instance::Get(void)
 {
     return mOtns;
+}
+#endif
+
+#if OPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE
+template <> inline BorderRouter::RoutingManager &Instance::Get(void)
+{
+    return mRoutingManager;
+}
+#endif
+
+#if OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
+template <> inline Srp::Server &Instance::Get(void)
+{
+    return mThreadNetif.mSrpServer;
 }
 #endif
 

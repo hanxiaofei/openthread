@@ -36,12 +36,19 @@
 
 #include "openthread-core-config.h"
 
+#include "common/clearable.hpp"
 #include "common/encoding.hpp"
+#include "common/equatable.hpp"
 #include "common/locator.hpp"
+#include "common/non_copyable.hpp"
 #include "mac/mac_types.hpp"
+#include "net/ip6_address.hpp"
 #include "utils/flash.hpp"
 #if OPENTHREAD_CONFIG_IP6_SLAAC_ENABLE
 #include "utils/slaac_address.hpp"
+#endif
+#if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+#include "crypto/ecdsa.hpp"
 #endif
 
 namespace ot {
@@ -50,7 +57,7 @@ namespace MeshCoP {
 class Dataset;
 }
 
-class SettingsDriver : public InstanceLocator
+class SettingsDriver : public InstanceLocator, private NonCopyable
 {
 public:
     /**
@@ -75,7 +82,7 @@ public:
      *
      * @param[in]  aKey          The key associated with the value.
      * @param[in]  aValue        A pointer to where the new value of the setting should be read from.
-     *                           MUST NOT be NULL if @p aValueLength is non-zero.
+     *                           MUST NOT be nullptr if @p aValueLength is non-zero.
      * @param[in]  aValueLength  The length of the data pointed to by @p aValue. May be zero.
      *
      * @retval OT_ERROR_NONE     The value was added.
@@ -103,12 +110,12 @@ public:
      * @param[in]     aKey          The key associated with the requested value.
      * @param[in]     aIndex        The index of the specific item to get.
      * @param[out]    aValue        A pointer to where the value of the setting should be written.
-     *                              May be NULL if just testing for the presence or length of a key.
+     *                              May be nullptr if just testing for the presence or length of a key.
      * @param[inout]  aValueLength  A pointer to the length of the value.
      *                              When called, this should point to an integer containing the maximum bytes that
      *                              can be written to @p aValue.
      *                              At return, the actual length of the setting is written.
-     *                              May be NULL if performing a presence check.
+     *                              May be nullptr if performing a presence check.
      *
      * @retval OT_ERROR_NONE        The value was fetched successfully.
      * @retval OT_ERROR_NOT_FOUND   The key was not found.
@@ -124,7 +131,7 @@ public:
      *
      * @param[in]  aKey          The key associated with the value.
      * @param[in]  aValue        A pointer to where the new value of the setting should be read from.
-     *                           MUST NOT be NULL if @p aValueLength is non-zero.
+     *                           MUST NOT be nullptr if @p aValueLength is non-zero.
      * @param[in]  aValueLength  The length of the data pointed to by @p aValue. May be zero.
      *
      * @retval OT_ERROR_NONE     The value was changed.
@@ -181,16 +188,16 @@ public:
      *
      */
     OT_TOOL_PACKED_BEGIN
-    class NetworkInfo
+    class NetworkInfo : public Equatable<NetworkInfo>, private Clearable<NetworkInfo>
     {
     public:
         /**
-         * This method clears the struct object (setting all the fields to zero).
+         * This method initializes the `NetworkInfo` object.
          *
          */
         void Init(void)
         {
-            memset(this, 0, sizeof(*this));
+            Clear();
             SetVersion(OT_THREAD_VERSION_1_1);
         }
 
@@ -337,7 +344,7 @@ public:
          * @returns The Mesh Local Interface Identifier.
          *
          */
-        const uint8_t *GetMeshLocalIid(void) const { return mMlIid; }
+        const Ip6::InterfaceIdentifier &GetMeshLocalIid(void) const { return mMlIid; }
 
         /**
          * This method sets the Mesh Local Interface Identifier.
@@ -345,7 +352,7 @@ public:
          * @param[in] aMeshLocalIid  The Mesh Local Interface Identifier.
          *
          */
-        void SetMeshLocalIid(const uint8_t *aMeshLocalIid) { memcpy(mMlIid, aMeshLocalIid, sizeof(mMlIid)); }
+        void SetMeshLocalIid(const Ip6::InterfaceIdentifier &aMeshLocalIid) { mMlIid = aMeshLocalIid; }
 
         /**
          * This method returns the Thread version.
@@ -364,16 +371,16 @@ public:
         void SetVersion(uint16_t aVersion) { mVersion = Encoding::LittleEndian::HostSwap16(aVersion); }
 
     private:
-        uint8_t         mRole;                   ///< Current Thread role.
-        uint8_t         mDeviceMode;             ///< Device mode setting.
-        uint16_t        mRloc16;                 ///< RLOC16
-        uint32_t        mKeySequence;            ///< Key Sequence
-        uint32_t        mMleFrameCounter;        ///< MLE Frame Counter
-        uint32_t        mMacFrameCounter;        ///< MAC Frame Counter
-        uint32_t        mPreviousPartitionId;    ///< PartitionId
-        Mac::ExtAddress mExtAddress;             ///< Extended Address
-        uint8_t         mMlIid[OT_IP6_IID_SIZE]; ///< IID from ML-EID
-        uint16_t        mVersion;                ///< Version
+        uint8_t                  mRole;                ///< Current Thread role.
+        uint8_t                  mDeviceMode;          ///< Device mode setting.
+        uint16_t                 mRloc16;              ///< RLOC16
+        uint32_t                 mKeySequence;         ///< Key Sequence
+        uint32_t                 mMleFrameCounter;     ///< MLE Frame Counter
+        uint32_t                 mMacFrameCounter;     ///< MAC Frame Counter
+        uint32_t                 mPreviousPartitionId; ///< PartitionId
+        Mac::ExtAddress          mExtAddress;          ///< Extended Address
+        Ip6::InterfaceIdentifier mMlIid;               ///< IID from ML-EID
+        uint16_t                 mVersion;             ///< Version
     } OT_TOOL_PACKED_END;
 
     /**
@@ -381,16 +388,16 @@ public:
      *
      */
     OT_TOOL_PACKED_BEGIN
-    class ParentInfo
+    class ParentInfo : public Equatable<ParentInfo>, private Clearable<ParentInfo>
     {
     public:
         /**
-         * This method clears the struct object (setting all the fields to zero).
+         * This method initializes the `ParentInfo` object.
          *
          */
         void Init(void)
         {
-            memset(this, 0, sizeof(*this));
+            Clear();
             SetVersion(OT_THREAD_VERSION_1_1);
         }
 
@@ -538,6 +545,40 @@ public:
     } OT_TOOL_PACKED_END;
 
     /**
+     * This structure represents the duplicate address detection information for settings storage.
+     *
+     */
+    OT_TOOL_PACKED_BEGIN
+    class DadInfo : public Equatable<DadInfo>, private Clearable<DadInfo>
+    {
+    public:
+        /**
+         * This method initializes the `DadInfo` object.
+         *
+         */
+        void Init(void) { Clear(); }
+
+        /**
+         * This method returns the Dad Counter.
+         *
+         * @returns The Dad Counter value.
+         *
+         */
+        uint8_t GetDadCounter(void) const { return mDadCounter; }
+
+        /**
+         * This method sets the Dad Counter.
+         *
+         * @param[in] aDadCounter The Dad Counter value.
+         *
+         */
+        void SetDadCounter(uint8_t aDadCounter) { mDadCounter = aDadCounter; }
+
+    private:
+        uint8_t mDadCounter; ///< Dad Counter used to resolve address conflict in Thread 1.2 DUA feature.
+    } OT_TOOL_PACKED_END;
+
+    /**
      * This enumeration defines the keys of settings.
      *
      */
@@ -550,6 +591,10 @@ public:
         kKeyChildInfo         = 0x0005, ///< Child information
         kKeyReserved          = 0x0006, ///< Reserved (previously auto-start)
         kKeySlaacIidSecretKey = 0x0007, ///< Secret key used by SLAAC module for generating semantically opaque IID
+        kKeyDadInfo           = 0x0008, ///< Duplicate Address Detection (DAD) information.
+        kKeyOmrPrefix         = 0x0009, ///< Off-mesh routable (OMR) prefix.
+        kKeyOnLinkPrefix      = 0x000a, ///< On-link prefix for infrastructure link.
+        kKeySrpEcdsaKey       = 0x000b, ///< SRP client ECDSA public/private key pair.
     };
 
 protected:
@@ -562,11 +607,23 @@ protected:
     void LogNetworkInfo(const char *aAction, const NetworkInfo &aNetworkInfo) const;
     void LogParentInfo(const char *aAction, const ParentInfo &aParentInfo) const;
     void LogChildInfo(const char *aAction, const ChildInfo &aChildInfo) const;
-#else
+#if OPENTHREAD_CONFIG_DUA_ENABLE
+    void LogDadInfo(const char *aAction, const DadInfo &aDadInfo) const;
+#endif
+#if OPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE
+    void LogPrefix(const char *aAction, const char *aPrefixName, const Ip6::Prefix &aOmrPrefix) const;
+#endif
+#else // (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_INFO) && (OPENTHREAD_CONFIG_LOG_UTIL != 0)
     void LogNetworkInfo(const char *, const NetworkInfo &) const {}
     void LogParentInfo(const char *, const ParentInfo &) const {}
     void LogChildInfo(const char *, const ChildInfo &) const {}
+#if OPENTHREAD_CONFIG_DUA_ENABLE
+    void LogDadInfo(const char *, const DadInfo &) const {}
 #endif
+#if OPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE
+    void LogPrefix(const char *, const char *, const Ip6::Prefix &) const {}
+#endif
+#endif // (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_INFO) && (OPENTHREAD_CONFIG_LOG_UTIL != 0)
 
 #if (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_WARN) && (OPENTHREAD_CONFIG_LOG_UTIL != 0)
     void LogFailure(otError aError, const char *aAction, bool aIsDelete) const;
@@ -579,8 +636,10 @@ protected:
  * This class defines methods related to non-volatile storage of settings.
  *
  */
-class Settings : public SettingsBase
+class Settings : public SettingsBase, private NonCopyable
 {
+    class ChildInfoIteratorBuilder;
+
 public:
     /**
      * This constructor initializes a `Settings` object.
@@ -781,7 +840,20 @@ public:
      * @retval OT_ERROR_NOT_IMPLEMENTED  The platform does not implement settings functionality.
      *
      */
-    otError DeleteChildInfo(void);
+    otError DeleteAllChildInfo(void);
+
+    /**
+     * This method enables range-based `for` loop iteration over all child info entries in the `Settings`.
+     *
+     * This method should be used as follows:
+     *
+     *     for (const ChildInfo &childInfo : Get<Settings>().IterateChildInfo()) { ... }
+     *
+     *
+     * @returns A ChildInfoIteratorBuilder instance.
+     *
+     */
+    ChildInfoIteratorBuilder IterateChildInfo(void) { return ChildInfoIteratorBuilder(GetInstance()); }
 
     /**
      * This class defines an iterator to access all Child Info entries in the settings.
@@ -789,6 +861,8 @@ public:
      */
     class ChildInfoIterator : public SettingsBase
     {
+        friend class ChildInfoIteratorBuilder;
+
     public:
         /**
          * This constructor initializes a `ChildInfoInterator` object.
@@ -799,12 +873,6 @@ public:
         explicit ChildInfoIterator(Instance &aInstance);
 
         /**
-         * This method resets the iterator to start from the first Child Info entry in the list.
-         *
-         */
-        void Reset(void);
-
-        /**
          * This method indicates whether there are no more Child Info entries in the list (iterator has reached end of
          * the list), or the current entry is valid.
          *
@@ -813,12 +881,6 @@ public:
          *
          */
         bool IsDone(void) const { return mIsDone; }
-
-        /**
-         * This method advances the iterator to move to the next Child Info entry in the list (if any).
-         *
-         */
-        void Advance(void);
 
         /**
          * This method overloads operator `++` (pre-increment) to advance the iterator to move to the next Child Info
@@ -855,7 +917,58 @@ public:
          */
         otError Delete(void);
 
+        /**
+         * This method overloads the `*` dereference operator and gets a reference to `ChildInfo` entry to which the
+         * iterator is currently pointing.
+         *
+         * @note This method should be used only if `IsDone()` is returning FALSE indicating that the iterator is
+         * pointing to a valid entry.
+         *
+         *
+         * @returns A reference to the `ChildInfo` entry currently pointed by the iterator.
+         *
+         */
+        const ChildInfo &operator*(void)const { return mChildInfo; }
+
+        /**
+         * This method overloads operator `==` to evaluate whether or not two iterator instances are equal.
+         *
+         * @param[in]  aOther  The other iterator to compare with.
+         *
+         * @retval TRUE   If the two iterator objects are equal
+         * @retval FALSE  If the two iterator objects are not equal.
+         *
+         */
+        bool operator==(const ChildInfoIterator &aOther) const
+        {
+            return (mIsDone && aOther.mIsDone) || (!mIsDone && !aOther.mIsDone && (mIndex == aOther.mIndex));
+        }
+
+        /**
+         * This method overloads operator `!=` to evaluate whether or not two iterator instances are unequal.
+         *
+         * @param[in]  aOther  The other iterator to compare with.
+         *
+         * @retval TRUE   If the two iterator objects are unequal.
+         * @retval FALSE  If the two iterator objects are not unequal.
+         *
+         */
+        bool operator!=(const ChildInfoIterator &aOther) const { return !(*this == aOther); }
+
     private:
+        enum IteratorType
+        {
+            kEndIterator,
+        };
+
+        ChildInfoIterator(Instance &aInstance, IteratorType)
+            : SettingsBase(aInstance)
+            , mIndex(0)
+            , mIsDone(true)
+        {
+        }
+
+        void Advance(void);
         void Read(void);
 
         ChildInfo mChildInfo;
@@ -863,7 +976,137 @@ public:
         bool      mIsDone;
     };
 
+#if OPENTHREAD_CONFIG_DUA_ENABLE
+
+    /**
+     * This method saves duplicate address detection information.
+     *
+     * @param[in]   aDadInfo           A reference to a `DadInfo` structure to be saved.
+     *
+     * @retval OT_ERROR_NONE              Successfully saved duplicate address detection information in settings.
+     * @retval OT_ERROR_NOT_IMPLEMENTED   The platform does not implement settings functionality.
+     *
+     */
+    otError SaveDadInfo(const DadInfo &aDadInfo);
+
+    /**
+     * This method reads duplicate address detection information.
+     *
+     * @param[out]   aDadInfo         A reference to a `DadInfo` structure to output the read content.
+     *
+     * @retval OT_ERROR_NONE              Successfully read the duplicate address detection information.
+     * @retval OT_ERROR_NOT_FOUND         No corresponding value in the setting store.
+     * @retval OT_ERROR_NOT_IMPLEMENTED   The platform does not implement settings functionality.
+     *
+     */
+    otError ReadDadInfo(DadInfo &aDadInfo) const;
+
+    /**
+     * This method deletes duplicate address detection information from settings.
+     *
+     * @retval OT_ERROR_NONE             Successfully deleted the value.
+     * @retval OT_ERROR_NOT_IMPLEMENTED  The platform does not implement settings functionality.
+     *
+     */
+    otError DeleteDadInfo(void);
+
+#endif // OPENTHREAD_CONFIG_DUA_ENABLE
+
+#if OPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE
+    /**
+     * This method saves OMR prefix.
+     *
+     * @param[in]  aOmrPrefix  An OMR prefix to be saved.
+     *
+     * @retval OT_ERROR_NONE              Successfully saved the OMR prefix in settings.
+     * @retval OT_ERROR_NOT_IMPLEMENTED   The platform does not implement settings functionality.
+     *
+     */
+    otError SaveOmrPrefix(const Ip6::Prefix &aOmrPrefix);
+
+    /**
+     * This method reads OMR prefix.
+     *
+     * @param[out]  aOmrPrefix  A reference to a `Ip6::Prefix` structure to output the OMR prefix.
+     *
+     * @retval OT_ERROR_NONE             Successfully read the OMR prefix.
+     * @retval OT_ERROR_NOT_FOUND        No corresponding value in the setting store.
+     * @retval OT_ERROR_NOT_IMPLEMENTED  The platform does not implement settings functionality.
+     *
+     */
+    otError ReadOmrPrefix(Ip6::Prefix &aOmrPrefix) const;
+
+    /**
+     * This method saves on-link prefix.
+     *
+     * @param[in]  aOnLinkPrefix  An on-link prefix to be saved.
+     *
+     * @retval OT_ERROR_NONE              Successfully saved the on-link prefix in settings.
+     * @retval OT_ERROR_NOT_IMPLEMENTED   The platform does not implement settings functionality.
+     *
+     */
+    otError SaveOnLinkPrefix(const Ip6::Prefix &aOnLinkPrefix);
+
+    /**
+     * This method reads on-link prefix.
+     *
+     * @param[out]  aOnLinkPrefix  A reference to a `Ip6::Prefix` structure to output the on-link prefix.
+     *
+     * @retval OT_ERROR_NONE             Successfully read the on-link prefix.
+     * @retval OT_ERROR_NOT_FOUND        No corresponding value in the setting store.
+     * @retval OT_ERROR_NOT_IMPLEMENTED  The platform does not implement settings functionality.
+     *
+     */
+    otError ReadOnLinkPrefix(Ip6::Prefix &aOnLinkPrefix) const;
+#endif // OPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE
+
+#if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+    /**
+     * This method saves SRP client ECDSA key pair.
+     *
+     * @param[in]   aKeyPair              A reference to an SRP ECDSA key-pair to save.
+     *
+     * @retval OT_ERROR_NONE              Successfully saved key-pair information in settings.
+     * @retval OT_ERROR_NOT_IMPLEMENTED   The platform does not implement settings functionality.
+     *
+     */
+    otError SaveSrpKey(const Crypto::Ecdsa::P256::KeyPair &aKeyPair);
+
+    /**
+     * This method reads SRP client ECDSA key pair.
+     *
+     * @param[out]   aKeyPair             A reference to a ECDA `KeyPair` to output the read content.
+     *
+     * @retval OT_ERROR_NONE              Successfully read key-pair information.
+     * @retval OT_ERROR_NOT_FOUND         No corresponding value in the setting store.
+     * @retval OT_ERROR_NOT_IMPLEMENTED   The platform does not implement settings functionality.
+     *
+     */
+    otError ReadSrpKey(Crypto::Ecdsa::P256::KeyPair &aKeyPair) const;
+
+    /**
+     * This method deletes SRP client ECDSA key pair from settings.
+     *
+     * @retval OT_ERROR_NONE             Successfully deleted the value.
+     * @retval OT_ERROR_NOT_IMPLEMENTED  The platform does not implement settings functionality.
+     *
+     */
+    otError DeleteSrpKey(void);
+#endif // OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+
 private:
+    class ChildInfoIteratorBuilder : public InstanceLocator
+    {
+    public:
+        explicit ChildInfoIteratorBuilder(Instance &aInstance)
+            : InstanceLocator(aInstance)
+        {
+        }
+
+        ChildInfoIterator begin(void) { return ChildInfoIterator(GetInstance()); }
+        ChildInfoIterator end(void) { return ChildInfoIterator(GetInstance(), ChildInfoIterator::kEndIterator); }
+    };
+
     otError Read(Key aKey, void *aBuffer, uint16_t &aSize) const;
     otError Save(Key aKey, const void *aValue, uint16_t aSize);
     otError Add(Key aKey, const void *aValue, uint16_t aSize);

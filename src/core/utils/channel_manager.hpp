@@ -39,7 +39,7 @@
 #include <openthread/platform/radio.h>
 
 #include "common/locator.hpp"
-#include "common/notifier.hpp"
+#include "common/non_copyable.hpp"
 #include "common/timer.hpp"
 #include "mac/mac.hpp"
 
@@ -55,15 +55,13 @@ namespace Utils {
  * @{
  */
 
-#if OPENTHREAD_CONFIG_CHANNEL_MANAGER_ENABLE
-
-#if OPENTHREAD_FTD
+#if OPENTHREAD_CONFIG_CHANNEL_MANAGER_ENABLE && OPENTHREAD_FTD
 
 /**
  * This class implements the Channel Manager.
  *
  */
-class ChannelManager : public InstanceLocator
+class ChannelManager : public InstanceLocator, private NonCopyable
 {
 public:
     enum
@@ -91,7 +89,7 @@ public:
      *
      * A subsequent call to this method will cancel an ongoing previously requested channel change.
      *
-     * If the requested channel changes, it will trigger a `Notifier` event `OT_CHANGED_CHANNEL_MANAGER_NEW_CHANNEL`.
+     * If the requested channel changes, it will trigger a `Notifier` event `kEventChannelManagerNewChannelChanged`.
      *
      * @param[in] aChannel             The new channel for the Thread network.
      *
@@ -232,9 +230,6 @@ public:
 private:
     enum
     {
-        // Maximum increase of Pending/Active Dataset Timestamp per channel change request.
-        kMaxTimestampIncrease = 128,
-
         // Retry interval to resend Pending Dataset in case of tx failure (in ms).
         kPendingDatasetTxRetryInterval = 20000,
 
@@ -262,18 +257,18 @@ private:
         kCcaFailureRateThreshold = OPENTHREAD_CONFIG_CHANNEL_MANAGER_CCA_FAILURE_THRESHOLD,
     };
 
-    enum State
+    enum State : uint8_t
     {
         kStateIdle,
         kStateChangeRequested,
-        kStateSentMgmtPendingDataset,
+        kStateChangeInProgress,
     };
 
+    void        StartDatasetUpdate(void);
+    static void HandleDatasetUpdateDone(otError aError, void *aContext);
+    void        HandleDatasetUpdateDone(otError aError);
     static void HandleTimer(Timer &aTimer);
     void        HandleTimer(void);
-    static void HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aChangedFlags);
-    void        HandleStateChanged(otChangedFlags aChangedFlags);
-    void        PreparePendingDataset(void);
     void        StartAutoSelectTimer(void);
 
 #if OPENTHREAD_CONFIG_CHANNEL_MONITOR_ENABLE
@@ -281,29 +276,18 @@ private:
     bool    ShouldAttemptChannelChange(void);
 #endif
 
-    Mac::ChannelMask   mSupportedChannelMask;
-    Mac::ChannelMask   mFavoredChannelMask;
-    uint64_t           mActiveTimestamp;
-    Notifier::Callback mNotifierCallback;
-    uint16_t           mDelay;
-    uint8_t            mChannel;
-    State              mState;
-    TimerMilli         mTimer;
-    uint32_t           mAutoSelectInterval;
-    bool               mAutoSelectEnabled;
+    Mac::ChannelMask mSupportedChannelMask;
+    Mac::ChannelMask mFavoredChannelMask;
+    uint16_t         mDelay;
+    uint8_t          mChannel;
+    State            mState;
+    TimerMilli       mTimer;
+    uint32_t         mAutoSelectInterval;
+    bool             mAutoSelectEnabled;
 };
 
-#else // OPENTHREAD_FTD
+#endif // OPENTHREAD_CONFIG_CHANNEL_MANAGER_ENABLE && OPENTHREAD_FTD
 
-class ChannelManager
-{
-public:
-    explicit ChannelManager(Instance &) {}
-};
-
-#endif // OPENTHREAD_FTD
-
-#endif // OPENTHREAD_CONFIG_CHANNEL_MANAGER_ENABLE
 /**
  * @}
  *

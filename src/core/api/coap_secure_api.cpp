@@ -61,7 +61,7 @@ void otCoapSecureSetCertificate(otInstance *   aInstance,
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    OT_ASSERT(aX509Cert != NULL && aX509Length != 0 && aPrivateKey != NULL && aPrivateKeyLength != 0);
+    OT_ASSERT(aX509Cert != nullptr && aX509Length != 0 && aPrivateKey != nullptr && aPrivateKeyLength != 0);
 
     instance.GetApplicationCoapSecure().SetCertificate(aX509Cert, aX509Length, aPrivateKey, aPrivateKeyLength);
 }
@@ -72,7 +72,7 @@ void otCoapSecureSetCaCertificateChain(otInstance *   aInstance,
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    OT_ASSERT(aX509CaCertificateChain != NULL && aX509CaCertChainLength != 0);
+    OT_ASSERT(aX509CaCertificateChain != nullptr && aX509CaCertChainLength != 0);
 
     instance.GetApplicationCoapSecure().SetCaCertificateChain(aX509CaCertificateChain, aX509CaCertChainLength);
 }
@@ -87,7 +87,7 @@ void otCoapSecureSetPsk(otInstance *   aInstance,
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    OT_ASSERT(aPsk != NULL && aPskLength != 0 && aPskIdentity != NULL && aPskIdLength != 0);
+    OT_ASSERT(aPsk != nullptr && aPskLength != 0 && aPskIdentity != nullptr && aPskIdLength != 0);
 
     instance.GetApplicationCoapSecure().SetPreSharedKey(aPsk, aPskLength, aPskIdentity, aPskIdLength);
 }
@@ -151,6 +151,21 @@ void otCoapSecureStop(otInstance *aInstance)
     instance.GetApplicationCoapSecure().Stop();
 }
 
+#if OPENTHREAD_CONFIG_COAP_BLOCKWISE_TRANSFER_ENABLE
+otError otCoapSecureSendRequestBlockWise(otInstance *                aInstance,
+                                         otMessage *                 aMessage,
+                                         otCoapResponseHandler       aHandler,
+                                         void *                      aContext,
+                                         otCoapBlockwiseTransmitHook aTransmitHook,
+                                         otCoapBlockwiseReceiveHook  aReceiveHook)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+
+    return instance.GetApplicationCoapSecure().SendMessage(*static_cast<Coap::Message *>(aMessage), aHandler, aContext,
+                                                           aTransmitHook, aReceiveHook);
+}
+#endif
+
 otError otCoapSecureSendRequest(otInstance *          aInstance,
                                 otMessage *           aMessage,
                                 otCoapResponseHandler aHandler,
@@ -161,11 +176,27 @@ otError otCoapSecureSendRequest(otInstance *          aInstance,
     return instance.GetApplicationCoapSecure().SendMessage(*static_cast<Coap::Message *>(aMessage), aHandler, aContext);
 }
 
-otError otCoapSecureAddResource(otInstance *aInstance, otCoapResource *aResource)
+#if OPENTHREAD_CONFIG_COAP_BLOCKWISE_TRANSFER_ENABLE
+void otCoapSecureAddBlockWiseResource(otInstance *aInstance, otCoapBlockwiseResource *aResource)
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    return instance.GetApplicationCoapSecure().AddResource(*static_cast<Coap::Resource *>(aResource));
+    instance.GetApplicationCoapSecure().AddBlockWiseResource(*static_cast<Coap::ResourceBlockWise *>(aResource));
+}
+
+void otCoapSecureRemoveBlockWiseResource(otInstance *aInstance, otCoapBlockwiseResource *aResource)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+
+    instance.GetApplicationCoapSecure().RemoveBlockWiseResource(*static_cast<Coap::ResourceBlockWise *>(aResource));
+}
+#endif
+
+void otCoapSecureAddResource(otInstance *aInstance, otCoapResource *aResource)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+
+    instance.GetApplicationCoapSecure().AddResource(*static_cast<Coap::Resource *>(aResource));
 }
 
 void otCoapSecureRemoveResource(otInstance *aInstance, otCoapResource *aResource)
@@ -190,6 +221,21 @@ void otCoapSecureSetDefaultHandler(otInstance *aInstance, otCoapRequestHandler a
 
     instance.GetApplicationCoapSecure().SetDefaultHandler(aHandler, aContext);
 }
+
+#if OPENTHREAD_CONFIG_COAP_BLOCKWISE_TRANSFER_ENABLE
+otError otCoapSecureSendResponseBlockWise(otInstance *                aInstance,
+                                          otMessage *                 aMessage,
+                                          const otMessageInfo *       aMessageInfo,
+                                          void *                      aContext,
+                                          otCoapBlockwiseTransmitHook aTransmitHook)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+
+    return instance.GetApplicationCoapSecure().SendMessage(*static_cast<Coap::Message *>(aMessage),
+                                                           *static_cast<const Ip6::MessageInfo *>(aMessageInfo),
+                                                           nullptr, aContext, aTransmitHook);
+}
+#endif
 
 otError otCoapSecureSendResponse(otInstance *aInstance, otMessage *aMessage, const otMessageInfo *aMessageInfo)
 {

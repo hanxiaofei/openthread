@@ -54,7 +54,7 @@ target_link_libraries(ot-daemon PRIVATE
     openthread-ftd
     ${OT_PLATFORM_LIB}
     openthread-ncp-ftd
-    mbedcrypto
+    ${OT_MBEDTLS}
 )
 
 add_executable(ot-ctl
@@ -77,9 +77,9 @@ target_compile_options(ot-ctl PRIVATE
     ${OT_CFLAGS}
 )
 
-target_link_libraries(ot-ctl
-    openthread-platform
-    $<$<BOOL:${READLINE}>:${OT_READLINE}>
+target_link_libraries(ot-ctl PRIVATE
+    ${READLINE_LINK_LIBRARIES}
+    ot-config
 )
 
 target_include_directories(ot-ctl PRIVATE ${COMMON_INCLUDES})
@@ -88,7 +88,3 @@ install(TARGETS ot-daemon
     DESTINATION sbin)
 install(TARGETS ot-ctl
     DESTINATION bin)
-
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-    set(CPACK_PACKAGE_NAME "openthread-daemon")
-endif()

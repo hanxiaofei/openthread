@@ -47,6 +47,12 @@
 #endif
 #include <openthread/message.h>
 #include <openthread/ncp.h>
+#if OPENTHREAD_CONFIG_MULTI_RADIO
+#include <openthread/multi_radio.h>
+#endif
+#if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+#include <openthread/srp_client.h>
+#endif
 
 #include "changed_props_set.hpp"
 #include "common/instance.hpp"
@@ -55,7 +61,6 @@
 #include "lib/spinel/spinel_buffer.hpp"
 #include "lib/spinel/spinel_decoder.hpp"
 #include "lib/spinel/spinel_encoder.hpp"
-#include "utils/static_assert.hpp"
 
 namespace ot {
 namespace Ncp {
@@ -100,7 +105,7 @@ public:
      * @param[in]  aStreamId  A numeric identifier for the stream to write to.
      *                        If set to '0', will default to the debug stream.
      * @param[in]  aDataPtr   A pointer to the data to send on the stream.
-     *                        If aDataLen is non-zero, this param MUST NOT be NULL.
+     *                        If aDataLen is non-zero, this param MUST NOT be nullptr.
      * @param[in]  aDataLen   The number of bytes of data from aDataPtr to send.
      *
      * @retval OT_ERROR_NONE         The data was queued for delivery to the host.
@@ -280,6 +285,7 @@ protected:
     otError DecodeChannelMask(uint32_t &aChannelMask);
 
 #if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
+    otError PackRadioFrame(otRadioFrame *aFrame, otError aError);
 
     static void LinkRawReceiveDone(otInstance *aInstance, otRadioFrame *aFrame, otError aError);
     void        LinkRawReceiveDone(otRadioFrame *aFrame, otError aError);
@@ -347,12 +353,15 @@ protected:
     otError EncodeOperationalDataset(const otOperationalDataset &aDataset);
 
     otError DecodeOperationalDataset(otOperationalDataset &aDataset,
-                                     const uint8_t **      aTlvs             = NULL,
-                                     uint8_t *             aTlvsLength       = NULL,
-                                     const otIp6Address ** aDestIpAddress    = NULL,
+                                     const uint8_t **      aTlvs             = nullptr,
+                                     uint8_t *             aTlvsLength       = nullptr,
+                                     const otIp6Address ** aDestIpAddress    = nullptr,
                                      bool                  aAllowEmptyValues = false);
 
     otError EncodeNeighborInfo(const otNeighborInfo &aNeighborInfo);
+#if OPENTHREAD_CONFIG_MULTI_RADIO
+    otError EncodeNeighborMultiRadioInfo(uint32_t aSpinelRadioLink, const otRadioLinkInfo &aInfo);
+#endif
 
 #if OPENTHREAD_FTD
     otError EncodeChildInfo(const otChildInfo &aChildInfo);
@@ -428,9 +437,9 @@ protected:
     otError HandlePropertySet_SPINEL_PROP_HOST_POWER_STATE(uint8_t aHeader);
 
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
-    OT_STATIC_ASSERT(OPENTHREAD_CONFIG_DIAG_OUTPUT_BUFFER_SIZE <=
-                         OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE - kSpinelCmdHeaderSize - kSpinelPropIdSize,
-                     "diag output buffer should be smaller than NCP UART tx buffer");
+    static_assert(OPENTHREAD_CONFIG_DIAG_OUTPUT_BUFFER_SIZE <=
+                      OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE - kSpinelCmdHeaderSize - kSpinelPropIdSize,
+                  "diag output buffer should be smaller than NCP UART tx buffer");
 
     otError HandlePropertySet_SPINEL_PROP_NEST_STREAM_MFG(uint8_t aHeader);
 #endif
@@ -527,10 +536,7 @@ protected:
 protected:
     static NcpBase *       sNcpInstance;
     static spinel_status_t ThreadErrorToSpinelStatus(otError aError);
-    static uint8_t         LinkFlagsToFlagByte(bool aRxOnWhenIdle,
-                                               bool aSecureDataRequests,
-                                               bool aDeviceType,
-                                               bool aNetworkData);
+    static uint8_t         LinkFlagsToFlagByte(bool aRxOnWhenIdle, bool aDeviceType, bool aNetworkData);
     Instance *             mInstance;
     Spinel::Buffer         mTxFrameBuffer;
     Spinel::Encoder        mEncoder;
@@ -613,6 +619,45 @@ protected:
     uint32_t mOutboundInsecureIpFrameCounter; // Number of insecure outbound data/IP frames.
     uint32_t mDroppedOutboundIpFrameCounter;  // Number of dropped outbound data/IP frames.
     uint32_t mDroppedInboundIpFrameCounter;   // Number of dropped inbound data/IP frames.
+
+#if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+    enum : uint8_t
+    {
+        kSrpClientMaxServices      = OPENTHREAD_CONFIG_NCP_SRP_CLIENT_MAX_SERVICES,
+        kSrpClientMaxHostAddresses = OPENTHREAD_CONFIG_NCP_SRP_CLIENT_MAX_HOST_ADDRESSES,
+        kSrpClientNameSize         = 64,
+    };
+
+    struct SrpClientService
+    {
+        void MarkAsNotInUse(void) { mService.mNext = &mService; }
+        bool IsInUse(void) const { return (mService.mNext != &mService); }
+
+        otSrpClientService mService;
+        char               mInstanceName[kSrpClientNameSize];
+        char               mServiceName[kSrpClientNameSize];
+    };
+
+    otError EncodeSrpClientHostInfo(const otSrpClientHostInfo &aHostInfo);
+    otError EncodeSrpClientServices(const otSrpClientService *aServices);
+
+    static void HandleSrpClientCallback(otError                    aError,
+                                        const otSrpClientHostInfo *aHostInfo,
+                                        const otSrpClientService * aServices,
+                                        const otSrpClientService * aRemovedServices,
+                                        void *                     aContext);
+    void        HandleSrpClientCallback(otError                    aError,
+                                        const otSrpClientHostInfo *aHostInfo,
+                                        const otSrpClientService * aServices,
+                                        const otSrpClientService * aRemovedServices);
+
+    char             mSrpClientHostName[kSrpClientNameSize];
+    SrpClientService mSrpClientServicePool[kSrpClientMaxServices];
+    otIp6Address     mSrpClientHostAddresses[kSrpClientMaxHostAddresses];
+    uint8_t          mSrpClientNumHostAddresses;
+    bool             mSrpClientCallbackEnabled;
+#endif // OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+
 #if OPENTHREAD_CONFIG_LEGACY_ENABLE
     const otNcpLegacyHandlers *mLegacyHandlers;
     uint8_t                    mLegacyUlaPrefix[OT_NCP_LEGACY_ULA_PREFIX_LENGTH];
@@ -627,6 +672,10 @@ protected:
     uint32_t mTxSpinelFrameCounter;         // Number of sent (outbound) spinel frames.
 
     bool mDidInitialUpdates;
+
+#if OPENTHREAD_CONFIG_RADIO_LINK_TREL_ENABLE
+    bool mTrelTestModeEnable;
+#endif
 
     uint64_t mLogTimestampBase; // Timestamp base used for logging
 };

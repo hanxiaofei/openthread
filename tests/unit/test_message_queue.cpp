@@ -55,11 +55,11 @@ void VerifyMessageQueueContent(ot::MessageQueue &aMessageQueue, int aExpectedLen
     if (aExpectedLength == 0)
     {
         message = aMessageQueue.GetHead();
-        VerifyOrQuit(message == NULL, "MessageQueue is not empty when expected len is zero.");
+        VerifyOrQuit(message == nullptr, "MessageQueue is not empty when expected len is zero.");
     }
     else
     {
-        for (message = aMessageQueue.GetHead(); message != NULL; message = message->GetNext())
+        for (message = aMessageQueue.GetHead(); message != nullptr; message = message->GetNext())
         {
             VerifyOrQuit(aExpectedLength != 0, "MessageQueue contains more entries than expected");
 
@@ -78,114 +78,101 @@ void VerifyMessageQueueContent(ot::MessageQueue &aMessageQueue, int aExpectedLen
 void TestMessageQueue(void)
 {
     ot::MessageQueue messageQueue;
-    ot::Message *    msg[kNumTestMessages];
-    otError          error;
+    ot::Message *    messages[kNumTestMessages];
     uint16_t         msgCount, bufferCount;
 
     sInstance = testInitInstance();
-    VerifyOrQuit(sInstance != NULL, "Null instance");
+    VerifyOrQuit(sInstance != nullptr, "Null instance");
 
     sMessagePool = &sInstance->Get<ot::MessagePool>();
 
-    for (int i = 0; i < kNumTestMessages; i++)
+    for (ot::Message *&msg : messages)
     {
-        msg[i] = sMessagePool->New(ot::Message::kTypeIp6, 0);
-        VerifyOrQuit(msg[i] != NULL, "Message::New failed");
+        msg = sMessagePool->New(ot::Message::kTypeIp6, 0);
+        VerifyOrQuit(msg != nullptr, "Message::New failed");
     }
 
     VerifyMessageQueueContent(messageQueue, 0);
 
     // Enqueue 1 message and remove it
-    SuccessOrQuit(messageQueue.Enqueue(*msg[0]), "MessageQueue::Enqueue() failed.");
-    VerifyMessageQueueContent(messageQueue, 1, msg[0]);
-    SuccessOrQuit(messageQueue.Dequeue(*msg[0]), "MessageQueue::Dequeue() failed.");
+    messageQueue.Enqueue(*messages[0]);
+    VerifyMessageQueueContent(messageQueue, 1, messages[0]);
+    messageQueue.Dequeue(*messages[0]);
     VerifyMessageQueueContent(messageQueue, 0);
 
     // Enqueue 1 message at head and remove it
-    SuccessOrQuit(messageQueue.Enqueue(*msg[0], ot::MessageQueue::kQueuePositionHead),
-                  "MessageQueue::Enqueue() failed.");
-    VerifyMessageQueueContent(messageQueue, 1, msg[0]);
-    SuccessOrQuit(messageQueue.Dequeue(*msg[0]), "MessageQueue::Dequeue() failed.");
+    messageQueue.Enqueue(*messages[0], ot::MessageQueue::kQueuePositionHead);
+    VerifyMessageQueueContent(messageQueue, 1, messages[0]);
+    messageQueue.Dequeue(*messages[0]);
     VerifyMessageQueueContent(messageQueue, 0);
 
     // Enqueue 5 messages
-    SuccessOrQuit(messageQueue.Enqueue(*msg[0]), "MessageQueue::Enqueue() failed.");
-    VerifyMessageQueueContent(messageQueue, 1, msg[0]);
-    SuccessOrQuit(messageQueue.Enqueue(*msg[1]), "MessageQueue::Enqueue() failed.");
-    VerifyMessageQueueContent(messageQueue, 2, msg[0], msg[1]);
-    SuccessOrQuit(messageQueue.Enqueue(*msg[2]), "MessageQueue::Enqueue() failed.");
-    VerifyMessageQueueContent(messageQueue, 3, msg[0], msg[1], msg[2]);
-    SuccessOrQuit(messageQueue.Enqueue(*msg[3]), "MessageQueue::Enqueue() failed.");
-    VerifyMessageQueueContent(messageQueue, 4, msg[0], msg[1], msg[2], msg[3]);
-    SuccessOrQuit(messageQueue.Enqueue(*msg[4]), "MessageQueue::Enqueue() failed.");
-    VerifyMessageQueueContent(messageQueue, 5, msg[0], msg[1], msg[2], msg[3], msg[4]);
+    messageQueue.Enqueue(*messages[0]);
+    VerifyMessageQueueContent(messageQueue, 1, messages[0]);
+    messageQueue.Enqueue(*messages[1]);
+    VerifyMessageQueueContent(messageQueue, 2, messages[0], messages[1]);
+    messageQueue.Enqueue(*messages[2]);
+    VerifyMessageQueueContent(messageQueue, 3, messages[0], messages[1], messages[2]);
+    messageQueue.Enqueue(*messages[3]);
+    VerifyMessageQueueContent(messageQueue, 4, messages[0], messages[1], messages[2], messages[3]);
+    messageQueue.Enqueue(*messages[4]);
+    VerifyMessageQueueContent(messageQueue, 5, messages[0], messages[1], messages[2], messages[3], messages[4]);
 
     // Check the GetInfo()
     messageQueue.GetInfo(msgCount, bufferCount);
     VerifyOrQuit(msgCount == 5, "MessageQueue::GetInfo() failed.");
 
     // Remove from head
-    SuccessOrQuit(messageQueue.Dequeue(*msg[0]), "MessageQueue::Dequeue() failed.");
-    VerifyMessageQueueContent(messageQueue, 4, msg[1], msg[2], msg[3], msg[4]);
+    messageQueue.Dequeue(*messages[0]);
+    VerifyMessageQueueContent(messageQueue, 4, messages[1], messages[2], messages[3], messages[4]);
 
     // Remove a message in middle
-    SuccessOrQuit(messageQueue.Dequeue(*msg[3]), "MessageQueue::Dequeue() failed.");
-    VerifyMessageQueueContent(messageQueue, 3, msg[1], msg[2], msg[4]);
+    messageQueue.Dequeue(*messages[3]);
+    VerifyMessageQueueContent(messageQueue, 3, messages[1], messages[2], messages[4]);
 
     // Remove from tail
-    SuccessOrQuit(messageQueue.Dequeue(*msg[4]), "MessageQueue::Dequeue() failed.");
-    VerifyMessageQueueContent(messageQueue, 2, msg[1], msg[2]);
+    messageQueue.Dequeue(*messages[4]);
+    VerifyMessageQueueContent(messageQueue, 2, messages[1], messages[2]);
 
     // Add after remove
-    SuccessOrQuit(messageQueue.Enqueue(*msg[0]), "MessageQueue::Enqueue() failed.");
-    VerifyMessageQueueContent(messageQueue, 3, msg[1], msg[2], msg[0]);
-    SuccessOrQuit(messageQueue.Enqueue(*msg[3]), "MessageQueue::Enqueue() failed.");
-    VerifyMessageQueueContent(messageQueue, 4, msg[1], msg[2], msg[0], msg[3]);
+    messageQueue.Enqueue(*messages[0]);
+    VerifyMessageQueueContent(messageQueue, 3, messages[1], messages[2], messages[0]);
+    messageQueue.Enqueue(*messages[3]);
+    VerifyMessageQueueContent(messageQueue, 4, messages[1], messages[2], messages[0], messages[3]);
 
     // Remove from middle
-    SuccessOrQuit(messageQueue.Dequeue(*msg[2]), "MessageQueue::Dequeue() failed.");
-    VerifyMessageQueueContent(messageQueue, 3, msg[1], msg[0], msg[3]);
+    messageQueue.Dequeue(*messages[2]);
+    VerifyMessageQueueContent(messageQueue, 3, messages[1], messages[0], messages[3]);
 
     // Add to head
-    SuccessOrQuit(messageQueue.Enqueue(*msg[2], ot::MessageQueue::kQueuePositionHead),
-                  "MessageQueue::Enqueue() failed.");
-    VerifyMessageQueueContent(messageQueue, 4, msg[2], msg[1], msg[0], msg[3]);
+    messageQueue.Enqueue(*messages[2], ot::MessageQueue::kQueuePositionHead);
+    VerifyMessageQueueContent(messageQueue, 4, messages[2], messages[1], messages[0], messages[3]);
 
     // Remove from head
-    SuccessOrQuit(messageQueue.Dequeue(*msg[2]), "MessageQueue::Dequeue() failed.");
-    VerifyMessageQueueContent(messageQueue, 3, msg[1], msg[0], msg[3]);
+    messageQueue.Dequeue(*messages[2]);
+    VerifyMessageQueueContent(messageQueue, 3, messages[1], messages[0], messages[3]);
 
     // Remove from head
-    SuccessOrQuit(messageQueue.Dequeue(*msg[1]), "MessageQueue::Dequeue() failed.");
-    VerifyMessageQueueContent(messageQueue, 2, msg[0], msg[3]);
+    messageQueue.Dequeue(*messages[1]);
+    VerifyMessageQueueContent(messageQueue, 2, messages[0], messages[3]);
 
     // Add to head
-    SuccessOrQuit(messageQueue.Enqueue(*msg[1], ot::MessageQueue::kQueuePositionHead),
-                  "MessageQueue::Enqueue() failed.");
-    VerifyMessageQueueContent(messageQueue, 3, msg[1], msg[0], msg[3]);
+    messageQueue.Enqueue(*messages[1], ot::MessageQueue::kQueuePositionHead);
+    VerifyMessageQueueContent(messageQueue, 3, messages[1], messages[0], messages[3]);
 
     // Add to tail
-    SuccessOrQuit(messageQueue.Enqueue(*msg[2], ot::MessageQueue::kQueuePositionTail),
-                  "MessageQueue::Enqueue() failed.");
-    VerifyMessageQueueContent(messageQueue, 4, msg[1], msg[0], msg[3], msg[2]);
+    messageQueue.Enqueue(*messages[2], ot::MessageQueue::kQueuePositionTail);
+    VerifyMessageQueueContent(messageQueue, 4, messages[1], messages[0], messages[3], messages[2]);
 
     // Remove all messages.
-    SuccessOrQuit(messageQueue.Dequeue(*msg[3]), "MessageQueue::Dequeue() failed.");
-    VerifyMessageQueueContent(messageQueue, 3, msg[1], msg[0], msg[2]);
-    SuccessOrQuit(messageQueue.Dequeue(*msg[1]), "MessageQueue::Dequeue() failed.");
-    VerifyMessageQueueContent(messageQueue, 2, msg[0], msg[2]);
-    SuccessOrQuit(messageQueue.Dequeue(*msg[2]), "MessageQueue::Dequeue() failed.");
-    VerifyMessageQueueContent(messageQueue, 1, msg[0]);
-    SuccessOrQuit(messageQueue.Dequeue(*msg[0]), "MessageQueue::Dequeue() failed.");
+    messageQueue.Dequeue(*messages[3]);
+    VerifyMessageQueueContent(messageQueue, 3, messages[1], messages[0], messages[2]);
+    messageQueue.Dequeue(*messages[1]);
+    VerifyMessageQueueContent(messageQueue, 2, messages[0], messages[2]);
+    messageQueue.Dequeue(*messages[2]);
+    VerifyMessageQueueContent(messageQueue, 1, messages[0]);
+    messageQueue.Dequeue(*messages[0]);
     VerifyMessageQueueContent(messageQueue, 0);
-
-    // Check the failure cases: Enqueue an already queued message or dequeue a message not in the queue.
-    SuccessOrQuit(messageQueue.Enqueue(*msg[0]), "MessageQueue::Enqueue() failed.");
-    VerifyMessageQueueContent(messageQueue, 1, msg[0]);
-    error = messageQueue.Enqueue(*msg[0]);
-    VerifyOrQuit(error == OT_ERROR_ALREADY, "Enqueuing an already queued message did not fail as expected.");
-    error = messageQueue.Dequeue(*msg[1]);
-    VerifyOrQuit(error == OT_ERROR_NOT_FOUND, "Dequeuing a message not in the queue did not fail as expected.");
 
     testFreeInstance(sInstance);
 }
@@ -202,11 +189,12 @@ void VerifyMessageQueueContentUsingOtApi(otMessageQueue *aQueue, int aExpectedLe
     if (aExpectedLength == 0)
     {
         message = otMessageQueueGetHead(aQueue);
-        VerifyOrQuit(message == NULL, "MessageQueue is not empty when expected len is zero.");
+        VerifyOrQuit(message == nullptr, "MessageQueue is not empty when expected len is zero.");
     }
     else
     {
-        for (message = otMessageQueueGetHead(aQueue); message != NULL; message = otMessageQueueGetNext(aQueue, message))
+        for (message = otMessageQueueGetHead(aQueue); message != nullptr;
+             message = otMessageQueueGetNext(aQueue, message))
         {
             VerifyOrQuit(aExpectedLength != 0, "MessageQueue contains more entries than expected");
 
@@ -225,18 +213,17 @@ void VerifyMessageQueueContentUsingOtApi(otMessageQueue *aQueue, int aExpectedLe
 // This test checks all the OpenThread C APIs for `otMessageQueue`
 void TestMessageQueueOtApis(void)
 {
-    otMessage *    msg[kNumTestMessages];
-    otError        error;
+    otMessage *    messages[kNumTestMessages];
     otMessage *    message;
     otMessageQueue queue, queue2;
 
     sInstance = testInitInstance();
-    VerifyOrQuit(sInstance != NULL, "Null instance");
+    VerifyOrQuit(sInstance != nullptr, "Null instance");
 
-    for (int i = 0; i < kNumTestMessages; i++)
+    for (otMessage *&msg : messages)
     {
-        msg[i] = otIp6NewMessage(sInstance, NULL);
-        VerifyOrQuit(msg[i] != NULL, "otIp6NewMessage() failed.");
+        msg = otIp6NewMessage(sInstance, nullptr);
+        VerifyOrQuit(msg != nullptr, "otIp6NewMessage() failed.");
     }
 
     otMessageQueueInit(&queue);
@@ -246,48 +233,42 @@ void TestMessageQueueOtApis(void)
     VerifyMessageQueueContentUsingOtApi(&queue, 0);
 
     // Add message to the queue and check the content
-    SuccessOrQuit(otMessageQueueEnqueue(&queue, msg[0]), "Failed to enqueue a message to otMessageQueue.");
-    VerifyMessageQueueContentUsingOtApi(&queue, 1, msg[0]);
-    SuccessOrQuit(otMessageQueueEnqueue(&queue, msg[1]), "Failed to enqueue a message to otMessageQueue.");
-    VerifyMessageQueueContentUsingOtApi(&queue, 2, msg[0], msg[1]);
-    SuccessOrQuit(otMessageQueueEnqueueAtHead(&queue, msg[2]), "Failed to enqueue a message to otMessageQueue.");
-    VerifyMessageQueueContentUsingOtApi(&queue, 3, msg[2], msg[0], msg[1]);
-    SuccessOrQuit(otMessageQueueEnqueue(&queue, msg[3]), "Failed to enqueue a message to otMessageQueue.");
-    VerifyMessageQueueContentUsingOtApi(&queue, 4, msg[2], msg[0], msg[1], msg[3]);
+    otMessageQueueEnqueue(&queue, messages[0]);
+    VerifyMessageQueueContentUsingOtApi(&queue, 1, messages[0]);
+    otMessageQueueEnqueue(&queue, messages[1]);
+    VerifyMessageQueueContentUsingOtApi(&queue, 2, messages[0], messages[1]);
+    otMessageQueueEnqueueAtHead(&queue, messages[2]);
+    VerifyMessageQueueContentUsingOtApi(&queue, 3, messages[2], messages[0], messages[1]);
+    otMessageQueueEnqueue(&queue, messages[3]);
+    VerifyMessageQueueContentUsingOtApi(&queue, 4, messages[2], messages[0], messages[1], messages[3]);
 
     // Remove elements and check the content
-    SuccessOrQuit(otMessageQueueDequeue(&queue, msg[1]), "Failed to dequeue a message from otMessageQueue.");
-    VerifyMessageQueueContentUsingOtApi(&queue, 3, msg[2], msg[0], msg[3]);
-    SuccessOrQuit(otMessageQueueDequeue(&queue, msg[0]), "Failed to dequeue a message from otMessageQueue.");
-    VerifyMessageQueueContentUsingOtApi(&queue, 2, msg[2], msg[3]);
-    SuccessOrQuit(otMessageQueueDequeue(&queue, msg[3]), "Failed to dequeue a message from otMessageQueue.");
-    VerifyMessageQueueContentUsingOtApi(&queue, 1, msg[2]);
-
-    // Check the expected failure cases for the enqueue and dequeue:
-    error = otMessageQueueEnqueue(&queue, msg[2]);
-    VerifyOrQuit(error == OT_ERROR_ALREADY, "Enqueuing an already queued message did not fail as expected.");
-    error = otMessageQueueDequeue(&queue, msg[0]);
-    VerifyOrQuit(error == OT_ERROR_NOT_FOUND, "Dequeuing a message not in the queue did not fail as expected.");
+    otMessageQueueDequeue(&queue, messages[1]);
+    VerifyMessageQueueContentUsingOtApi(&queue, 3, messages[2], messages[0], messages[3]);
+    otMessageQueueDequeue(&queue, messages[0]);
+    VerifyMessageQueueContentUsingOtApi(&queue, 2, messages[2], messages[3]);
+    otMessageQueueDequeue(&queue, messages[3]);
+    VerifyMessageQueueContentUsingOtApi(&queue, 1, messages[2]);
 
     // Check the failure cases for otMessageQueueGetNext()
-    message = otMessageQueueGetNext(&queue, NULL);
-    VerifyOrQuit(message == NULL, "otMessageQueueGetNext(queue, NULL) did not return NULL.");
-    message = otMessageQueueGetNext(&queue, msg[1]);
-    VerifyOrQuit(message == NULL, "otMessageQueueGetNext() did not return NULL for a message not in the queue.");
+    message = otMessageQueueGetNext(&queue, nullptr);
+    VerifyOrQuit(message == nullptr, "otMessageQueueGetNext(queue, nullptr) did not return nullptr.");
+    message = otMessageQueueGetNext(&queue, messages[1]);
+    VerifyOrQuit(message == nullptr, "otMessageQueueGetNext() did not return nullptr for a message not in the queue.");
 
     // Check the failure case when attempting to do otMessageQueueGetNext() but passing in a wrong queue pointer.
-    SuccessOrQuit(otMessageQueueEnqueue(&queue2, msg[0]), "Failed to enqueue a message to otMessageQueue.");
-    VerifyMessageQueueContentUsingOtApi(&queue2, 1, msg[0]);
-    SuccessOrQuit(otMessageQueueEnqueue(&queue2, msg[1]), "Failed to enqueue a message to otMessageQueue.");
-    VerifyMessageQueueContentUsingOtApi(&queue2, 2, msg[0], msg[1]);
+    otMessageQueueEnqueue(&queue2, messages[0]);
+    VerifyMessageQueueContentUsingOtApi(&queue2, 1, messages[0]);
+    otMessageQueueEnqueue(&queue2, messages[1]);
+    VerifyMessageQueueContentUsingOtApi(&queue2, 2, messages[0], messages[1]);
 
-    message = otMessageQueueGetNext(&queue2, msg[0]);
-    VerifyOrQuit(message == msg[1], "otMessageQueueGetNext() failed");
-    message = otMessageQueueGetNext(&queue, msg[0]);
-    VerifyOrQuit(message == NULL, "otMessageQueueGetNext() did not return NULL for message not in  the queue.");
+    message = otMessageQueueGetNext(&queue2, messages[0]);
+    VerifyOrQuit(message == messages[1], "otMessageQueueGetNext() failed");
+    message = otMessageQueueGetNext(&queue, messages[0]);
+    VerifyOrQuit(message == nullptr, "otMessageQueueGetNext() did not return nullptr for message not in  the queue.");
 
     // Remove all element and make sure queue is empty
-    SuccessOrQuit(otMessageQueueDequeue(&queue, msg[2]), "Failed to dequeue a message from otMessageQueue.");
+    otMessageQueueDequeue(&queue, messages[2]);
     VerifyMessageQueueContentUsingOtApi(&queue, 0);
 
     testFreeInstance(sInstance);

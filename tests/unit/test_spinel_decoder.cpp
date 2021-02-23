@@ -112,7 +112,7 @@ void TestDecoder(void)
                      SPINEL_DATATYPE_UINT_PACKED_S SPINEL_DATATYPE_UINT_PACKED_S SPINEL_DATATYPE_UINT_PACKED_S
                          SPINEL_DATATYPE_IPv6ADDR_S SPINEL_DATATYPE_EUI48_S SPINEL_DATATYPE_EUI64_S
                              SPINEL_DATATYPE_UTF8_S SPINEL_DATATYPE_UTF8_S SPINEL_DATATYPE_DATA_WLEN_S
-                                                                           SPINEL_DATATYPE_DATA_S),
+                                 SPINEL_DATATYPE_DATA_S),
         kBool_1, kBool_2, kUint8, kInt8, kUint16, kInt16, kUint32, kInt32, kUint64, kInt64, kUint_1, kUint_2, kUint_3,
         kUint_4, &kIp6Addr, &kEui48, &kEui64, kString_1, kString_2, kData, sizeof(kData), kData, sizeof(kData));
 
@@ -605,7 +605,7 @@ void TestDecoder(void)
 
     frameLen = spinel_datatype_pack(buffer, sizeof(buffer),
                                     (SPINEL_DATATYPE_UINT8_S SPINEL_DATATYPE_UINT16_S // Treat this as struct length
-                                                             SPINEL_DATATYPE_BOOL_S),
+                                         SPINEL_DATATYPE_BOOL_S),
                                     kUint8, 10, kBool_1);
 
     DumpBuffer("Packed Spinel Frame (incorrect format)", buffer, static_cast<uint16_t>(frameLen));
@@ -621,13 +621,13 @@ void TestDecoder(void)
     // bytes in the frame.
     VerifyOrQuit(decoder.OpenStruct() == OT_ERROR_PARSE, "OpenStruct() did not fail.");
 
-    decoder.ResetToSaved();
+    SuccessOrQuit(decoder.ResetToSaved(), "ResetToSaved() failed.");
 
     SuccessOrQuit(decoder.ReadUint8(u8), "ReadUint8() failed.");
     VerifyOrQuit(u8 == kUint8, "ReadUint8() parse failed.");
     VerifyOrQuit(decoder.ReadDataWithLen(dataPtr_1, dataLen_1) == OT_ERROR_PARSE, "ReadDataWithLen() did not fail.");
 
-    decoder.ResetToSaved();
+    SuccessOrQuit(decoder.ResetToSaved(), "ResetToSaved() failed.");
     SuccessOrQuit(decoder.ReadUint8(u8), "ReadUint8() failed.");
     SuccessOrQuit(decoder.ReadUint16(u16), "ReadUint16() failed.");
     SuccessOrQuit(decoder.ReadBool(b_1), "ReadUint16() failed.");

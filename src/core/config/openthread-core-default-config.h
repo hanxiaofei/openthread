@@ -36,6 +36,7 @@
 #define OPENTHREAD_CORE_DEFAULT_CONFIG_H_
 
 #include "config/coap.h"
+#include "config/srp_server.h"
 
 /**
  * @def OPENTHREAD_CONFIG_STACK_VENDOR_OUI
@@ -135,6 +136,18 @@
  */
 #ifndef OPENTHREAD_CONFIG_UDP_FORWARD_ENABLE
 #define OPENTHREAD_CONFIG_UDP_FORWARD_ENABLE 0
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MESSAGE_USE_HEAP_ENABLE
+ *
+ * Whether use heap allocator for message buffers.
+ *
+ * @note If this is set, OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS is ignored.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MESSAGE_USE_HEAP_ENABLE
+#define OPENTHREAD_CONFIG_MESSAGE_USE_HEAP_ENABLE 0
 #endif
 
 /**
@@ -263,7 +276,10 @@
  *
  */
 #ifndef OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE
-#if OPENTHREAD_CONFIG_COAP_SECURE_API_ENABLE
+#if OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
+// Internal heap doesn't support size larger than 64K bytes.
+#define OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE (63 * 1024)
+#elif OPENTHREAD_CONFIG_COAP_SECURE_API_ENABLE
 #define OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE (3072 * sizeof(void *))
 #else
 #define OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE (1568 * sizeof(void *))
@@ -277,7 +293,14 @@
  *
  */
 #ifndef OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE_NO_DTLS
+#if OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
+// Internal heap doesn't support size larger than 64K bytes.
+#define OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE_NO_DTLS (63 * 1024)
+#elif OPENTHREAD_CONFIG_ECDSA_ENABLE
+#define OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE_NO_DTLS 2600
+#else
 #define OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE_NO_DTLS 384
+#endif
 #endif
 
 /**
@@ -468,6 +491,16 @@
  */
 #ifndef OPENTHREAD_CONFIG_DUA_ENABLE
 #define OPENTHREAD_CONFIG_DUA_ENABLE 0
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MLR_ENABLE
+ *
+ * Define as 1 to support Thread 1.2 Multicast Listener Registration feature.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MLR_ENABLE
+#define OPENTHREAD_CONFIG_MLR_ENABLE 0
 #endif
 
 #endif // OPENTHREAD_CORE_DEFAULT_CONFIG_H_

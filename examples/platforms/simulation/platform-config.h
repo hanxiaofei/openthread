@@ -92,8 +92,14 @@
 #error "OTNS requires virtual time simulations"
 #endif
 
-#if OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART
-#error "OTNS does not support virtual time UART"
-#endif
-
 #endif // OPENTHREAD_CONFIG_OTNS_ENABLE
+
+/**
+ * @def OPENTHREAD_SIMULATION_MAX_NETWORK_SIZE
+ *
+ * This setting configures the maximum network size in simulation.
+ *
+ */
+#ifndef OPENTHREAD_SIMULATION_MAX_NETWORK_SIZE
+#define OPENTHREAD_SIMULATION_MAX_NETWORK_SIZE 33
+#endif

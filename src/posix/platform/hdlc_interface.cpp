@@ -41,6 +41,8 @@
 #if OPENTHREAD_POSIX_CONFIG_RCP_PTY_ENABLE
 #if defined(__APPLE__) || defined(__NetBSD__)
 #include <util.h>
+#elif defined(__FreeBSD__)
+#include <libutil.h>
 #else
 #include <pty.h>
 #endif
@@ -57,10 +59,6 @@
 
 #include "common/code_utils.hpp"
 #include "common/logging.hpp"
-
-#ifndef SOCKET_UTILS_DEFAULT_SHELL
-#define SOCKET_UTILS_DEFAULT_SHELL "/bin/sh"
-#endif
 
 #ifdef __APPLE__
 
@@ -132,34 +130,40 @@ HdlcInterface::HdlcInterface(SpinelInterface::ReceiveFrameCallback aCallback,
     , mReceiveFrameContext(aCallbackContext)
     , mReceiveFrameBuffer(aFrameBuffer)
     , mSockFd(-1)
+    , mBaudRate(0)
     , mHdlcDecoder(aFrameBuffer, HandleHdlcFrame, this)
 {
 }
 
-otError HdlcInterface::Init(const otPlatformConfig &aPlatformConfig)
+void HdlcInterface::OnRcpReset(void)
+{
+    mHdlcDecoder.Reset();
+}
+
+otError HdlcInterface::Init(const RadioUrl &aRadioUrl)
 {
     otError     error = OT_ERROR_NONE;
     struct stat st;
 
     VerifyOrExit(mSockFd == -1, error = OT_ERROR_ALREADY);
 
-    VerifyOrDie(stat(aPlatformConfig.mRadioFile, &st) == 0, OT_EXIT_INVALID_ARGUMENTS);
+    VerifyOrDie(stat(aRadioUrl.GetPath(), &st) == 0, OT_EXIT_INVALID_ARGUMENTS);
 
     if (S_ISCHR(st.st_mode))
     {
-        mSockFd = OpenFile(aPlatformConfig.mRadioFile, aPlatformConfig.mRadioConfig);
+        mSockFd = OpenFile(aRadioUrl);
         VerifyOrExit(mSockFd != -1, error = OT_ERROR_INVALID_ARGS);
     }
 #if OPENTHREAD_POSIX_CONFIG_RCP_PTY_ENABLE
     else if (S_ISREG(st.st_mode))
     {
-        mSockFd = ForkPty(aPlatformConfig.mRadioFile, aPlatformConfig.mRadioConfig);
+        mSockFd = ForkPty(aRadioUrl);
         VerifyOrExit(mSockFd != -1, error = OT_ERROR_INVALID_ARGS);
     }
 #endif // OPENTHREAD_POSIX_CONFIG_RCP_PTY_ENABLE
     else
     {
-        otLogCritPlat("Radio file '%s' not supported", aPlatformConfig.mRadioFile);
+        otLogCritPlat("Radio file '%s' not supported", aRadioUrl.GetPath());
         ExitNow(error = OT_ERROR_INVALID_ARGS);
     }
 
@@ -174,10 +178,10 @@ HdlcInterface::~HdlcInterface(void)
 
 void HdlcInterface::Deinit(void)
 {
-    VerifyOrExit(mSockFd != -1, OT_NOOP);
+    VerifyOrExit(mSockFd != -1);
 
     VerifyOrExit(0 == close(mSockFd), perror("close RCP"));
-    VerifyOrExit(-1 != wait(NULL) || errno == ECHILD, perror("wait RCP"));
+    VerifyOrExit(-1 != wait(nullptr) || errno == ECHILD, perror("wait RCP"));
 
     mSockFd = -1;
 
@@ -233,16 +237,18 @@ otError HdlcInterface::Write(const uint8_t *aFrame, uint16_t aLength)
     {
         ssize_t rval = write(mSockFd, aFrame, aLength);
 
-        if (rval > 0)
+        if (rval == aLength)
+        {
+            break;
+        }
+        else if (rval > 0)
         {
             aLength -= static_cast<uint16_t>(rval);
             aFrame += static_cast<uint16_t>(rval);
-            continue;
         }
-
-        if ((rval < 0) && (errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != EINTR))
+        else if (rval < 0)
         {
-            DieNow(OT_EXIT_ERROR_ERRNO);
+            VerifyOrDie((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR), OT_EXIT_ERROR_ERRNO);
         }
 
         SuccessOrExit(error = WaitForWritable());
@@ -258,7 +264,7 @@ otError HdlcInterface::WaitForFrame(uint64_t aTimeoutUs)
     otError        error = OT_ERROR_NONE;
     struct timeval timeout;
 #if OPENTHREAD_POSIX_VIRTUAL_TIME
-    struct Event event;
+    struct VirtualTimeEvent event;
 
     timeout.tv_sec  = static_cast<time_t>(aTimeoutUs / US_PER_S);
     timeout.tv_usec = static_cast<suseconds_t>(aTimeoutUs % US_PER_S);
@@ -293,7 +299,7 @@ otError HdlcInterface::WaitForFrame(uint64_t aTimeoutUs)
     FD_SET(mSockFd, &read_fds);
     FD_SET(mSockFd, &error_fds);
 
-    rval = select(mSockFd + 1, &read_fds, NULL, &error_fds, &timeout);
+    rval = select(mSockFd + 1, &read_fds, nullptr, &error_fds, &timeout);
 
     if (rval > 0)
     {
@@ -362,7 +368,7 @@ otError HdlcInterface::WaitForWritable(void)
         FD_SET(mSockFd, &writeFds);
         FD_SET(mSockFd, &errorFds);
 
-        rval = select(mSockFd + 1, NULL, &writeFds, &errorFds, &timeout);
+        rval = select(mSockFd + 1, nullptr, &writeFds, &errorFds, &timeout);
 
         if (rval > 0)
         {
@@ -405,12 +411,12 @@ exit:
     return error;
 }
 
-int HdlcInterface::OpenFile(const char *aFile, const char *aConfig)
+int HdlcInterface::OpenFile(const RadioUrl &aRadioUrl)
 {
     int fd   = -1;
     int rval = 0;
 
-    fd = open(aFile, O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC);
+    fd = open(aRadioUrl.GetPath(), O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC);
     if (fd == -1)
     {
         perror("open uart failed");
@@ -420,41 +426,41 @@ int HdlcInterface::OpenFile(const char *aFile, const char *aConfig)
     if (isatty(fd))
     {
         struct termios tios;
+        const char *   value;
+        speed_t        speed;
 
-        unsigned int speed  = 115200;
-        int          cstopb = 1;
-        char         parity = 'N';
-        char         flow   = 'N';
+        int      stopBit  = 1;
+        uint32_t baudrate = 115200;
 
-        VerifyOrExit((rval = tcgetattr(fd, &tios)) == 0, OT_NOOP);
+        VerifyOrExit((rval = tcgetattr(fd, &tios)) == 0);
 
         cfmakeraw(&tios);
 
         tios.c_cflag = CS8 | HUPCL | CREAD | CLOCAL;
 
-        // example: 115200N1H
-        if (aConfig != NULL)
+        if ((value = aRadioUrl.GetValue("uart-parity")) != nullptr)
         {
-            sscanf(aConfig, "%u%c%d%c", &speed, &parity, &cstopb, &flow);
+            if (strncmp(value, "odd", 3) == 0)
+            {
+                tios.c_cflag |= PARENB;
+                tios.c_cflag |= PARODD;
+            }
+            else if (strncmp(value, "even", 4) == 0)
+            {
+                tios.c_cflag |= PARENB;
+            }
+            else
+            {
+                DieNow(OT_EXIT_INVALID_ARGUMENTS);
+            }
         }
 
-        switch (parity)
+        if ((value = aRadioUrl.GetValue("uart-stop")) != nullptr)
         {
-        case 'N':
-            break;
-        case 'E':
-            tios.c_cflag |= PARENB;
-            break;
-        case 'O':
-            tios.c_cflag |= (PARENB | PARODD);
-            break;
-        default:
-            // not supported
-            DieNow(OT_EXIT_INVALID_ARGUMENTS);
-            break;
+            stopBit = atoi(value);
         }
 
-        switch (cstopb)
+        switch (stopBit)
         {
         case 1:
             tios.c_cflag &= static_cast<unsigned long>(~CSTOPB);
@@ -467,7 +473,12 @@ int HdlcInterface::OpenFile(const char *aFile, const char *aConfig)
             break;
         }
 
-        switch (speed)
+        if ((value = aRadioUrl.GetValue("uart-baudrate")))
+        {
+            baudrate = static_cast<uint32_t>(atoi(value));
+        }
+
+        switch (baudrate)
         {
         case 9600:
             speed = B9600;
@@ -554,22 +565,16 @@ int HdlcInterface::OpenFile(const char *aFile, const char *aConfig)
             break;
         }
 
-        switch (flow)
+        mBaudRate = baudrate;
+
+        if (aRadioUrl.GetValue("uart-flow-control") != nullptr)
         {
-        case 'N':
-            break;
-        case 'H':
             tios.c_cflag |= CRTSCTS;
-            break;
-        default:
-            // not supported
-            DieNow(OT_EXIT_INVALID_ARGUMENTS);
-            break;
         }
 
         VerifyOrExit((rval = cfsetspeed(&tios, static_cast<speed_t>(speed))) == 0, perror("cfsetspeed"));
         VerifyOrExit((rval = tcsetattr(fd, TCSANOW, &tios)) == 0, perror("tcsetattr"));
-        VerifyOrExit((rval = tcflush(fd, TCIOFLUSH)) == 0, OT_NOOP);
+        VerifyOrExit((rval = tcflush(fd, TCIOFLUSH)) == 0);
     }
 
 exit:
@@ -582,7 +587,7 @@ exit:
 }
 
 #if OPENTHREAD_POSIX_CONFIG_RCP_PTY_ENABLE
-int HdlcInterface::ForkPty(const char *aCommand, const char *aArguments)
+int HdlcInterface::ForkPty(const RadioUrl &aRadioUrl)
 {
     int fd   = -1;
     int pid  = -1;
@@ -595,31 +600,40 @@ int HdlcInterface::ForkPty(const char *aCommand, const char *aArguments)
         cfmakeraw(&tios);
         tios.c_cflag = CS8 | HUPCL | CREAD | CLOCAL;
 
-        VerifyOrExit((pid = forkpty(&fd, NULL, &tios, NULL)) != -1, perror("forkpty()"));
+        VerifyOrDie((pid = forkpty(&fd, nullptr, &tios, nullptr)) != -1, OT_EXIT_ERROR_ERRNO);
     }
 
     if (0 == pid)
     {
-        const int kMaxCommand = 255;
-        char      cmd[kMaxCommand];
+        constexpr int kMaxArguments = 32;
+        char *        argv[kMaxArguments + 1];
+        size_t        index = 0;
 
-        rval = snprintf(cmd, sizeof(cmd), "exec %s %s", aCommand, aArguments);
-        VerifyOrExit(rval > 0 && static_cast<size_t>(rval) < sizeof(cmd),
-                     fprintf(stderr, "NCP file and configuration is too long!");
-                     rval = -1);
+        argv[index++] = const_cast<char *>(aRadioUrl.GetPath());
 
-        VerifyOrExit((rval = execl(SOCKET_UTILS_DEFAULT_SHELL, SOCKET_UTILS_DEFAULT_SHELL, "-c", cmd,
-                                   static_cast<char *>(NULL))) != -1,
-                     perror("execl(OT_RCP)"));
+        for (const char *arg = nullptr;
+             index < OT_ARRAY_LENGTH(argv) && (arg = aRadioUrl.GetValue("forkpty-arg", arg)) != nullptr;
+             argv[index++] = const_cast<char *>(arg))
+        {
+        }
+
+        if (index < OT_ARRAY_LENGTH(argv))
+        {
+            argv[index] = nullptr;
+        }
+        else
+        {
+            DieNowWithMessage("Too many arguments!", OT_EXIT_INVALID_ARGUMENTS);
+        }
+
+        VerifyOrDie((rval = execvp(argv[0], argv)) != -1, OT_EXIT_ERROR_ERRNO);
     }
     else
     {
-        VerifyOrExit((rval = fcntl(fd, F_GETFL)) != -1, perror("fcntl(F_GETFL)"));
-        VerifyOrExit((rval = fcntl(fd, F_SETFL, rval | O_NONBLOCK | O_CLOEXEC)) != -1, perror("fcntl(F_SETFL)"));
+        VerifyOrDie((rval = fcntl(fd, F_GETFL)) != -1, OT_EXIT_ERROR_ERRNO);
+        VerifyOrDie((rval = fcntl(fd, F_SETFL, rval | O_NONBLOCK | O_CLOEXEC)) != -1, OT_EXIT_ERROR_ERRNO);
     }
 
-exit:
-    VerifyOrDie(rval == 0, OT_EXIT_ERROR_ERRNO);
     return fd;
 }
 #endif // OPENTHREAD_POSIX_CONFIG_RCP_PTY_ENABLE

@@ -44,7 +44,7 @@ namespace ot {
 const TimerScheduler::AlarmApi TimerMilliScheduler::sAlarmMilliApi = {&otPlatAlarmMilliStartAt, &otPlatAlarmMilliStop,
                                                                       &otPlatAlarmMilliGetNow};
 
-bool Timer::DoesFireBefore(const Timer &aSecondTimer, Time aNow)
+bool Timer::DoesFireBefore(const Timer &aSecondTimer, Time aNow) const
 {
     bool retval;
     bool isBeforeNow = (GetFireTime() < aNow);
@@ -100,7 +100,7 @@ void TimerMilli::Stop(void)
 
 void TimerScheduler::Add(Timer &aTimer, const AlarmApi &aAlarmApi)
 {
-    Timer *prev = NULL;
+    Timer *prev = nullptr;
     Time   now(aAlarmApi.AlarmGetNow());
 
     Remove(aTimer, aAlarmApi);
@@ -113,7 +113,7 @@ void TimerScheduler::Add(Timer &aTimer, const AlarmApi &aAlarmApi)
         }
     }
 
-    if (prev == NULL)
+    if (prev == nullptr)
     {
         mTimerList.Push(aTimer);
         SetAlarm(aAlarmApi);
@@ -126,7 +126,7 @@ void TimerScheduler::Add(Timer &aTimer, const AlarmApi &aAlarmApi)
 
 void TimerScheduler::Remove(Timer &aTimer, const AlarmApi &aAlarmApi)
 {
-    VerifyOrExit(aTimer.IsRunning(), OT_NOOP);
+    VerifyOrExit(aTimer.IsRunning());
 
     if (mTimerList.GetHead() == &aTimer)
     {
@@ -188,7 +188,7 @@ extern "C" void otPlatAlarmMilliFired(otInstance *aInstance)
 {
     Instance *instance = static_cast<Instance *>(aInstance);
 
-    VerifyOrExit(otInstanceIsInitialized(aInstance), OT_NOOP);
+    VerifyOrExit(otInstanceIsInitialized(aInstance));
     instance->Get<TimerMilliScheduler>().ProcessTimers();
 
 exit:
@@ -224,7 +224,7 @@ extern "C" void otPlatAlarmMicroFired(otInstance *aInstance)
 {
     Instance *instance = static_cast<Instance *>(aInstance);
 
-    VerifyOrExit(otInstanceIsInitialized(aInstance), OT_NOOP);
+    VerifyOrExit(otInstanceIsInitialized(aInstance));
     instance->Get<TimerMicroScheduler>().ProcessTimers();
 
 exit:

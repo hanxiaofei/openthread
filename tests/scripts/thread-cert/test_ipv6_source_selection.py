@@ -37,17 +37,19 @@ ROUTER = 2
 
 
 class TestIPv6SourceSelection(thread_cert.TestCase):
-    topology = {
+    SUPPORT_NCP = False
+
+    TOPOLOGY = {
         LEADER: {
-            'mode': 'rsdn',
+            'mode': 'rdn',
             'panid': 0xcafe,
-            'whitelist': [ROUTER]
+            'allowlist': [ROUTER]
         },
         ROUTER: {
-            'mode': 'rsdn',
+            'mode': 'rdn',
             'panid': 0xcafe,
             'router_selection_jitter': 1,
-            'whitelist': [LEADER]
+            'allowlist': [LEADER]
         },
     }
 

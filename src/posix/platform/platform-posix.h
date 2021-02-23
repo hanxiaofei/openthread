@@ -38,6 +38,8 @@
 #include "openthread-posix-config.h"
 
 #include <errno.h>
+#include <net/if.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/select.h>
@@ -50,6 +52,7 @@
 
 #include "common/logging.hpp"
 
+#include "radio_url.hpp"
 #include "lib/platform/exit_code.h"
 
 /**
@@ -82,7 +85,7 @@ enum
 };
 
 OT_TOOL_PACKED_BEGIN
-struct Event
+struct VirtualTimeEvent
 {
     uint64_t mDelay;
     uint8_t  mEvent;
@@ -97,16 +100,13 @@ struct RadioProcessContext
 };
 
 /**
- * Unique node ID.
- *
- */
-extern uint64_t gNodeId;
-
-/**
  * This function initializes the alarm service used by OpenThread.
  *
+ * @param[in]  aSpeedUpFactor   The speed up factor.
+ * @param[in]  aRealTimeSignal  The real time signal for microsecond alarms.
+ *
  */
-void platformAlarmInit(uint32_t aSpeedUpFactor);
+void platformAlarmInit(uint32_t aSpeedUpFactor, int aRealTimeSignal);
 
 /**
  * This function retrieves the time remaining until the alarm fires.
@@ -162,7 +162,7 @@ void platformAlarmAdvanceNow(uint64_t aDelta);
  * @param[in]  aPlatformConfig  Platform configuration structure.
  *
  */
-void platformRadioInit(const otPlatformConfig *aPlatformConfig);
+void platformRadioInit(otUrl *aRadioUrl);
 
 /**
  * This function shuts down the radio service used by OpenThread.
@@ -272,10 +272,21 @@ void platformNetifUpdateFdSet(fd_set *aReadFdSet, fd_set *aWriteFdSet, fd_set *a
 void platformNetifProcess(const fd_set *aReadFdSet, const fd_set *aWriteFdSet, const fd_set *aErrorFdSet);
 
 /**
- * This function initialize virtual time simulation.
+ * This function performs notifies state changes to platform netif.
+ *
+ * @param[in]   aInstance       A pointer to the OpenThread instance.
+ * @param[in]   aFlags          Flags that denote the state change events.
  *
  */
-void virtualTimeInit(void);
+void platformNetifStateChange(otInstance *aInstance, otChangedFlags aFlags);
+
+/**
+ * This function initialize virtual time simulation.
+ *
+ * @params[in]  aNodeId     Node id of this simulated device.
+ *
+ */
+void virtualTimeInit(uint16_t aNodeId);
 
 /**
  * This function deinitialize virtual time simulation.
@@ -328,7 +339,7 @@ void virtualTimeSendRadioSpinelWriteEvent(const uint8_t *aData, uint16_t aLength
  * @param[out]  aEvent  A pointer to the event receiving the event.
  *
  */
-void virtualTimeReceiveEvent(struct Event *aEvent);
+void virtualTimeReceiveEvent(struct VirtualTimeEvent *aEvent);
 
 /**
  * This function sends sleep event through virtual time simulation.
@@ -345,7 +356,7 @@ void virtualTimeSendSleepEvent(const struct timeval *aTimeout);
  * @param[in]   aEvent      A pointer to the current event.
  *
  */
-void virtualTimeRadioSpinelProcess(otInstance *aInstance, const struct Event *aEvent);
+void virtualTimeRadioSpinelProcess(otInstance *aInstance, const struct VirtualTimeEvent *aEvent);
 
 /**
  * This function initializes platform UDP driver.
@@ -380,6 +391,41 @@ enum SocketBlockOption
 };
 
 /**
+ * This function initializes platform TREL UDP6 driver.
+ *
+ * @param[in]   aInterfaceName   The name of network interface.
+ *
+ */
+void platformTrelInit(const char *aInterfaceName);
+
+/**
+ * This function shuts down the platform TREL UDP6 platform driver.
+ *
+ */
+void platformTrelDeinit(void);
+
+/**
+ * This function updates the file descriptor sets with file descriptors used by the TREL driver.
+ *
+ * @param[inout]  aReadFdSet   A pointer to the read file descriptors.
+ * @param[inout]  aWriteFdSet  A pointer to the write file descriptors.
+ * @param[inout]  aMaxFd       A pointer to the max file descriptor.
+ * @param[inout]  aTimeout     A pointer to the timeout.
+ *
+ */
+void platformTrelUpdateFdSet(fd_set *aReadFdSet, fd_set *aWriteFdSet, int *aMaxFd, struct timeval *aTimeout);
+
+/**
+ * This function performs TREL driver processing.
+ *
+ * @param[in]   aInstance       A pointer to the OpenThread instance.
+ * @param[in]   aReadFdSet      A pointer to the read file descriptors.
+ * @param[in]   aWriteFdSet     A pointer to the write file descriptors.
+ *
+ */
+void platformTrelProcess(otInstance *aInstance, const fd_set *aReadFdSet, const fd_set *aWriteFdSet);
+
+/**
  * This function creates a socket with SOCK_CLOEXEC flag set.
  *
  * @param[in]   aDomain       The communication domain.
@@ -393,6 +439,106 @@ enum SocketBlockOption
  *
  */
 int SocketWithCloseExec(int aDomain, int aType, int aProtocol, SocketBlockOption aBlockOption);
+
+/**
+ * The name of Thread network interface.
+ *
+ */
+extern char gNetifName[IFNAMSIZ];
+
+/**
+ * The index of Thread network interface.
+ *
+ */
+extern unsigned int gNetifIndex;
+
+/**
+ * This function initializes platform Backbone network.
+ *
+ * @param[in]   aInstance       A pointer to the OpenThread instance.
+ * @param[in]   aInterfaceName  A pointer to Thread network interface name.
+ *
+ */
+void platformBackboneInit(otInstance *aInstance, const char *aInterfaceName);
+
+/**
+ * This function updates the file descriptor sets with file descriptors used by the platform Backbone network.
+ *
+ * @param[inout]  aReadFdSet   A reference to the read file descriptors.
+ * @param[inout]  aMaxFd       A reference to the max file descriptor.
+ *
+ */
+void platformBackboneUpdateFdSet(fd_set &aReadFdSet, int &aMaxFd);
+
+/**
+ * This function performs platform Backbone network processing.
+ *
+ * @param[in]   aReadFdSet  A reference to the read file descriptors.
+ *
+ */
+void platformBackboneProcess(const fd_set &aReadSet);
+
+/**
+ * This function performs notifies state changes to platform Backbone network.
+ *
+ * @param[in]   aInstance       A pointer to the OpenThread instance.
+ * @param[in]   aFlags          Flags that denote the state change events.
+ *
+ */
+void platformBackboneStateChange(otInstance *aInstance, otChangedFlags aFlags);
+
+/**
+ * The name of Backbone network interface.
+ *
+ */
+extern char gBackboneNetifName[IFNAMSIZ];
+
+/**
+ * The index of Backbone network interface.
+ *
+ */
+extern unsigned int gBackboneNetifIndex;
+
+/**
+ * This function initializes the infrastructure interface.
+ *
+ * @param[in]  aInstance  The OpenThread instance.
+ * @param[in]  aIfName    The name of the infrastructure interface.
+ *
+ */
+void platformInfraIfInit(otInstance *aInstance, const char *aIfName);
+
+/**
+ * This function deinitializes the infrastructure interface.
+ *
+ */
+void platformInfraIfDeinit(void);
+
+/**
+ * This function updates the read fd set.
+ *
+ * @param[out]  aReadFdSet  The fd set to be updated.
+ * @param[out]  aMaxFd      The maximum fd to be updated.
+ *
+ */
+void platformInfraIfUpdateFdSet(fd_set &aReadFdSet, int &aMaxFd);
+
+/**
+ * This function processes possible events on the infrastructure interface.
+ *
+ * @param[in]  aInstance   The OpenThread instance.
+ * @param[in]  aReadFdSet  The fd set which may contain read vents.
+ *
+ */
+void platformInfraIfProcess(otInstance *aInstance, const fd_set &aReadFdSet);
+
+/**
+ * This function returns the index of the infrastructure interface.
+ *
+ * @returns  The index of the infrastructure interface. 0 indicates invalid index.
+ *
+ */
+uint32_t platformInfraIfGetIndex(void);
 
 #ifdef __cplusplus
 }

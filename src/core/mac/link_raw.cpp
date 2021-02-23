@@ -51,12 +51,11 @@ namespace Mac {
 
 LinkRaw::LinkRaw(Instance &aInstance)
     : InstanceLocator(aInstance)
-    , mEnabled(false)
     , mReceiveChannel(OPENTHREAD_CONFIG_DEFAULT_CHANNEL)
     , mPanId(kPanIdBroadcast)
-    , mReceiveDoneCallback(NULL)
-    , mTransmitDoneCallback(NULL)
-    , mEnergyScanDoneCallback(NULL)
+    , mReceiveDoneCallback(nullptr)
+    , mTransmitDoneCallback(nullptr)
+    , mEnergyScanDoneCallback(nullptr)
 #if OPENTHREAD_RADIO
     , mSubMac(aInstance)
 #elif OPENTHREAD_CONFIG_LINK_RAW_ENABLE
@@ -65,17 +64,32 @@ LinkRaw::LinkRaw(Instance &aInstance)
 {
 }
 
-otError LinkRaw::SetEnabled(bool aEnabled)
+otError LinkRaw::SetReceiveDone(otLinkRawReceiveDone aCallback)
 {
-    otError error = OT_ERROR_NONE;
+    otError error  = OT_ERROR_NONE;
+    bool    enable = aCallback != nullptr;
 
-    otLogDebgMac("LinkRaw::Enabled(%s)", aEnabled ? "true" : "false");
+    otLogDebgMac("LinkRaw::Enabled(%s)", (enable ? "true" : "false"));
 
 #if OPENTHREAD_MTD || OPENTHREAD_FTD
     VerifyOrExit(!Get<ThreadNetif>().IsUp(), error = OT_ERROR_INVALID_STATE);
-#endif
 
-    if (aEnabled)
+    // In MTD/FTD build, `Mac` has already enabled sub-mac. We ensure to
+    // disable/enable MAC layer when link-raw is being enabled/disabled to
+    // avoid any conflict in control of radio and sub-mac between `Mac` and
+    // `LinkRaw`. in RADIO build, we directly enable/disable sub-mac.
+
+    if (!enable)
+    {
+        // When disabling link-raw, make sure there is no ongoing
+        // transmit or scan operation. Otherwise Mac will attempt to
+        // handle an unexpected "done" callback.
+        VerifyOrExit(!mSubMac.IsTransmittingOrScanning(), error = OT_ERROR_BUSY);
+    }
+
+    Get<Mac>().SetEnabled(!enable);
+#else
+    if (enable)
     {
         SuccessOrExit(error = mSubMac.Enable());
     }
@@ -83,8 +97,9 @@ otError LinkRaw::SetEnabled(bool aEnabled)
     {
         IgnoreError(mSubMac.Disable());
     }
+#endif
 
-    mEnabled = aEnabled;
+    mReceiveDoneCallback = aCallback;
 
 exit:
     return error;
@@ -135,14 +150,13 @@ exit:
     return error;
 }
 
-otError LinkRaw::Receive(otLinkRawReceiveDone aCallback)
+otError LinkRaw::Receive(void)
 {
     otError error = OT_ERROR_NONE;
 
     VerifyOrExit(IsEnabled(), error = OT_ERROR_INVALID_STATE);
 
     SuccessOrExit(error = mSubMac.Receive(mReceiveChannel));
-    mReceiveDoneCallback = aCallback;
 
 exit:
     return error;
@@ -150,7 +164,7 @@ exit:
 
 void LinkRaw::InvokeReceiveDone(RxFrame *aFrame, otError aError)
 {
-    otLogDebgMac("LinkRaw::ReceiveDone(%d bytes), error:%s", (aFrame != NULL) ? aFrame->mLength : 0,
+    otLogDebgMac("LinkRaw::ReceiveDone(%d bytes), error:%s", (aFrame != nullptr) ? aFrame->mLength : 0,
                  otThreadErrorToString(aError));
 
     if (mReceiveDoneCallback && (aError == OT_ERROR_NONE))
@@ -179,7 +193,7 @@ void LinkRaw::InvokeTransmitDone(TxFrame &aFrame, RxFrame *aAckFrame, otError aE
     if (mTransmitDoneCallback)
     {
         mTransmitDoneCallback(&GetInstance(), &aFrame, aAckFrame, aError);
-        mTransmitDoneCallback = NULL;
+        mTransmitDoneCallback = nullptr;
     }
 }
 
@@ -198,11 +212,37 @@ exit:
 
 void LinkRaw::InvokeEnergyScanDone(int8_t aEnergyScanMaxRssi)
 {
-    if (IsEnabled() && mEnergyScanDoneCallback != NULL)
+    if (IsEnabled() && mEnergyScanDoneCallback != nullptr)
     {
         mEnergyScanDoneCallback(&GetInstance(), aEnergyScanMaxRssi);
-        mEnergyScanDoneCallback = NULL;
+        mEnergyScanDoneCallback = nullptr;
     }
+}
+
+otError LinkRaw::SetMacKey(uint8_t    aKeyIdMode,
+                           uint8_t    aKeyId,
+                           const Key &aPrevKey,
+                           const Key &aCurrKey,
+                           const Key &aNextKey)
+{
+    otError error = OT_ERROR_NONE;
+
+    VerifyOrExit(IsEnabled(), error = OT_ERROR_INVALID_STATE);
+    mSubMac.SetMacKey(aKeyIdMode, aKeyId, aPrevKey, aCurrKey, aNextKey);
+
+exit:
+    return error;
+}
+
+otError LinkRaw::SetMacFrameCounter(uint32_t aMacFrameCounter)
+{
+    otError error = OT_ERROR_NONE;
+
+    VerifyOrExit(IsEnabled(), error = OT_ERROR_INVALID_STATE);
+    mSubMac.SetFrameCounter(aMacFrameCounter);
+
+exit:
+    return error;
 }
 
 // LCOV_EXCL_START

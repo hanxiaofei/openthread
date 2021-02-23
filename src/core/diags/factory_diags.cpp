@@ -288,6 +288,8 @@ otError Diags::ProcessStart(uint8_t aArgsLength, char *aArgs[], char *aOutput, s
 
     otError error = OT_ERROR_NONE;
 
+    VerifyOrExit(!Get<ThreadNetif>().IsUp(), error = OT_ERROR_INVALID_STATE);
+
     otPlatDiagChannelSet(mChannel);
     otPlatDiagTxPowerSet(mTxPower);
 
@@ -488,7 +490,7 @@ void Diags::TransmitDone(otError aError)
         }
     }
 
-    VerifyOrExit(!mRepeatActive, OT_NOOP);
+    VerifyOrExit(!mRepeatActive);
     TransmitPacket();
 
 exit:
@@ -535,7 +537,7 @@ exit:
     switch (error)
     {
     case OT_ERROR_NONE:
-
+        aOutput[0] = '\0'; // In case there is no output.
         IgnoreError(ProcessCmd(argCount, &aArgsector[0], aOutput, aOutputMaxLen));
         break;
 
@@ -557,18 +559,32 @@ otError Diags::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, siz
 {
     otError error = OT_ERROR_NONE;
 
+    // This `rcp` command is for debugging and testing only, building only when NDEBUG is not defined
+    // so that it will be excluded from release build.
+#if !defined(NDEBUG) && defined(OPENTHREAD_RADIO)
+    if (aArgsLength > 0 && !strcmp(aArgs[0], "rcp"))
+    {
+        aArgs++;
+        aArgsLength--;
+    }
+#endif
+
     if (aArgsLength == 0)
     {
         snprintf(aOutput, aOutputMaxLen, "diagnostics mode is %s\r\n", otPlatDiagModeGet() ? "enabled" : "disabled");
         ExitNow();
     }
-
-    for (size_t i = 0; i < OT_ARRAY_LENGTH(sCommands); i++)
+    else
     {
-        if (strcmp(aArgs[0], sCommands[i].mName) == 0)
+        aOutput[0] = '\0';
+    }
+
+    for (const Command &command : sCommands)
+    {
+        if (strcmp(aArgs[0], command.mName) == 0)
         {
-            error = (this->*sCommands[i].mCommand)(aArgsLength - 1, (aArgsLength > 1) ? &aArgs[1] : NULL, aOutput,
-                                                   aOutputMaxLen);
+            error = (this->*command.mCommand)(aArgsLength - 1, (aArgsLength > 1) ? &aArgs[1] : nullptr, aOutput,
+                                              aOutputMaxLen);
             ExitNow();
         }
     }

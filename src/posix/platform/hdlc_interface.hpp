@@ -74,14 +74,14 @@ public:
      *
      * @note This method should be called before reading and sending spinel frames to the interface.
      *
-     * @param[in]  aPlatformConfig  Platform configuration structure.
+     * @param[in]  aRadioUrl          RadioUrl parsed from radio url.
      *
      * @retval OT_ERROR_NONE          The interface is initialized successfully
      * @retval OT_ERROR_ALREADY       The interface is already initialized.
      * @retval OT_ERROR_INVALID_ARGS  The UART device or executable cannot be found or failed to open/run.
      *
      */
-    otError Init(const otPlatformConfig &aPlatformConfig);
+    otError Init(const RadioUrl &aRadioUrl);
 
     /**
      * This method deinitializes the interface to the RCP.
@@ -145,8 +145,22 @@ public:
      * @param[in] aEvent   The data event.
      *
      */
-    void Process(const Event &aEvent) { Decode(aEvent.mData, aEvent.mDataLength); }
+    void Process(const VirtualTimeEvent &aEvent) { Decode(aEvent.mData, aEvent.mDataLength); }
 #endif
+
+    /**
+     * This method returns the bus speed between the host and the radio.
+     *
+     * @returns   Bus speed in bits/second.
+     *
+     */
+    uint32_t GetBusSpeed(void) const { return mBaudRate; }
+
+    /**
+     * This method is called when RCP failure detected and resets internal states of the interface.
+     *
+     */
+    void OnRcpReset(void);
 
 private:
     /**
@@ -198,9 +212,9 @@ private:
     static void HandleHdlcFrame(void *aContext, otError aError);
     void        HandleHdlcFrame(otError aError);
 
-    static int OpenFile(const char *aFile, const char *aConfig);
+    int OpenFile(const RadioUrl &aRadioUrl);
 #if OPENTHREAD_POSIX_CONFIG_RCP_PTY_ENABLE
-    static int ForkPty(const char *aCommand, const char *aArguments);
+    static int ForkPty(const RadioUrl &aRadioUrl);
 #endif
 
     enum
@@ -214,6 +228,7 @@ private:
     Spinel::SpinelInterface::RxFrameBuffer &      mReceiveFrameBuffer;
 
     int           mSockFd;
+    uint32_t      mBaudRate;
     Hdlc::Decoder mHdlcDecoder;
 
     // Non-copyable, intentionally not implemented.

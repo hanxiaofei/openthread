@@ -37,6 +37,7 @@
 #include <setjmp.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
@@ -55,6 +56,7 @@
 #define OT_POSIX_APP_TYPE_NCP 1
 #define OT_POSIX_APP_TYPE_CLI 2
 
+#include <openthread/cli.h>
 #include <openthread/diag.h>
 #include <openthread/logging.h>
 #include <openthread/tasklet.h>
@@ -62,21 +64,19 @@
 #include <openthread/platform/radio.h>
 #if OPENTHREAD_POSIX_APP_TYPE == OT_POSIX_APP_TYPE_NCP
 #include <openthread/ncp.h>
-#define OPENTHREAD_USE_CONSOLE 0
 #elif OPENTHREAD_POSIX_APP_TYPE == OT_POSIX_APP_TYPE_CLI
 #include <openthread/cli.h>
-#if (HAVE_LIBEDIT || HAVE_LIBREADLINE) && !OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE
-#define OPENTHREAD_USE_CONSOLE 1
+
 #include "console_cli.h"
-#else
-#define OPENTHREAD_USE_CONSOLE 0
-#endif
+#include "cli/cli_config.h"
 #else
 #error "Unknown posix app type!"
 #endif
 #include <common/code_utils.hpp>
+#include <common/logging.hpp>
 #include <lib/platform/exit_code.h>
 #include <openthread/openthread-system.h>
+#include <openthread/platform/misc.h>
 
 #ifndef OPENTHREAD_ENABLE_COVERAGE
 #define OPENTHREAD_ENABLE_COVERAGE 0
@@ -101,58 +101,41 @@ void __gcov_flush();
  */
 enum
 {
-    ARG_PRINT_RADIO_VERSION = 1001,
-    ARG_NO_RADIO_RESET      = 1002,
-    ARG_RESTORE_NCP_DATASET = 1003,
-    ARG_SPI_GPIO_INT_DEV    = 1011,
-    ARG_SPI_GPIO_INT_LINE   = 1012,
-    ARG_SPI_GPIO_RESET_DEV  = 1013,
-    ARG_SPI_GPIO_RESET_LINE = 1014,
-    ARG_SPI_MODE            = 1015,
-    ARG_SPI_SPEED           = 1016,
-    ARG_SPI_CS_DELAY        = 1017,
-    ARG_SPI_RESET_DELAY     = 1018,
-    ARG_SPI_ALIGN_ALLOWANCE = 1019,
-    ARG_SPI_SMALL_PACKET    = 1020,
-    ARG_MAX_POWER_TABLE     = 1021,
+    OT_POSIX_OPT_BACKBONE_INTERFACE_NAME = 'B',
+    OT_POSIX_OPT_DEBUG_LEVEL             = 'd',
+    OT_POSIX_OPT_DRY_RUN                 = 'n',
+    OT_POSIX_OPT_HELP                    = 'h',
+    OT_POSIX_OPT_INTERFACE_NAME          = 'I',
+    OT_POSIX_OPT_TIME_SPEED              = 's',
+    OT_POSIX_OPT_TREL_INTERFACE          = 't',
+    OT_POSIX_OPT_VERBOSE                 = 'v',
 
+    OT_POSIX_OPT_SHORT_MAX = 128,
+
+    OT_POSIX_OPT_RADIO_VERSION,
+    OT_POSIX_OPT_REAL_TIME_SIGNAL,
 };
 
-static const struct option kOptions[] = {{"debug-level", required_argument, NULL, 'd'},
-                                         {"dry-run", no_argument, NULL, 'n'},
-                                         {"help", no_argument, NULL, 'h'},
-                                         {"interface-name", required_argument, NULL, 'I'},
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-                                         {"pan-index", required_argument, NULL, 'i'},
-#endif
-                                         {"no-reset", no_argument, NULL, ARG_NO_RADIO_RESET},
-                                         {"radio-version", no_argument, NULL, ARG_PRINT_RADIO_VERSION},
-                                         {"ncp-dataset", no_argument, NULL, ARG_RESTORE_NCP_DATASET},
-                                         {"time-speed", required_argument, NULL, 's'},
-                                         {"verbose", no_argument, NULL, 'v'},
-#if OPENTHREAD_POSIX_CONFIG_MAX_POWER_TABLE_ENABLE
-                                         {"max-power-table", required_argument, NULL, ARG_MAX_POWER_TABLE},
-#endif
-#if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_SPI
-                                         {"gpio-int-dev", required_argument, NULL, ARG_SPI_GPIO_INT_DEV},
-                                         {"gpio-int-line", required_argument, NULL, ARG_SPI_GPIO_INT_LINE},
-                                         {"gpio-reset-dev", required_argument, NULL, ARG_SPI_GPIO_RESET_DEV},
-                                         {"gpio-reset-line", required_argument, NULL, ARG_SPI_GPIO_RESET_LINE},
-                                         {"spi-mode", required_argument, NULL, ARG_SPI_MODE},
-                                         {"spi-speed", required_argument, NULL, ARG_SPI_SPEED},
-                                         {"spi-cs-delay", required_argument, NULL, ARG_SPI_CS_DELAY},
-                                         {"spi-reset-delay", required_argument, NULL, ARG_SPI_RESET_DELAY},
-                                         {"spi-align-allowance", required_argument, NULL, ARG_SPI_ALIGN_ALLOWANCE},
-                                         {"spi-small-packet", required_argument, NULL, ARG_SPI_SMALL_PACKET},
-#endif // OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_SPI
-                                         {0, 0, 0, 0}};
+static const struct option kOptions[] = {
+    {"backbone-interface-name", required_argument, NULL, OT_POSIX_OPT_BACKBONE_INTERFACE_NAME},
+    {"debug-level", required_argument, NULL, OT_POSIX_OPT_DEBUG_LEVEL},
+    {"dry-run", no_argument, NULL, OT_POSIX_OPT_DRY_RUN},
+    {"help", no_argument, NULL, OT_POSIX_OPT_HELP},
+    {"interface-name", required_argument, NULL, OT_POSIX_OPT_INTERFACE_NAME},
+    {"radio-version", no_argument, NULL, OT_POSIX_OPT_RADIO_VERSION},
+    {"real-time-signal", required_argument, NULL, OT_POSIX_OPT_REAL_TIME_SIGNAL},
+    {"time-speed", required_argument, NULL, OT_POSIX_OPT_TIME_SPEED},
+    {"trel-interface", required_argument, NULL, OT_POSIX_OPT_TREL_INTERFACE},
+    {"verbose", no_argument, NULL, OT_POSIX_OPT_VERBOSE},
+    {0, 0, 0, 0}};
 
 static void PrintUsage(const char *aProgramName, FILE *aStream, int aExitCode)
 {
     fprintf(aStream,
             "Syntax:\n"
-            "    %s [Options] NodeId|Device|Command [DeviceConfig|CommandArgs]\n"
+            "    %s [Options] RadioURL\n"
             "Options:\n"
+            "    -B  --backbone-interface-name Backbone network interface name.\n"
             "    -d  --debug-level             Debug level of logging.\n"
             "    -h  --help                    Display this usage information.\n"
             "    -I  --interface-name name     Thread network interface name.\n"
@@ -160,43 +143,18 @@ static void PrintUsage(const char *aProgramName, FILE *aStream, int aExitCode)
             "    -i  --pan-index index         Radio PAN index.\n"
 #endif
             "    -n  --dry-run                 Just verify if arguments is valid and radio spinel is compatible.\n"
-            "        --no-reset                Do not send Spinel reset command to RCP on initialization.\n"
             "        --radio-version           Print radio firmware version.\n"
-            "        --ncp-dataset             Retrieve and save NCP dataset to file.\n"
             "    -s  --time-speed factor       Time speed up factor.\n"
+            "    -t  --trel-interface name   Interface name for TREL platform (e.g., wlan0 netif).\n"
             "    -v  --verbose                 Also log to stderr.\n",
             aProgramName);
-#if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_SPI
+#ifdef __linux__
     fprintf(aStream,
-            "        --gpio-int-dev[=gpio-device-path]\n"
-            "                                  Specify a path to the Linux sysfs-exported GPIO device for the\n"
-            "                                  `I̅N̅T̅` pin. If not specified, `SPI` interface will fall back to\n"
-            "                                  polling, which is inefficient.\n"
-            "        --gpio-int-line[=line-offset]\n"
-            "                                  The offset index of `I̅N̅T̅` pin for the associated GPIO device.\n"
-            "                                  If not specified, `SPI` interface will fall back to polling,\n"
-            "                                  which is inefficient.\n"
-            "        --gpio-reset-dev[=gpio-device-path]\n"
-            "                                  Specify a path to the Linux sysfs-exported GPIO device for the\n"
-            "                                  `R̅E̅S̅` pin.\n"
-            "        --gpio-reset-line[=line-offset]"
-            "                                  The offset index of `R̅E̅S̅` pin for the associated GPIO device.\n"
-            "        --spi-mode[=mode]         Specify the SPI mode to use (0-3).\n"
-            "        --spi-speed[=hertz]       Specify the SPI speed in hertz.\n"
-            "        --spi-cs-delay[=usec]     Specify the delay after C̅S̅ assertion, in µsec.\n"
-            "        --spi-reset-delay[=ms]    Specify the delay after R̅E̅S̅E̅T̅ assertion, in milliseconds.\n"
-            "        --spi-align-allowance[=n] Specify the maximum number of 0xFF bytes to clip from start of\n"
-            "                                  MISO frame. Max value is 16.\n"
-            "        --spi-small-packet=[n]    Specify the smallest packet we can receive in a single transaction.\n"
-            "                                  (larger packets will require two transactions). Default value is 32.\n");
+            "        --real-time-signal        (Linux only) The real-time signal number for microsecond timer.\n"
+            "                                  Use +N for relative value to SIGRTMIN, and use N for absolute value.\n");
+
 #endif
-#if OPENTHREAD_POSIX_CONFIG_MAX_POWER_TABLE_ENABLE
-    fprintf(aStream,
-            "        --max-power-table         Max power for channels in ascending order separated by commas,\n"
-            "                                  If the number of values is less than that of supported channels,\n"
-            "                                  the last value will be applied to all remaining channels.\n"
-            "                                  Special value 0x7f disables a channel.\n");
-#endif
+    fprintf(aStream, "%s", otSysGetRadioUrlHelpString());
     exit(aExitCode);
 }
 
@@ -204,27 +162,18 @@ static void ParseArg(int aArgCount, char *aArgVector[], PosixConfig *aConfig)
 {
     memset(aConfig, 0, sizeof(*aConfig));
 
-    aConfig->mPlatformConfig.mSpeedUpFactor      = 1;
-    aConfig->mPlatformConfig.mResetRadio         = true;
-    aConfig->mPlatformConfig.mSpiSpeed           = OT_PLATFORM_CONFIG_SPI_DEFAULT_SPEED_HZ;
-    aConfig->mPlatformConfig.mSpiCsDelay         = OT_PLATFORM_CONFIG_SPI_DEFAULT_CS_DELAY_US;
-    aConfig->mPlatformConfig.mSpiResetDelay      = OT_PLATFORM_CONFIG_SPI_DEFAULT_RESET_DELAY_MS;
-    aConfig->mPlatformConfig.mSpiAlignAllowance  = OT_PLATFORM_CONFIG_SPI_DEFAULT_ALIGN_ALLOWANCE;
-    aConfig->mPlatformConfig.mSpiSmallPacketSize = OT_PLATFORM_CONFIG_SPI_DEFAULT_SMALL_PACKET_SIZE;
-    aConfig->mPlatformConfig.mSpiMode            = OT_PLATFORM_CONFIG_SPI_DEFAULT_MODE;
-    aConfig->mLogLevel                           = OT_LOG_LEVEL_CRIT;
+    aConfig->mPlatformConfig.mSpeedUpFactor = 1;
+    aConfig->mLogLevel                      = OT_LOG_LEVEL_CRIT;
+#ifdef __linux__
+    aConfig->mPlatformConfig.mRealTimeSignal = SIGRTMIN;
+#endif
 
     optind = 1;
 
     while (true)
     {
         int index  = 0;
-
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-        int option = getopt_long(aArgCount, aArgVector, "d:hI:i:ns:v", kOptions, &index);
-#else
-        int option = getopt_long(aArgCount, aArgVector, "d:hI:ns:v", kOptions, &index);
-#endif
+        int option = getopt_long(aArgCount, aArgVector, "B:d:hI:t:ns:v", kOptions, &index);
 
         if (option == -1)
         {
@@ -233,24 +182,25 @@ static void ParseArg(int aArgCount, char *aArgVector[], PosixConfig *aConfig)
 
         switch (option)
         {
-        case 'd':
+        case OT_POSIX_OPT_DEBUG_LEVEL:
             aConfig->mLogLevel = (otLogLevel)atoi(optarg);
             break;
-        case 'h':
+        case OT_POSIX_OPT_HELP:
             PrintUsage(aArgVector[0], stdout, OT_EXIT_SUCCESS);
             break;
-        case 'I':
+        case OT_POSIX_OPT_INTERFACE_NAME:
             aConfig->mPlatformConfig.mInterfaceName = optarg;
             break;
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-        case 'i':
-            aConfig->mPlatformConfig.mPanIndex = (uint8_t)atoi(optarg);
+        case OT_POSIX_OPT_BACKBONE_INTERFACE_NAME:
+            aConfig->mPlatformConfig.mBackboneInterfaceName = optarg;
             break;
-#endif
-        case 'n':
+        case OT_POSIX_OPT_TREL_INTERFACE:
+            aConfig->mPlatformConfig.mTrelInterface = optarg;
+            break;
+        case OT_POSIX_OPT_DRY_RUN:
             aConfig->mIsDryRun = true;
             break;
-        case 's':
+        case OT_POSIX_OPT_TIME_SPEED:
         {
             char *endptr = NULL;
 
@@ -263,53 +213,24 @@ static void ParseArg(int aArgCount, char *aArgVector[], PosixConfig *aConfig)
             }
             break;
         }
-        case 'v':
+        case OT_POSIX_OPT_VERBOSE:
             aConfig->mIsVerbose = true;
             break;
-        case ARG_PRINT_RADIO_VERSION:
+        case OT_POSIX_OPT_RADIO_VERSION:
             aConfig->mPrintRadioVersion = true;
             break;
-        case ARG_NO_RADIO_RESET:
-            aConfig->mPlatformConfig.mResetRadio = false;
+#ifdef __linux__
+        case OT_POSIX_OPT_REAL_TIME_SIGNAL:
+            if (optarg[0] == '+')
+            {
+                aConfig->mPlatformConfig.mRealTimeSignal = SIGRTMIN + atoi(&optarg[1]);
+            }
+            else
+            {
+                aConfig->mPlatformConfig.mRealTimeSignal = atoi(optarg);
+            }
             break;
-        case ARG_RESTORE_NCP_DATASET:
-            aConfig->mPlatformConfig.mRestoreDatasetFromNcp = true;
-            break;
-        case ARG_SPI_GPIO_INT_DEV:
-            aConfig->mPlatformConfig.mSpiGpioIntDevice = optarg;
-            break;
-        case ARG_SPI_GPIO_INT_LINE:
-            aConfig->mPlatformConfig.mSpiGpioIntLine = (uint8_t)atoi(optarg);
-            break;
-        case ARG_SPI_GPIO_RESET_DEV:
-            aConfig->mPlatformConfig.mSpiGpioResetDevice = optarg;
-            break;
-        case ARG_SPI_GPIO_RESET_LINE:
-            aConfig->mPlatformConfig.mSpiGpioResetLine = (uint8_t)atoi(optarg);
-            break;
-        case ARG_SPI_MODE:
-            aConfig->mPlatformConfig.mSpiMode = (uint8_t)atoi(optarg);
-            break;
-        case ARG_SPI_SPEED:
-            aConfig->mPlatformConfig.mSpiSpeed = (uint32_t)atoi(optarg);
-            break;
-        case ARG_SPI_CS_DELAY:
-            aConfig->mPlatformConfig.mSpiCsDelay = (uint16_t)atoi(optarg);
-            break;
-        case ARG_SPI_RESET_DELAY:
-            aConfig->mPlatformConfig.mSpiResetDelay = (uint32_t)atoi(optarg);
-            break;
-        case ARG_SPI_ALIGN_ALLOWANCE:
-            aConfig->mPlatformConfig.mSpiAlignAllowance = (uint8_t)atoi(optarg);
-            break;
-        case ARG_SPI_SMALL_PACKET:
-            aConfig->mPlatformConfig.mSpiSmallPacketSize = (uint8_t)atoi(optarg);
-            break;
-#if OPENTHREAD_POSIX_CONFIG_MAX_POWER_TABLE_ENABLE
-        case ARG_MAX_POWER_TABLE:
-            aConfig->mPlatformConfig.mMaxPowerTable = optarg;
-            break;
-#endif
+#endif // __linux__
         case '?':
             PrintUsage(aArgVector[0], stderr, OT_EXIT_INVALID_ARGUMENTS);
             break;
@@ -323,31 +244,33 @@ static void ParseArg(int aArgCount, char *aArgVector[], PosixConfig *aConfig)
     {
         PrintUsage(aArgVector[0], stderr, OT_EXIT_INVALID_ARGUMENTS);
     }
-
-    aConfig->mPlatformConfig.mRadioFile = aArgVector[optind];
-
-    if (optind + 1 < aArgCount)
-    {
-        aConfig->mPlatformConfig.mRadioConfig = aArgVector[optind + 1];
-    }
+    aConfig->mPlatformConfig.mRadioUrl = aArgVector[optind];
 }
 
-static otInstance *InitInstance(int aArgCount, char *aArgVector[])
+#if OPENTHREAD_POSIX_APP_TYPE == OT_POSIX_APP_TYPE_CLI
+static void PrintRadioUrl(void *aContext, uint8_t aArgsLength, char *aArgs[])
 {
-    PosixConfig config;
+    (void)aArgsLength;
+    (void)aArgs;
+
+    otPlatformConfig *config = (otPlatformConfig *)aContext;
+    otCliOutputFormat("%s\r\nDone\r\n", config->mRadioUrl);
+}
+#endif // OPENTHREAD_POSIX_APP_TYPE == OT_POSIX_APP_TYPE_CLI
+
+static otInstance *InitInstance(PosixConfig *aConfig)
+{
     otInstance *instance = NULL;
 
-    ParseArg(aArgCount, aArgVector, &config);
-
-    openlog(aArgVector[0], LOG_PID | (config.mIsVerbose ? LOG_PERROR : 0), LOG_DAEMON);
-    setlogmask(setlogmask(0) & LOG_UPTO(LOG_DEBUG));
     syslog(LOG_INFO, "Running %s", otGetVersionString());
     syslog(LOG_INFO, "Thread version: %hu", otThreadGetVersion());
-    IgnoreError(otLoggingSetLevel(config.mLogLevel));
+    IgnoreError(otLoggingSetLevel(aConfig->mLogLevel));
 
-    instance = otSysInit(&config.mPlatformConfig);
+    instance = otSysInit(&aConfig->mPlatformConfig);
 
-    if (config.mPrintRadioVersion)
+    atexit(otSysDeinit);
+
+    if (aConfig->mPrintRadioVersion)
     {
         printf("%s\n", otPlatRadioGetVersionString(instance));
     }
@@ -356,7 +279,7 @@ static otInstance *InitInstance(int aArgCount, char *aArgVector[])
         syslog(LOG_INFO, "RCP version: %s", otPlatRadioGetVersionString(instance));
     }
 
-    if (config.mIsDryRun)
+    if (aConfig->mIsDryRun)
     {
         exit(OT_EXIT_SUCCESS);
     }
@@ -371,6 +294,8 @@ void otTaskletsSignalPending(otInstance *aInstance)
 
 void otPlatReset(otInstance *aInstance)
 {
+    gPlatResetReason = OT_PLAT_RESET_REASON_SOFTWARE;
+
     otInstanceFinalize(aInstance);
     otSysDeinit();
 
@@ -381,6 +306,11 @@ void otPlatReset(otInstance *aInstance)
 int main(int argc, char *argv[])
 {
     otInstance *instance;
+    int         rval = 0;
+    PosixConfig config;
+#if OPENTHREAD_POSIX_APP_TYPE == OT_POSIX_APP_TYPE_CLI
+    otCliCommand radioUrlCommand = {"radiourl", PrintRadioUrl};
+#endif
 
 #ifdef __linux__
     // Ensure we terminate this process if the
@@ -397,16 +327,20 @@ int main(int argc, char *argv[])
         execvp(argv[0], argv);
     }
 
-    instance = InitInstance(argc, argv);
+    ParseArg(argc, argv, &config);
+    openlog(argv[0], LOG_PID | (config.mIsVerbose ? LOG_PERROR : 0), LOG_DAEMON);
+    setlogmask(setlogmask(0) & LOG_UPTO(LOG_DEBUG));
+    instance = InitInstance(&config);
 
 #if OPENTHREAD_POSIX_APP_TYPE == OT_POSIX_APP_TYPE_NCP
     otNcpInit(instance);
 #elif OPENTHREAD_POSIX_APP_TYPE == OT_POSIX_APP_TYPE_CLI
-#if OPENTHREAD_USE_CONSOLE
+#ifdef OPENTHREAD_USE_CONSOLE
     otxConsoleInit(instance);
 #else
     otCliUartInit(instance);
 #endif
+    otCliSetUserCommands(&radioUrlCommand, 1, &config.mPlatformConfig);
 #endif
 
     while (true)
@@ -423,7 +357,7 @@ int main(int argc, char *argv[])
         mainloop.mTimeout.tv_sec  = 10;
         mainloop.mTimeout.tv_usec = 0;
 
-#if OPENTHREAD_USE_CONSOLE
+#ifdef OPENTHREAD_USE_CONSOLE
         otxConsoleUpdate(&mainloop);
 #endif
 
@@ -432,22 +366,23 @@ int main(int argc, char *argv[])
         if (otSysMainloopPoll(&mainloop) >= 0)
         {
             otSysMainloopProcess(instance, &mainloop);
-#if OPENTHREAD_USE_CONSOLE
+#ifdef OPENTHREAD_USE_CONSOLE
             otxConsoleProcess(&mainloop);
 #endif
         }
         else if (errno != EINTR)
         {
             perror("select");
-            exit(OT_EXIT_FAILURE);
+            ExitNow(rval = OT_EXIT_FAILURE);
         }
     }
 
-#if OPENTHREAD_USE_CONSOLE
+#ifdef OPENTHREAD_USE_CONSOLE
     otxConsoleDeinit();
 #endif
-    otInstanceFinalize(instance);
-    otSysDeinit();
 
-    return 0;
+exit:
+    otInstanceFinalize(instance);
+
+    return rval;
 }

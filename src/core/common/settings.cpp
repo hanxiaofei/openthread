@@ -57,12 +57,9 @@ void SettingsBase::LogNetworkInfo(const char *aAction, const NetworkInfo &aNetwo
         Mle::Mle::RoleToString(static_cast<Mle::DeviceRole>(aNetworkInfo.GetRole())), aNetworkInfo.GetDeviceMode(),
         aNetworkInfo.GetVersion(), aNetworkInfo.GetKeySequence());
 
-    otLogInfoCore(
-        "Non-volatile: ... pid:0x%x, mlecntr:0x%x, maccntr:0x%x, mliid:%02x%02x%02x%02x%02x%02x%02x%02x}",
-        aNetworkInfo.GetPreviousPartitionId(), aNetworkInfo.GetMleFrameCounter(), aNetworkInfo.GetMacFrameCounter(),
-        aNetworkInfo.GetMeshLocalIid()[0], aNetworkInfo.GetMeshLocalIid()[1], aNetworkInfo.GetMeshLocalIid()[2],
-        aNetworkInfo.GetMeshLocalIid()[3], aNetworkInfo.GetMeshLocalIid()[4], aNetworkInfo.GetMeshLocalIid()[5],
-        aNetworkInfo.GetMeshLocalIid()[6], aNetworkInfo.GetMeshLocalIid()[7]);
+    otLogInfoCore("Non-volatile: ... pid:0x%x, mlecntr:0x%x, maccntr:0x%x, mliid:%s}",
+                  aNetworkInfo.GetPreviousPartitionId(), aNetworkInfo.GetMleFrameCounter(),
+                  aNetworkInfo.GetMacFrameCounter(), aNetworkInfo.GetMeshLocalIid().ToString().AsCString());
 }
 
 void SettingsBase::LogParentInfo(const char *aAction, const ParentInfo &aParentInfo) const
@@ -77,6 +74,19 @@ void SettingsBase::LogChildInfo(const char *aAction, const ChildInfo &aChildInfo
                   aChildInfo.GetRloc16(), aChildInfo.GetExtAddress().ToString().AsCString(), aChildInfo.GetTimeout(),
                   aChildInfo.GetMode(), aChildInfo.GetVersion());
 }
+
+#if OPENTHREAD_CONFIG_DUA_ENABLE
+void SettingsBase::LogDadInfo(const char *aAction, const DadInfo &aDadInfo) const
+{
+    otLogInfoCore("Non-volatile: %s DadInfo {DadCounter:%2d}", aAction, aDadInfo.GetDadCounter());
+}
+#endif
+#if OPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE
+void SettingsBase::LogPrefix(const char *aAction, const char *aPrefixName, const Ip6::Prefix &aOmrPrefix) const
+{
+    otLogInfoCore("Non-volatile: %s %s %s", aAction, aPrefixName, aOmrPrefix.ToString().AsCString());
+}
+#endif
 
 #endif // #if (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_INFO)
 
@@ -248,7 +258,7 @@ otError Settings::SaveNetworkInfo(const NetworkInfo &aNetworkInfo)
     uint16_t    length = sizeof(prevNetworkInfo);
 
     if ((Read(kKeyNetworkInfo, &prevNetworkInfo, length) == OT_ERROR_NONE) && (length == sizeof(NetworkInfo)) &&
-        (memcmp(&prevNetworkInfo, &aNetworkInfo, sizeof(NetworkInfo)) == 0))
+        (prevNetworkInfo == aNetworkInfo))
     {
         LogNetworkInfo("Re-saved", aNetworkInfo);
         ExitNow();
@@ -294,7 +304,7 @@ otError Settings::SaveParentInfo(const ParentInfo &aParentInfo)
     uint16_t   length = sizeof(ParentInfo);
 
     if ((Read(kKeyParentInfo, &prevParentInfo, length) == OT_ERROR_NONE) && (length == sizeof(ParentInfo)) &&
-        (memcmp(&prevParentInfo, &aParentInfo, sizeof(ParentInfo)) == 0))
+        (prevParentInfo == aParentInfo))
     {
         LogParentInfo("Re-saved", aParentInfo);
         ExitNow();
@@ -332,7 +342,7 @@ exit:
     return error;
 }
 
-otError Settings::DeleteChildInfo(void)
+otError Settings::DeleteAllChildInfo(void)
 {
     otError error;
 
@@ -349,13 +359,6 @@ Settings::ChildInfoIterator::ChildInfoIterator(Instance &aInstance)
     , mIndex(0)
     , mIsDone(false)
 {
-    Reset();
-}
-
-void Settings::ChildInfoIterator::Reset(void)
-{
-    mIndex  = 0;
-    mIsDone = false;
     Read();
 }
 
@@ -394,6 +397,166 @@ void Settings::ChildInfoIterator::Read(void)
 exit:
     mIsDone = (error != OT_ERROR_NONE);
 }
+
+#if OPENTHREAD_CONFIG_DUA_ENABLE
+otError Settings::ReadDadInfo(DadInfo &aDadInfo) const
+{
+    otError  error;
+    uint16_t length = sizeof(DadInfo);
+
+    aDadInfo.Init();
+    SuccessOrExit(error = Read(kKeyDadInfo, &aDadInfo, length));
+    LogDadInfo("Read", aDadInfo);
+
+exit:
+    return error;
+}
+
+otError Settings::SaveDadInfo(const DadInfo &aDadInfo)
+{
+    otError  error = OT_ERROR_NONE;
+    DadInfo  prevDadInfo;
+    uint16_t length = sizeof(DadInfo);
+
+    if ((Read(kKeyDadInfo, &prevDadInfo, length) == OT_ERROR_NONE) && (length == sizeof(DadInfo)) &&
+        (prevDadInfo == aDadInfo))
+    {
+        LogDadInfo("Re-saved", aDadInfo);
+        ExitNow();
+    }
+
+    SuccessOrExit(error = Save(kKeyDadInfo, &aDadInfo, sizeof(DadInfo)));
+    LogDadInfo("Saved", aDadInfo);
+
+exit:
+    LogFailure(error, "saving DadInfo", false);
+    return error;
+}
+
+otError Settings::DeleteDadInfo(void)
+{
+    otError error;
+
+    SuccessOrExit(error = Delete(kKeyDadInfo));
+    otLogInfoCore("Non-volatile: Deleted DadInfo");
+
+exit:
+    LogFailure(error, "deleting DadInfo", true);
+    return error;
+}
+#endif // OPENTHREAD_CONFIG_DUA_ENABLE
+
+#if OPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE
+otError Settings::SaveOmrPrefix(const Ip6::Prefix &aOmrPrefix)
+{
+    otError     error = OT_ERROR_NONE;
+    Ip6::Prefix prevOmrPrefix;
+    uint16_t    length = sizeof(prevOmrPrefix);
+
+    if ((Read(kKeyOmrPrefix, &prevOmrPrefix, length) == OT_ERROR_NONE) && (length == sizeof(prevOmrPrefix)) &&
+        (prevOmrPrefix == aOmrPrefix))
+    {
+        LogPrefix("Re-saved", "OMR prefix", aOmrPrefix);
+        ExitNow();
+    }
+
+    SuccessOrExit(error = Save(kKeyOmrPrefix, &aOmrPrefix, sizeof(aOmrPrefix)));
+    LogPrefix("Saved", "OMR prefix", aOmrPrefix);
+
+exit:
+    LogFailure(error, "saving OMR prefix", false);
+    return error;
+}
+
+otError Settings::ReadOmrPrefix(Ip6::Prefix &aOmrPrefix) const
+{
+    otError  error;
+    uint16_t length = sizeof(aOmrPrefix);
+
+    aOmrPrefix.Clear();
+    SuccessOrExit(error = Read(kKeyOmrPrefix, &aOmrPrefix, length));
+    LogPrefix("Read", "OMR prefix", aOmrPrefix);
+
+exit:
+    return error;
+}
+
+otError Settings::SaveOnLinkPrefix(const Ip6::Prefix &aOnLinkPrefix)
+{
+    otError     error = OT_ERROR_NONE;
+    Ip6::Prefix prevOnLinkPrefix;
+    uint16_t    length = sizeof(prevOnLinkPrefix);
+
+    if ((Read(kKeyOnLinkPrefix, &prevOnLinkPrefix, length) == OT_ERROR_NONE) && (length == sizeof(prevOnLinkPrefix)) &&
+        (prevOnLinkPrefix == aOnLinkPrefix))
+    {
+        LogPrefix("Re-saved", "on-link prefix", aOnLinkPrefix);
+        ExitNow();
+    }
+
+    SuccessOrExit(error = Save(kKeyOnLinkPrefix, &aOnLinkPrefix, sizeof(aOnLinkPrefix)));
+    LogPrefix("Saved", "on-link prefix", aOnLinkPrefix);
+
+exit:
+    LogFailure(error, "saving on-link prefix", false);
+    return error;
+}
+
+otError Settings::ReadOnLinkPrefix(Ip6::Prefix &aOnLinkPrefix) const
+{
+    otError  error;
+    uint16_t length = sizeof(aOnLinkPrefix);
+
+    aOnLinkPrefix.Clear();
+    SuccessOrExit(error = Read(kKeyOnLinkPrefix, &aOnLinkPrefix, length));
+    LogPrefix("Read", "on-link prefix", aOnLinkPrefix);
+
+exit:
+    return error;
+}
+#endif // OPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE
+
+#if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+
+otError Settings::SaveSrpKey(const Crypto::Ecdsa::P256::KeyPair &aKeyPair)
+{
+    otError error = OT_ERROR_NONE;
+
+    SuccessOrExit(error = Save(kKeySrpEcdsaKey, aKeyPair.GetDerBytes(), aKeyPair.GetDerLength()));
+    otLogInfoCore("Non-volatile: Saved SRP key");
+
+exit:
+    LogFailure(error, "saving SRP key", false);
+    return error;
+}
+
+otError Settings::ReadSrpKey(Crypto::Ecdsa::P256::KeyPair &aKeyPair) const
+{
+    otError  error;
+    uint16_t length = Crypto::Ecdsa::P256::KeyPair::kMaxDerSize;
+
+    SuccessOrExit(error = Read(kKeySrpEcdsaKey, aKeyPair.GetDerBytes(), length));
+    VerifyOrExit(length <= Crypto::Ecdsa::P256::KeyPair::kMaxDerSize, error = OT_ERROR_NOT_FOUND);
+    aKeyPair.SetDerLength(static_cast<uint8_t>(length));
+    otLogInfoCore("Non-volatile: Read SRP key");
+
+exit:
+    return error;
+}
+
+otError Settings::DeleteSrpKey(void)
+{
+    otError error;
+
+    SuccessOrExit(error = Delete(kKeySrpEcdsaKey));
+    otLogInfoCore("Non-volatile: Deleted SRP key");
+
+exit:
+    LogFailure(error, "deleting SRP key", true);
+    return error;
+}
+
+#endif // OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
 
 otError Settings::Read(Key aKey, void *aBuffer, uint16_t &aSize) const
 {

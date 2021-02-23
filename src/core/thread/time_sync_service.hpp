@@ -41,6 +41,7 @@
 
 #include "common/locator.hpp"
 #include "common/message.hpp"
+#include "common/non_copyable.hpp"
 #include "common/notifier.hpp"
 #include "common/timer.hpp"
 
@@ -50,8 +51,10 @@ namespace ot {
  * This class implements OpenThread Time Synchronization Service.
  *
  */
-class TimeSync : public InstanceLocator
+class TimeSync : public InstanceLocator, private NonCopyable
 {
+    friend class ot::Notifier;
+
 public:
     /**
      * This constructor initializes the object.
@@ -152,14 +155,6 @@ public:
     }
 
     /**
-     * Callback to be called when thread state changes.
-     *
-     * @param[in] aFlags Flags that denote the state change events.
-     *
-     */
-    void HandleStateChanged(otChangedFlags aFlags);
-
-    /**
      * Callback to be called when timer expires.
      *
      */
@@ -169,11 +164,10 @@ private:
     /**
      * Callback to be called when thread state changes.
      *
-     * @param[in] aCallback Callback context.
      * @param[in] aFlags Flags that denote the state change events.
      *
      */
-    static void HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags);
+    void HandleNotifierEvents(Events aEvents);
 
     /**
      * Callback to be called when timer expires.
@@ -216,7 +210,6 @@ private:
     otNetworkTimeSyncCallbackFn
                         mTimeSyncCallback; ///< The callback to be called when time sync is handled or status updated.
     void *              mTimeSyncCallbackContext; ///< The context to be passed to callback.
-    Notifier::Callback  mNotifierCallback;        ///< Callback for thread state changes.
     TimerMilli          mTimer;                   ///< Timer for checking if a resync is required.
     otNetworkTimeStatus mCurrentStatus;           ///< Current network time status.
 };

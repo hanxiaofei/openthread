@@ -57,16 +57,8 @@ if OPENTHREAD_EXAMPLES_CC2652
 include $(top_srcdir)/examples/platforms/cc2652/Makefile.platform.am
 endif
 
-if OPENTHREAD_EXAMPLES_EFR32MG12
-include $(top_srcdir)/examples/platforms/efr32mg12/Makefile.platform.am
-endif
-
-if OPENTHREAD_EXAMPLES_EFR32MG13
-include $(top_srcdir)/examples/platforms/efr32mg13/Makefile.platform.am
-endif
-
-if OPENTHREAD_EXAMPLES_EFR32MG21
-include $(top_srcdir)/examples/platforms/efr32mg21/Makefile.platform.am
+if OPENTHREAD_EXAMPLES_EFR32
+include $(top_srcdir)/examples/platforms/efr32/Makefile.platform.am
 endif
 
 if OPENTHREAD_EXAMPLES_GP712
@@ -74,7 +66,11 @@ include $(top_srcdir)/examples/platforms/gp712/Makefile.platform.am
 endif
 
 if OPENTHREAD_EXAMPLES_JN5189
-include $(top_srcdir)/examples/platforms/jn5189/Makefile.platform.am
+include $(top_srcdir)/examples/platforms/k32w/jn5189/Makefile.platform.am
+endif
+
+if OPENTHREAD_EXAMPLES_K32W061
+include $(top_srcdir)/examples/platforms/k32w/k32w061/Makefile.platform.am
 endif
 
 if OPENTHREAD_EXAMPLES_KW41Z
@@ -95,6 +91,14 @@ endif
 
 if OPENTHREAD_EXAMPLES_QPG6095
 include $(top_srcdir)/examples/platforms/qpg6095/Makefile.platform.am
+endif
+
+if OPENTHREAD_EXAMPLES_QPG6100
+include $(top_srcdir)/examples/platforms/qpg6100/Makefile.platform.am
+endif
+
+if OPENTHREAD_EXAMPLES_QPG7015M
+include $(top_srcdir)/examples/platforms/qpg7015m/Makefile.platform.am
 endif
 
 if OPENTHREAD_EXAMPLES_SAMR21

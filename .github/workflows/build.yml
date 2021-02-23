@@ -33,7 +33,7 @@ on: [push, pull_request]
 jobs:
 
   cancel-previous-runs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: rokroskar/workflow-run-cleanup-action@master
       env:
@@ -41,43 +41,73 @@ jobs:
       if: "github.ref != 'refs/heads/master'"
 
   pretty:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Bootstrap
       run: |
-        sudo apt update
-        sudo apt remove -y clang-6.0 libclang-common-6.0-dev libclang1-6.0 libllvm6.0
-        sudo apt autoremove
-        sudo apt --no-install-recommends install -y clang-tools clang-format-6.0
-        clang-format-6.0 --version
+        sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
+        sudo apt-get --no-install-recommends install -y clang-format-9 clang-tidy-9 shellcheck
         python3 -m pip install yapf==0.29.0
+        sudo snap install shfmt
     - name: Check
       run: |
         script/make-pretty check
 
-  package:
+  cmake-version:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Bootstrap
       run: |
-        sudo apt update
-        sudo apt --no-install-recommends install -y ninja-build
+        sudo pip3 install --system -U cmake==3.10.3
+        cmake --version | grep 3.10.3
+        sudo apt-get --no-install-recommends install -y ninja-build libreadline-dev libncurses-dev
+    - name: Build
+      run: |
+        OT_NODE_TYPE=rcp ./script/test build
+
+  package:
+    name: package-${{ matrix.compiler }}
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - compiler: gcc
+            compiler_c: gcc
+            compiler_cpp: g++
+          - compiler: clang
+            compiler_c: clang
+            compiler_cpp: clang++
+    env:
+      CC: ${{ matrix.compiler_c }}
+      CXX: ${{ matrix.compiler_cpp }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Bootstrap
+      run: |
+        sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
+        sudo apt-get --no-install-recommends install -y ninja-build libreadline-dev libncurses-dev
     - name: Package
       run: |
         script/test package
 
   scan-build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Bootstrap
       run: |
-        sudo apt update
-        sudo apt remove -y clang-6.0 libclang-common-6.0-dev libclang1-6.0 libllvm6.0
-        sudo apt autoremove
-        sudo apt --no-install-recommends install -y clang-tools
+        sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
+        sudo apt-get --no-install-recommends install -y clang-tools-9
     - name: Run
       run: |
         script/check-scan-build
@@ -105,13 +135,20 @@ jobs:
             gcc_extract_dir: gcc-arm-none-eabi-9-2019-q4-major
     steps:
     - uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Bootstrap
       run: |
         cd /tmp
-        sudo apt update
-        sudo apt --no-install-recommends install -y lib32z1 ninja-build
+        sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
+        sudo apt-get --no-install-recommends install -y lib32z1 ninja-build
         wget ${{ matrix.gcc_download_url }} -O gcc-arm.tar.bz2
         tar xjf gcc-arm.tar.bz2
+        # use the minimal required cmake version
+        sudo pip3 install --system -U cmake==3.10.3
+        cmake --version | grep 3.10.3
+        # required for jn5189 and k32w061
+        pip install pycryptodome
     - name: Build
       run: |
         export PATH=/tmp/${{ matrix.gcc_extract_dir }}/bin:$PATH
@@ -122,27 +159,51 @@ jobs:
     runs-on: ubuntu-18.04
     strategy:
       matrix:
-        gcc_ver: [5, 6, 7, 8, 9]
+        gcc_ver: [5, 6, 7, 8, 9, 10]
     env:
       CC: gcc-${{ matrix.gcc_ver }}
       CXX: g++-${{ matrix.gcc_ver }}
     steps:
     - uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Bootstrap
       run: |
-        sudo apt update
-        sudo apt --no-install-recommends install -y gcc-${{ matrix.gcc_ver }} g++-${{ matrix.gcc_ver }} ninja-build
+        sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
+        sudo apt-get --no-install-recommends install -y gcc-${{ matrix.gcc_ver }} g++-${{ matrix.gcc_ver }} ninja-build libreadline-dev libncurses-dev
     - name: Build
       run: |
         script/check-simulation-build
         script/check-posix-build
 
-  clang-m32:
-    name: clang-m32-${{ matrix.clang_ver }}
-    runs-on: ubuntu-18.04
+  clang:
+    name: clang-${{ matrix.clang_ver }}
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
-        clang_ver: [9]
+        clang_ver: ["6.0", "7", "8", "9"]
+    env:
+      CC: clang-${{ matrix.clang_ver }}
+      CXX: clang++-${{ matrix.clang_ver }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Bootstrap
+        run: |
+          sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
+          sudo apt-get --no-install-recommends install -y clang-${{ matrix.clang_ver }} clang++-${{ matrix.clang_ver }} ninja-build libreadline-dev libncurses-dev
+      - name: Build
+        run: |
+          script/check-simulation-build
+          script/check-posix-build
+
+  clang-m32:
+    name: clang-m32-${{ matrix.clang_ver }}
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        clang_ver: ["6.0", "7", "8", "9"]
     env:
       CC: clang-${{ matrix.clang_ver }}
       CXX: clang++-${{ matrix.clang_ver }}
@@ -151,22 +212,29 @@ jobs:
       LDFLAGS: -m32
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: true
       - name: Bootstrap
         run: |
-          sudo apt update
-          sudo apt --no-install-recommends install -y clang-${{ matrix.clang_ver }} clang++-${{ matrix.clang_ver }} g++-multilib ninja-build
+          sudo dpkg --add-architecture i386
+          sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
+          sudo apt-get --no-install-recommends install -y clang-${{ matrix.clang_ver }} clang++-${{ matrix.clang_ver }} g++-multilib ninja-build
+          sudo apt-get --no-install-recommends install -y libreadline-dev:i386 libncurses-dev:i386
       - name: Build
         run: |
+          script/check-simulation-build
           script/check-posix-build
 
   gn:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Bootstrap
       run: |
-        sudo apt update
-        sudo apt --no-install-recommends install -y ninja-build
+        sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
+        sudo apt-get --no-install-recommends install -y ninja-build
         cd /tmp
         wget -O gn.zip https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/latest
         unzip -o gn.zip
@@ -183,6 +251,8 @@ jobs:
       CXX: clang++
     steps:
     - uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Bootstrap
       run: |
         brew install automake ninja llvm
@@ -198,6 +268,8 @@ jobs:
       CXX: g++
     steps:
     - uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Bootstrap
       run: |
         brew install automake ninja
@@ -207,9 +279,11 @@ jobs:
         script/check-simulation-build
 
   android:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Build
       run: |
         docker run --rm -v $PWD:/build/openthread openthread/android-trusty /build/openthread/script/check-android-build

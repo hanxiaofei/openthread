@@ -37,6 +37,7 @@
 #include "openthread-core-config.h"
 
 #include "common/locator.hpp"
+#include "common/non_copyable.hpp"
 #include "common/notifier.hpp"
 #include "common/timer.hpp"
 #include "mac/mac.hpp"
@@ -49,7 +50,7 @@ namespace ot {
  * This class provides APIs to schedule periodic transmission of MLE Announcement messages for a given number
  * transmissions per channel.
  */
-class AnnounceSenderBase : public InstanceLocator
+class AnnounceSenderBase : public InstanceLocator, private NonCopyable
 {
 protected:
     /**
@@ -75,11 +76,8 @@ protected:
      * @param[in]  aPeriod        The time between two successive MLE Announce transmissions (in milliseconds).
      * @param[in]  aJitter        Maximum random jitter added to @aPeriod per transmission (in milliseconds).
      *
-     * @retval OT_ERROR_NONE          Successfully started the transmission process.
-     * @retval OT_ERROR_INVALID_ARGS  @p aChanelMask is empty, or @p aPeriod is zero or smaller than @aJitter.
-     *
      */
-    otError SendAnnounce(Mac::ChannelMask aChannelMask, uint8_t aCount, uint32_t aPeriod, uint16_t aJitter);
+    void SendAnnounce(Mac::ChannelMask aChannelMask, uint8_t aCount, uint32_t aPeriod, uint16_t aJitter);
 
     /**
      * This method stops the ongoing MLE Announce transmissions.
@@ -138,6 +136,8 @@ private:
  */
 class AnnounceSender : public AnnounceSenderBase
 {
+    friend class ot::Notifier;
+
 public:
     /**
      * This constructor initializes the object.
@@ -159,10 +159,7 @@ private:
     void        CheckState(void);
     void        Stop(void);
     static void HandleTimer(Timer &aTimer);
-    static void HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags);
-    void        HandleStateChanged(otChangedFlags aFlags);
-
-    Notifier::Callback mNotifierCallback;
+    void        HandleNotifierEvents(Events aEvents);
 };
 
 #endif // OPENTHREAD_CONFIG_ANNOUNCE_SENDER_ENABLE

@@ -32,12 +32,16 @@
  *
  */
 
+#include <openthread/platform/toolchain.h>
+
 #include "platform-nrf5-transport.h"
 
 #include "transport-drivers.h"
 
 void nrf5TransportInit(bool aPseudoReset)
 {
+    OT_UNUSED_VARIABLE(aPseudoReset);
+
 #if ((UART_AS_SERIAL_TRANSPORT == 1) || (USB_CDC_AS_SERIAL_TRANSPORT == 1))
     if (!aPseudoReset)
     {
@@ -56,6 +60,8 @@ void nrf5TransportInit(bool aPseudoReset)
 
 void nrf5TransportDeinit(bool aPseudoReset)
 {
+    OT_UNUSED_VARIABLE(aPseudoReset);
+
 #if ((UART_AS_SERIAL_TRANSPORT == 1) || (USB_CDC_AS_SERIAL_TRANSPORT == 1))
     if (!aPseudoReset)
     {

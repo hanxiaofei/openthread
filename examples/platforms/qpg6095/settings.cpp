@@ -38,6 +38,7 @@
 #include "openthread/platform/settings.h"
 
 #include <utils/code_utils.h>
+#include <utils/settings.h>
 
 #include "settings_qorvo.h"
 
@@ -72,7 +73,7 @@ otError otPlatSettingsGet(otInstance *aInstance, uint16_t aKey, int aIndex, uint
 
     if (error == OT_ERROR_NOT_FOUND)
     {
-        if (aValue != NULL)
+        if (aValue != nullptr)
         {
             *aValueLength = 0;
         }
@@ -110,7 +111,7 @@ otError otPlatSettingsDelete(otInstance *aInstance, uint16_t aKey, int aIndex)
     otError error = OT_ERROR_NOT_FOUND;
     OT_UNUSED_VARIABLE(aInstance);
 
-    if (otPlatSettingsGet(aInstance, aKey, 0, NULL, NULL) == OT_ERROR_NONE)
+    if (otPlatSettingsGet(aInstance, aKey, 0, nullptr, nullptr) == OT_ERROR_NONE)
     {
         qorvoSettingsDelete(aKey, aIndex);
         error = OT_ERROR_NONE;

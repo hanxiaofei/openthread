@@ -91,32 +91,107 @@ SpiInterface::SpiInterface(SpinelInterface::ReceiveFrameCallback aCallback,
 {
 }
 
-otError SpiInterface::Init(const otPlatformConfig &aPlatformConfig)
+void SpiInterface::OnRcpReset(void)
 {
-    VerifyOrDie(aPlatformConfig.mSpiAlignAllowance <= kSpiAlignAllowanceMax, OT_EXIT_FAILURE);
+    mSpiValidFrameCount   = 0;
+    mSpiTxIsReady         = false;
+    mSpiTxRefusedCount    = 0;
+    mSpiTxPayloadSize     = 0;
+    mDidPrintRateLimitLog = false;
+    mSpiSlaveDataLen      = 0;
+    memset(mSpiTxFrameBuffer, 0, sizeof(mSpiTxFrameBuffer));
 
-    mSpiCsDelayUs       = aPlatformConfig.mSpiCsDelay;
-    mSpiSmallPacketSize = aPlatformConfig.mSpiSmallPacketSize;
-    mSpiAlignAllowance  = aPlatformConfig.mSpiAlignAllowance;
+    TriggerReset();
+    usleep(static_cast<useconds_t>(mSpiResetDelay) * kUsecPerMsec);
+}
 
-    if (aPlatformConfig.mSpiGpioIntDevice != NULL)
+otError SpiInterface::Init(const RadioUrl &aRadioUrl)
+{
+    const char *spiGpioIntDevice;
+    const char *spiGpioResetDevice;
+    uint8_t     spiGpioIntLine     = 0;
+    uint8_t     spiGpioResetLine   = 0;
+    uint8_t     spiMode            = OT_PLATFORM_CONFIG_SPI_DEFAULT_MODE;
+    uint32_t    spiSpeed           = SPI_IOC_WR_MAX_SPEED_HZ;
+    uint32_t    spiResetDelay      = OT_PLATFORM_CONFIG_SPI_DEFAULT_RESET_DELAY_MS;
+    uint16_t    spiCsDelay         = OT_PLATFORM_CONFIG_SPI_DEFAULT_CS_DELAY_US;
+    uint8_t     spiAlignAllowance  = OT_PLATFORM_CONFIG_SPI_DEFAULT_ALIGN_ALLOWANCE;
+    uint8_t     spiSmallPacketSize = OT_PLATFORM_CONFIG_SPI_DEFAULT_SMALL_PACKET_SIZE;
+    const char *value;
+
+    spiGpioIntDevice   = aRadioUrl.GetValue("gpio-int-device");
+    spiGpioResetDevice = aRadioUrl.GetValue("gpio-reset-device");
+    if (!spiGpioIntDevice || !spiGpioResetDevice)
+    {
+        DieNow(OT_EXIT_INVALID_ARGUMENTS);
+    }
+
+    if ((value = aRadioUrl.GetValue("gpio-int-line")))
+    {
+        spiGpioIntLine = static_cast<uint8_t>(atoi(value));
+    }
+    else
+    {
+        DieNow(OT_EXIT_INVALID_ARGUMENTS);
+    }
+    if ((value = aRadioUrl.GetValue("gpio-reset-line")))
+    {
+        spiGpioResetLine = static_cast<uint8_t>(atoi(value));
+    }
+    else
+    {
+        DieNow(OT_EXIT_INVALID_ARGUMENTS);
+    }
+    if ((value = aRadioUrl.GetValue("spi-mode")))
+    {
+        spiMode = static_cast<uint8_t>(atoi(value));
+    }
+    if ((value = aRadioUrl.GetValue("spi-speed")))
+    {
+        spiSpeed = static_cast<uint32_t>(atoi(value));
+    }
+    if ((value = aRadioUrl.GetValue("spi-reset-delay")))
+    {
+        spiResetDelay = static_cast<uint32_t>(atoi(value));
+    }
+    if ((value = aRadioUrl.GetValue("spi-cs-delay")))
+    {
+        spiCsDelay = static_cast<uint16_t>(atoi(value));
+    }
+    if ((value = aRadioUrl.GetValue("spi-align-allowance")))
+    {
+        spiAlignAllowance = static_cast<uint8_t>(atoi(value));
+    }
+    if ((value = aRadioUrl.GetValue("spi-small-packet")))
+    {
+        spiSmallPacketSize = static_cast<uint8_t>(atoi(value));
+    }
+
+    VerifyOrDie(spiAlignAllowance <= kSpiAlignAllowanceMax, OT_EXIT_FAILURE);
+
+    mSpiResetDelay      = spiResetDelay;
+    mSpiCsDelayUs       = spiCsDelay;
+    mSpiSmallPacketSize = spiSmallPacketSize;
+    mSpiAlignAllowance  = spiAlignAllowance;
+
+    if (spiGpioIntDevice != nullptr)
     {
         // If the interrupt pin is not set, SPI interface will use polling mode.
-        InitIntPin(aPlatformConfig.mSpiGpioIntDevice, aPlatformConfig.mSpiGpioIntLine);
+        InitIntPin(spiGpioIntDevice, spiGpioIntLine);
     }
     else
     {
         otLogNotePlat("SPI interface enters polling mode.");
     }
 
-    InitResetPin(aPlatformConfig.mSpiGpioResetDevice, aPlatformConfig.mSpiGpioResetLine);
-    InitSpiDev(aPlatformConfig.mRadioFile, aPlatformConfig.mSpiMode, aPlatformConfig.mSpiSpeed);
+    InitResetPin(spiGpioResetDevice, spiGpioResetLine);
+    InitSpiDev(aRadioUrl.GetPath(), spiMode, spiSpeed);
 
     // Reset RCP chip.
-    TrigerReset();
+    TriggerReset();
 
     // Waiting for the RCP chip starts up.
-    usleep(static_cast<useconds_t>(aPlatformConfig.mSpiResetDelay) * kUsecPerMsec);
+    usleep(static_cast<useconds_t>(spiResetDelay) * kUsecPerMsec);
 
     return OT_ERROR_NONE;
 }
@@ -210,7 +285,7 @@ void SpiInterface::InitResetPin(const char *aCharDev, uint8_t aLine)
 
     otLogDebgPlat("InitResetPin: charDev=%s, line=%" PRIu8, aCharDev, aLine);
 
-    VerifyOrDie((aCharDev != NULL) && (aLine < GPIOHANDLES_MAX), OT_EXIT_INVALID_ARGUMENTS);
+    VerifyOrDie((aCharDev != nullptr) && (aLine < GPIOHANDLES_MAX), OT_EXIT_INVALID_ARGUMENTS);
     VerifyOrDie((fd = open(aCharDev, O_RDWR)) != -1, OT_EXIT_ERROR_ERRNO);
     mResetGpioValueFd = SetupGpioHandle(fd, aLine, GPIOHANDLE_REQUEST_OUTPUT, label);
 
@@ -224,7 +299,7 @@ void SpiInterface::InitIntPin(const char *aCharDev, uint8_t aLine)
 
     otLogDebgPlat("InitIntPin: charDev=%s, line=%" PRIu8, aCharDev, aLine);
 
-    VerifyOrDie((aCharDev != NULL) && (aLine < GPIOHANDLES_MAX), OT_EXIT_INVALID_ARGUMENTS);
+    VerifyOrDie((aCharDev != nullptr) && (aLine < GPIOHANDLES_MAX), OT_EXIT_INVALID_ARGUMENTS);
     VerifyOrDie((fd = open(aCharDev, O_RDWR)) != -1, OT_EXIT_ERROR_ERRNO);
 
     mIntGpioValueFd = SetupGpioEvent(fd, aLine, GPIOHANDLE_REQUEST_INPUT, GPIOEVENT_REQUEST_FALLING_EDGE, label);
@@ -239,7 +314,7 @@ void SpiInterface::InitSpiDev(const char *aPath, uint8_t aMode, uint32_t aSpeed)
 
     otLogDebgPlat("InitSpiDev: path=%s, mode=%" PRIu8 ", speed=%" PRIu32, aPath, aMode, aSpeed);
 
-    VerifyOrDie((aPath != NULL) && (aMode <= kSpiModeMax), OT_EXIT_INVALID_ARGUMENTS);
+    VerifyOrDie((aPath != nullptr) && (aMode <= kSpiModeMax), OT_EXIT_INVALID_ARGUMENTS);
     VerifyOrDie((fd = open(aPath, O_RDWR | O_CLOEXEC)) != -1, OT_EXIT_ERROR_ERRNO);
     VerifyOrExit(ioctl(fd, SPI_IOC_WR_MODE, &aMode) != -1, LogError("ioctl(SPI_IOC_WR_MODE)"));
     VerifyOrExit(ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &aSpeed) != -1, LogError("ioctl(SPI_IOC_WR_MAX_SPEED_HZ)"));
@@ -258,7 +333,7 @@ exit:
     }
 }
 
-void SpiInterface::TrigerReset(void)
+void SpiInterface::TriggerReset(void)
 {
     // Set Reset pin to low level.
     SetGpioValue(mResetGpioValueFd, 0);
@@ -401,7 +476,7 @@ otError SpiInterface::PushPullSpi(void)
     SuccessOrExit(error = mRxFrameBuffer.SetSkipLength(kSpiFrameHeaderSize));
 
     // Check whether the remaining frame buffer has enough space to store the data to be received.
-    VerifyOrExit(mRxFrameBuffer.GetFrameMaxLength() >= spiTransferBytes + mSpiAlignAllowance, OT_NOOP);
+    VerifyOrExit(mRxFrameBuffer.GetFrameMaxLength() >= spiTransferBytes + mSpiAlignAllowance);
 
     // Point to the start of the reserved buffer.
     spiRxFrameBuffer = mRxFrameBuffer.GetFrame() - kSpiFrameHeaderSize;
@@ -724,7 +799,7 @@ otError SpiInterface::WaitForFrame(uint64_t aTimeoutUs)
         timeout = spiTimeout;
     }
 
-    ret = select(mIntGpioValueFd + 1, &readFdSet, NULL, NULL, &timeout);
+    ret = select(mIntGpioValueFd + 1, &readFdSet, nullptr, nullptr, &timeout);
 
     if (ret > 0 && FD_ISSET(mIntGpioValueFd, &readFdSet))
     {

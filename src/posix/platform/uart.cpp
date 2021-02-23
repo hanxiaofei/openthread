@@ -43,6 +43,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <openthread/platform/misc.h>
 #include <openthread/platform/uart.h>
 
 #include "common/code_utils.hpp"
@@ -56,7 +57,7 @@ static int sSessionSocket = -1;
 #endif
 
 static bool           sEnabled     = false;
-static const uint8_t *sWriteBuffer = NULL;
+static const uint8_t *sWriteBuffer = nullptr;
 static uint16_t       sWriteLength = 0;
 
 otError otPlatUartEnable(void)
@@ -67,7 +68,7 @@ otError otPlatUartEnable(void)
     int                ret;
 
     // This allows implementing pseudo reset.
-    VerifyOrExit(sUartSocket == -1, OT_NOOP);
+    VerifyOrExit(sUartSocket == -1);
 
     sUartSocket = SocketWithCloseExec(AF_UNIX, SOCK_STREAM, 0, kSocketNonBlock);
 
@@ -137,6 +138,12 @@ otError otPlatUartDisable(void)
         sUartSocket = -1;
     }
 
+    if (gPlatResetReason != OT_PLAT_RESET_REASON_SOFTWARE)
+    {
+        otLogCritPlat("Removing daemon socket: %s", OPENTHREAD_POSIX_DAEMON_SOCKET_NAME);
+        (void)unlink(OPENTHREAD_POSIX_DAEMON_SOCKET_NAME);
+    }
+
     if (sUartLock != -1)
     {
         (void)flock(sUartLock, LOCK_UN);
@@ -162,16 +169,11 @@ exit:
     return error;
 }
 
-otError otPlatUartFlush(void)
-{
-    return OT_ERROR_NOT_IMPLEMENTED;
-}
-
 void platformUartUpdateFdSet(fd_set *aReadFdSet, fd_set *aWriteFdSet, fd_set *aErrorFdSet, int *aMaxFd)
 {
-    VerifyOrExit(sEnabled, OT_NOOP);
+    VerifyOrExit(sEnabled);
 
-    if (aReadFdSet != NULL)
+    if (aReadFdSet != nullptr)
     {
 #if OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE
         int fd = (sSessionSocket == -1 ? sUartSocket : sSessionSocket);
@@ -181,17 +183,17 @@ void platformUartUpdateFdSet(fd_set *aReadFdSet, fd_set *aWriteFdSet, fd_set *aE
 
         FD_SET(fd, aReadFdSet);
 
-        if (aErrorFdSet != NULL)
+        if (aErrorFdSet != nullptr)
         {
             FD_SET(fd, aErrorFdSet);
         }
 
-        if (aMaxFd != NULL && *aMaxFd < fd)
+        if (aMaxFd != nullptr && *aMaxFd < fd)
         {
             *aMaxFd = fd;
         }
     }
-    if ((aWriteFdSet != NULL) && (sWriteLength > 0))
+    if ((aWriteFdSet != nullptr) && (sWriteLength > 0))
     {
 #if OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE
         int fd = (sSessionSocket == -1 ? sUartSocket : sSessionSocket);
@@ -201,12 +203,12 @@ void platformUartUpdateFdSet(fd_set *aReadFdSet, fd_set *aWriteFdSet, fd_set *aE
 
         FD_SET(fd, aWriteFdSet);
 
-        if (aErrorFdSet != NULL)
+        if (aErrorFdSet != nullptr)
         {
             FD_SET(fd, aErrorFdSet);
         }
 
-        if (aMaxFd != NULL && *aMaxFd < fd)
+        if (aMaxFd != nullptr && *aMaxFd < fd)
         {
             *aMaxFd = fd;
         }
@@ -216,12 +218,102 @@ exit:
     return;
 }
 
+#if OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE
+static void InitializeSessionSocket(void)
+{
+    int newSessionSocket;
+    int rval;
+
+    VerifyOrExit((newSessionSocket = accept(sUartSocket, nullptr, nullptr)) != -1, rval = -1);
+
+    VerifyOrExit((rval = fcntl(newSessionSocket, F_GETFD, 0)) != -1);
+
+    rval |= FD_CLOEXEC;
+
+    VerifyOrExit((rval = fcntl(newSessionSocket, F_SETFD, rval)) != -1);
+
+#ifndef __linux__
+    // some platforms (macOS, Solaris) don't have MSG_NOSIGNAL
+    // SOME of those (macOS, but NOT Solaris) support SO_NOSIGPIPE
+    // if we have SO_NOSIGPIPE, then set it. Otherwise, we're going
+    // to simply ignore it.
+#if defined(SO_NOSIGPIPE)
+    rval = setsockopt(newSessionSocket, SOL_SOCKET, SO_NOSIGPIPE, &rval, sizeof(rval));
+    VerifyOrExit(rval != -1);
+#else
+#warning "no support for MSG_NOSIGNAL or SO_NOSIGPIPE"
+#endif
+#endif // __linux__
+
+    if (sSessionSocket != -1)
+    {
+        close(sSessionSocket);
+    }
+    sSessionSocket = newSessionSocket;
+
+exit:
+    if (rval == -1)
+    {
+        otLogWarnPlat("Failed to initialize session socket: %s", strerror(errno));
+        if (newSessionSocket != -1)
+        {
+            close(newSessionSocket);
+        }
+    }
+    else
+    {
+        otLogInfoPlat("Session socket is ready", strerror(errno));
+    }
+}
+#endif
+
+static otError UartWrite(int aFd)
+{
+    otError error = OT_ERROR_NONE;
+    ssize_t rval;
+
+    VerifyOrExit(sWriteLength > 0, error = OT_ERROR_INVALID_STATE);
+
+#if OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE && defined(__linux__)
+    if (aFd == sSessionSocket)
+    {
+        // Don't die on SIGPIPE
+        rval = send(aFd, sWriteBuffer, sWriteLength, MSG_NOSIGNAL);
+    }
+    else
+#endif // OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE && defined(__linux__)
+    {
+        rval = write(aFd, sWriteBuffer, sWriteLength);
+    }
+
+    if (rval < 0)
+    {
+#if OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE
+        otLogWarnPlat("UART write: %s", strerror(errno));
+        if (aFd == sSessionSocket)
+        {
+            close(sSessionSocket);
+            sSessionSocket = -1;
+        }
+        ExitNow();
+#else
+        DieNow(OT_EXIT_ERROR_ERRNO);
+#endif
+    }
+
+    sWriteBuffer += rval;
+    sWriteLength -= static_cast<uint16_t>(rval);
+
+exit:
+    return error;
+}
+
 void platformUartProcess(const fd_set *aReadFdSet, const fd_set *aWriteFdSet, const fd_set *aErrorFdSet)
 {
     ssize_t rval;
     int     fd;
 
-    VerifyOrExit(sEnabled, OT_NOOP);
+    VerifyOrExit(sEnabled);
 #if OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE
     if (FD_ISSET(sUartSocket, aErrorFdSet))
     {
@@ -229,18 +321,18 @@ void platformUartProcess(const fd_set *aReadFdSet, const fd_set *aWriteFdSet, co
     }
     else if (FD_ISSET(sUartSocket, aReadFdSet))
     {
-        sSessionSocket = accept(sUartSocket, NULL, NULL);
+        InitializeSessionSocket();
     }
 
-    if (sSessionSocket == -1 && sWriteBuffer != NULL)
+    if (sSessionSocket == -1 && sWriteBuffer != nullptr)
     {
         IgnoreReturnValue(write(STDERR_FILENO, sWriteBuffer, sWriteLength));
-        sWriteBuffer = NULL;
+        sWriteBuffer = nullptr;
         sWriteLength = 0;
         otPlatUartSendDone();
     }
 
-    VerifyOrExit(sSessionSocket != -1, OT_NOOP);
+    VerifyOrExit(sSessionSocket != -1);
 
     if (FD_ISSET(sSessionSocket, aErrorFdSet))
     {
@@ -248,7 +340,7 @@ void platformUartProcess(const fd_set *aReadFdSet, const fd_set *aWriteFdSet, co
         sSessionSocket = -1;
     }
 
-    VerifyOrExit(sSessionSocket != -1, OT_NOOP);
+    VerifyOrExit(sSessionSocket != -1);
 
     fd = sSessionSocket;
 #else  // OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE
@@ -295,26 +387,11 @@ void platformUartProcess(const fd_set *aReadFdSet, const fd_set *aWriteFdSet, co
     fd = STDOUT_FILENO;
 #endif
 
-    if ((sWriteLength > 0) && (FD_ISSET(fd, aWriteFdSet)))
+    if ((FD_ISSET(fd, aWriteFdSet)))
     {
-        rval = write(fd, sWriteBuffer, sWriteLength);
+        otError error = UartWrite(fd);
 
-        if (rval < 0)
-        {
-#if OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE
-            perror("UART write");
-            close(sSessionSocket);
-            sSessionSocket = -1;
-            ExitNow();
-#else
-            DieNowWithMessage("UART write", OT_EXIT_ERROR_ERRNO);
-#endif
-        }
-
-        VerifyOrExit(rval > 0, OT_NOOP);
-
-        sWriteBuffer += (uint16_t)rval;
-        sWriteLength -= (uint16_t)rval;
+        VerifyOrExit(error == OT_ERROR_NONE, otLogWarnPlat("UART write: %s", otThreadErrorToString(error)));
 
         if (sWriteLength == 0)
         {
@@ -324,4 +401,50 @@ void platformUartProcess(const fd_set *aReadFdSet, const fd_set *aWriteFdSet, co
 
 exit:
     return;
+}
+
+otError otPlatUartFlush(void)
+{
+    otError error = OT_ERROR_NONE;
+
+    while (sWriteLength > 0)
+    {
+        int fd =
+#if OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE
+            sSessionSocket != -1 ? sSessionSocket :
+#endif
+                                 STDOUT_FILENO;
+        int rval;
+
+        fd_set writeFdSet;
+        FD_ZERO(&writeFdSet);
+        FD_SET(fd, &writeFdSet);
+
+        rval = select(fd + 1, nullptr, &writeFdSet, nullptr, nullptr);
+
+        assert(rval != 0);
+
+        if (rval > 0)
+        {
+            assert(FD_ISSET(fd, &writeFdSet));
+            SuccessOrExit(error = UartWrite(fd));
+        }
+        else if (errno != EINTR)
+        {
+#if OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE
+            if (sSessionSocket == fd)
+            {
+                close(sSessionSocket);
+                sSessionSocket = -1;
+            }
+            else
+#endif
+            {
+                DieNow(OT_EXIT_ERROR_ERRNO);
+            }
+        }
+    }
+
+exit:
+    return error;
 }

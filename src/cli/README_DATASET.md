@@ -37,9 +37,9 @@ The Pending Operational Dataset is used to communicate changes to the Active Ope
    > dataset
    Active Timestamp: 1
    Channel: 13
-   Channel Mask: 07fff800
+   Channel Mask: 0x07fff800
    Ext PAN ID: d63e8e3e495ebbc3
-   Mesh Local Prefix: fd3d:b50b:f96d:722d/64
+   Mesh Local Prefix: fd3d:b50b:f96d:722d::/64
    Master Key: dfd34f0f05cad978ec4e32b0413038ff
    Network Name: OpenThread-8f28
    PAN ID: 0x8f28
@@ -96,9 +96,9 @@ After the device successfully attaches to a Thread network, the device will retr
    > dataset active
    Active Timestamp: 1
    Channel: 13
-   Channel Mask: 07fff800
+   Channel Mask: 0x07fff800
    Ext PAN ID: d63e8e3e495ebbc3
-   Mesh Local Prefix: fd3d:b50b:f96d:722d/64
+   Mesh Local Prefix: fd3d:b50b:f96d:722d::/64
    Master Key: dfd34f0f05cad978ec4e32b0413038ff
    Network Name: OpenThread-8f28
    PAN ID: 0x8f28
@@ -165,17 +165,17 @@ Done
 
 ### active
 
-Usage: `dataset active`
+Usage: `dataset active [-x]`
 
-Print Active Operational Dataset.
+Print Active Operational Dataset in human-readable form.
 
 ```bash
 > dataset active
 Active Timestamp: 1
 Channel: 13
-Channel Mask: 07fff800
+Channel Mask: 0x07fff800
 Ext PAN ID: d63e8e3e495ebbc3
-Mesh Local Prefix: fd3d:b50b:f96d:722d/64
+Mesh Local Prefix: fd3d:b50b:f96d:722d::/64
 Master Key: dfd34f0f05cad978ec4e32b0413038ff
 Network Name: OpenThread-8f28
 PAN ID: 0x8f28
@@ -184,9 +184,25 @@ Security Policy: 0, onrcb
 Done
 ```
 
+Print Active Operational Dataset as hex-encoded TLVs.
+
+```bash
+> dataset active -x
+0e080000000000010000000300001035060004001fffe002084eb74ab03c56e6d00708fdc7fe165c83a67805108e2104f183e698da87e96efc1e45aa51030f4f70656e5468726561642d383631310102861104108d6273023d82c841eff0e68db86f35740c030000ff
+Done
+```
+
 ### activetimestamp
 
-Usage: `dataset activetimestamp <timestamp>`
+Usage: `dataset activetimestamp [timestamp]`
+
+Get active timestamp.
+
+```bash
+> dataset activetimestamp
+123456789
+Done
+```
 
 Set active timestamp.
 
@@ -197,7 +213,15 @@ Done
 
 ### channel
 
-Usage: `channel <channel>`
+Usage: `channel [channel]`
+
+Get channel.
+
+```bash
+> dataset channel
+12
+Done
+```
 
 Set channel.
 
@@ -208,7 +232,15 @@ Done
 
 ### channelmask
 
-Usage: `dataset channelmask <channelmask>`
+Usage: `dataset channelmask [channelmask]`
+
+Get channel mask.
+
+```bash
+> dataset channelmask
+0x07fff800
+Done
+```
 
 Set channel mask.
 
@@ -241,7 +273,15 @@ Done
 
 ### delay
 
-Usage: `dataset delay <delay>`
+Usage: `dataset delay [delay]`
+
+Get delay timer value.
+
+```bash
+> dataset delay
+1000
+Done
+```
 
 Set delay timer value.
 
@@ -252,7 +292,15 @@ Done
 
 ### extpanid
 
-Usage: `dataset extpanid <extpanid>`
+Usage: `dataset extpanid [extpanid]`
+
+Get extended panid.
+
+```bash
+> dataset extpanid
+000db80123456789
+Done
+```
 
 Set extended panid.
 
@@ -276,7 +324,15 @@ Done
 
 ### masterkey
 
-Usage: `dataset masterkey <key>`
+Usage: `dataset masterkey [key]`
+
+Get master key
+
+```bash
+> dataset masterkey
+00112233445566778899aabbccddeeff
+Done
+```
 
 Set master key.
 
@@ -287,7 +343,14 @@ Done
 
 ### meshlocalprefix
 
-Usage: `dataset meshlocalprefix <prefix>`
+Usage: `dataset meshlocalprefix [prefix]`
+
+Get mesh local prefix.
+
+```bash
+> dataset meshlocalprefix fd00:db8:0:0::/64
+Done
+```
 
 Set mesh local prefix.
 
@@ -298,29 +361,37 @@ Done
 
 ### mgmtgetcommand
 
-Usage: `dataset mgmtgetcommand <active|pending> [address <destination>] [TLV list] [binary]`
+Usage: `dataset mgmtgetcommand <active|pending> [address <destination>] [TLV list] [-x]`
 
 Send MGMT_ACTIVE_GET or MGMT_PENDING_GET.
 
 ```bash
-> dataset mgmtgetcommand active address fdde:ad00:beef:0:558:f56b:d688:799 activetimestamp binary 0c030001ff
+> dataset mgmtgetcommand active address fdde:ad00:beef:0:558:f56b:d688:799 activetimestamp -x 0c030001ff
 Done
 ```
 
 ### mgmtsetcommand
 
-Usage: `dataset mgmtsetcommand <active|pending> [TLV Type list] [binary]`
+Usage: `dataset mgmtsetcommand <active|pending> [TLV Type list] [-x]`
 
 Send MGMT_ACTIVE_SET or MGMT_PENDING_SET.
 
 ```bash
-> dataset mgmtsetcommand active activetimestamp 123 binary 0c030001ff
+> dataset mgmtsetcommand active activetimestamp 123 -x 0c030001ff
 Done
 ```
 
 ### networkname
 
-Usage: `dataset networkname <name>`
+Usage: `dataset networkname [name]`
+
+Get network name.
+
+```bash
+> datset networkname
+OpenThread
+Done
+```
 
 Set network name.
 
@@ -333,7 +404,15 @@ Done
 
 ### panid
 
-Usage: `dataset panid <panid>`
+Usage: `dataset panid [panid]`
+
+Get panid.
+
+```bash
+> dataset panid
+0x1234
+Done
+```
 
 Set panid.
 
@@ -344,19 +423,19 @@ Done
 
 ### pending
 
-Usage: `dataset pending`
+Usage: `dataset pending [-x]`
 
-Print Pending Operational Dataset.
+Print Pending Operational Dataset in human-readable form.
 
 ```bash
 > dataset pending
 Pending Timestamp: 2
 Active Timestamp: 15
 Channel: 16
-Channel Mask: 07fff800
+Channel Mask: 0x07fff800
 Delay: 58706
 Ext PAN ID: d63e8e3e495ebbc3
-Mesh Local Prefix: fd3d:b50b:f96d:722d/64
+Mesh Local Prefix: fd3d:b50b:f96d:722d::/64
 Master Key: dfd34f0f05cad978ec4e32b0413038ff
 Network Name: OpenThread-8f28
 PAN ID: 0x8f28
@@ -365,9 +444,25 @@ Security Policy: 0, onrcb
 Done
 ```
 
+Print Pending Operational Dataset as hex-encoded TLVs.
+
+```bash
+> dataset pending -x
+0e080000000000010000000300001035060004001fffe002084eb74ab03c56e6d00708fdc7fe165c83a67805108e2104f183e698da87e96efc1e45aa51030f4f70656e5468726561642d383631310102861104108d6273023d82c841eff0e68db86f35740c030000ff
+Done
+```
+
 ### pendingtimestamp
 
-Usage: `dataset pendingtimestamp <timestamp>`
+Usage: `dataset pendingtimestamp [timestamp]`
+
+Get pending timestamp.
+
+```bash
+> dataset pendingtimestamp
+123456789
+Done
+```
 
 Set pending timestamp.
 
@@ -378,7 +473,17 @@ Done
 
 ### pskc
 
-Usage: `pskc [-p] <key>|<passphrase>`
+Usage: `pskc [-p] [<key>|<passphrase>]`
+
+Get pskc.
+
+```bash
+> dataset pskc
+67c0c203aa0b042bfb5381c47aef4d9e
+Done
+```
+
+Set pskc.
 
 With `-p`(**only for FTD**) generate pskc from \<passphrase\> (UTF-8 encoded) together with network name and extended PAN ID in the dataset buffer if set or values in the current stack if not, otherwise set pskc as \<key\> (hex format).
 
@@ -391,7 +496,15 @@ Done
 
 ### securitypolicy
 
-Usage: `dataset securitypolicy <rotationtime> [onrcb]`
+Usage: `dataset securitypolicy [<rotationtime> [onrcb]]`
+
+Get security policy.
+
+```bash
+> dataset securitypolicy
+672 onrcb
+Done
+```
 
 Set security policy.
 
@@ -403,5 +516,23 @@ Set security policy.
 
 ```bash
 > dataset securitypolicy 672 onrcb
+Done
+```
+
+### set
+
+Usage: `dataset set <active|pending> <dataset>`
+
+Set the Active Operational Dataset using hex-encoded TLVs.
+
+```bash
+dataset set active 0e080000000000010000000300001035060004001fffe002084eb74ab03c56e6d00708fdc7fe165c83a67805108e2104f183e698da87e96efc1e45aa51030f4f70656e5468726561642d383631310102861104108d6273023d82c841eff0e68db86f35740c030000ff
+Done
+```
+
+Set the Pending Operational Dataset using hex-encoded TLVs.
+
+```bash
+dataset set pending 0e080000000000010000000300001035060004001fffe002084eb74ab03c56e6d00708fdc7fe165c83a67805108e2104f183e698da87e96efc1e45aa51030f4f70656e5468726561642d383631310102861104108d6273023d82c841eff0e68db86f35740c030000ff
 Done
 ```

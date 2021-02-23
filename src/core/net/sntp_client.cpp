@@ -1,3 +1,4 @@
+
 /*
  *  Copyright (c) 2018, The OpenThread Authors.
  *  All rights reserved.
@@ -67,8 +68,8 @@ Header::Header(void)
 
 QueryMetadata::QueryMetadata(void)
     : mTransmitTimestamp(0)
-    , mResponseHandler(NULL)
-    , mResponseContext(NULL)
+    , mResponseHandler(nullptr)
+    , mResponseContext(nullptr)
     , mTransmissionTime(0)
     , mDestinationPort(0)
     , mRetransmissionCount(0)
@@ -89,20 +90,19 @@ QueryMetadata::QueryMetadata(otSntpResponseHandler aHandler, void *aContext)
     mDestinationAddress.Clear();
 }
 
-Client::Client(Ip6::Netif &aNetif)
-    : mSocket(aNetif.Get<Ip6::Udp>())
-    , mRetransmissionTimer(aNetif.GetInstance(), &Client::HandleRetransmissionTimer, this)
+Client::Client(Instance &aInstance)
+    : mSocket(aInstance)
+    , mRetransmissionTimer(aInstance, Client::HandleRetransmissionTimer, this)
     , mUnixEra(0)
 {
 }
 
 otError Client::Start(void)
 {
-    otError       error;
-    Ip6::SockAddr addr;
+    otError error;
 
     SuccessOrExit(error = mSocket.Open(&Client::HandleUdpReceive, this));
-    SuccessOrExit(error = mSocket.Bind(addr));
+    SuccessOrExit(error = mSocket.Bind());
 
 exit:
     return error;
@@ -115,7 +115,7 @@ otError Client::Stop(void)
     QueryMetadata queryMetadata;
 
     // Remove all pending queries.
-    while (message != NULL)
+    while (message != nullptr)
     {
         messageToRemove = message;
         message         = message->GetNext();
@@ -131,17 +131,17 @@ otError Client::Query(const otSntpQuery *aQuery, otSntpResponseHandler aHandler,
 {
     otError                 error;
     QueryMetadata           queryMetadata(aHandler, aContext);
-    Message *               message     = NULL;
-    Message *               messageCopy = NULL;
+    Message *               message     = nullptr;
+    Message *               messageCopy = nullptr;
     Header                  header;
     const Ip6::MessageInfo *messageInfo;
 
-    VerifyOrExit(aQuery->mMessageInfo != NULL, error = OT_ERROR_INVALID_ARGS);
+    VerifyOrExit(aQuery->mMessageInfo != nullptr, error = OT_ERROR_INVALID_ARGS);
 
     // Originate timestamp is used only as a unique token.
     header.SetTransmitTimestampSeconds(TimerMilli::GetNow().GetValue() / 1000 + kTimeAt1970);
 
-    VerifyOrExit((message = NewMessage(header)) != NULL, error = OT_ERROR_NO_BUFS);
+    VerifyOrExit((message = NewMessage(header)) != nullptr, error = OT_ERROR_NO_BUFS);
 
     messageInfo = static_cast<const Ip6::MessageInfo *>(aQuery->mMessageInfo);
 
@@ -152,7 +152,7 @@ otError Client::Query(const otSntpQuery *aQuery, otSntpResponseHandler aHandler,
     queryMetadata.mDestinationAddress  = messageInfo->GetPeerAddr();
     queryMetadata.mRetransmissionCount = 0;
 
-    VerifyOrExit((messageCopy = CopyAndEnqueueMessage(*message, queryMetadata)) != NULL, error = OT_ERROR_NO_BUFS);
+    VerifyOrExit((messageCopy = CopyAndEnqueueMessage(*message, queryMetadata)) != nullptr, error = OT_ERROR_NO_BUFS);
     SuccessOrExit(error = SendMessage(*message, *messageInfo));
 
 exit:
@@ -175,11 +175,11 @@ exit:
 
 Message *Client::NewMessage(const Header &aHeader)
 {
-    Message *message = NULL;
+    Message *message = nullptr;
 
-    VerifyOrExit((message = mSocket.NewMessage(sizeof(aHeader))) != NULL, OT_NOOP);
-    IgnoreError(message->Prepend(&aHeader, sizeof(aHeader)));
-    IgnoreError(message->SetOffset(0));
+    VerifyOrExit((message = mSocket.NewMessage(sizeof(aHeader))) != nullptr);
+    IgnoreError(message->Prepend(aHeader));
+    message->SetOffset(0);
 
 exit:
     return message;
@@ -188,33 +188,27 @@ exit:
 Message *Client::CopyAndEnqueueMessage(const Message &aMessage, const QueryMetadata &aQueryMetadata)
 {
     otError  error       = OT_ERROR_NONE;
-    Message *messageCopy = NULL;
+    Message *messageCopy = nullptr;
 
     // Create a message copy for further retransmissions.
-    VerifyOrExit((messageCopy = aMessage.Clone()) != NULL, error = OT_ERROR_NO_BUFS);
+    VerifyOrExit((messageCopy = aMessage.Clone()) != nullptr, error = OT_ERROR_NO_BUFS);
 
     // Append the copy with retransmission data and add it to the queue.
     SuccessOrExit(error = aQueryMetadata.AppendTo(*messageCopy));
-    IgnoreError(mPendingQueries.Enqueue(*messageCopy));
+    mPendingQueries.Enqueue(*messageCopy);
 
     mRetransmissionTimer.FireAtIfEarlier(aQueryMetadata.mTransmissionTime);
 
 exit:
-
-    if (error != OT_ERROR_NONE && messageCopy != NULL)
-    {
-        messageCopy->Free();
-        messageCopy = NULL;
-    }
-
+    FreeAndNullMessageOnError(messageCopy, error);
     return messageCopy;
 }
 
 void Client::DequeueMessage(Message &aMessage)
 {
-    IgnoreError(mPendingQueries.Dequeue(aMessage));
+    mPendingQueries.Dequeue(aMessage);
 
-    if (mRetransmissionTimer.IsRunning() && (mPendingQueries.GetHead() == NULL))
+    if (mRetransmissionTimer.IsRunning() && (mPendingQueries.GetHead() == nullptr))
     {
         // No more requests pending, stop the timer.
         mRetransmissionTimer.Stop();
@@ -229,26 +223,24 @@ otError Client::SendMessage(Message &aMessage, const Ip6::MessageInfo &aMessageI
     return mSocket.SendTo(aMessage, aMessageInfo);
 }
 
-otError Client::SendCopy(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo)
+void Client::SendCopy(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo)
 {
     otError  error;
-    Message *messageCopy = NULL;
+    Message *messageCopy = nullptr;
 
     // Create a message copy for lower layers.
-    VerifyOrExit((messageCopy = aMessage.Clone(aMessage.GetLength() - sizeof(QueryMetadata))) != NULL,
+    VerifyOrExit((messageCopy = aMessage.Clone(aMessage.GetLength() - sizeof(QueryMetadata))) != nullptr,
                  error = OT_ERROR_NO_BUFS);
 
     // Send the copy.
     SuccessOrExit(error = SendMessage(*messageCopy, aMessageInfo));
 
 exit:
-
-    if (error != OT_ERROR_NONE && messageCopy != NULL)
+    if (error != OT_ERROR_NONE)
     {
-        messageCopy->Free();
+        FreeMessage(messageCopy);
+        otLogWarnIp6("Failed to send SNTP request: %s", otThreadErrorToString(error));
     }
-
-    return error;
 }
 
 Message *Client::FindRelatedQuery(const Header &aResponseHeader, QueryMetadata &aQueryMetadata)
@@ -256,7 +248,7 @@ Message *Client::FindRelatedQuery(const Header &aResponseHeader, QueryMetadata &
     Header   header;
     Message *message = mPendingQueries.GetHead();
 
-    while (message != NULL)
+    while (message != nullptr)
     {
         // Read originate timestamp.
         aQueryMetadata.ReadFrom(*message);
@@ -280,7 +272,7 @@ void Client::FinalizeSntpTransaction(Message &            aQuery,
 {
     DequeueMessage(aQuery);
 
-    if (aQueryMetadata.mResponseHandler != NULL)
+    if (aQueryMetadata.mResponseHandler != nullptr)
     {
         aQueryMetadata.mResponseHandler(aQueryMetadata.mResponseContext, aTime, aResult);
     }
@@ -300,7 +292,7 @@ void Client::HandleRetransmissionTimer(void)
     Message *        nextMessage;
     Ip6::MessageInfo messageInfo;
 
-    for (message = mPendingQueries.GetHead(); message != NULL; message = nextMessage)
+    for (message = mPendingQueries.GetHead(); message != nullptr; message = nextMessage)
     {
         nextMessage = message->GetNext();
 
@@ -325,7 +317,7 @@ void Client::HandleRetransmissionTimer(void)
             messageInfo.SetPeerPort(queryMetadata.mDestinationPort);
             messageInfo.SetSockAddr(queryMetadata.mSourceAddress);
 
-            IgnoreError(SendCopy(*message, messageInfo));
+            SendCopy(*message, messageInfo);
         }
 
         if (nextTime > queryMetadata.mTransmissionTime)
@@ -353,13 +345,12 @@ void Client::HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessag
     otError       error = OT_ERROR_NONE;
     Header        responseHeader;
     QueryMetadata queryMetadata;
-    Message *     message  = NULL;
+    Message *     message  = nullptr;
     uint64_t      unixTime = 0;
 
-    VerifyOrExit(aMessage.Read(aMessage.GetOffset(), sizeof(responseHeader), &responseHeader) == sizeof(responseHeader),
-                 OT_NOOP);
+    SuccessOrExit(aMessage.Read(aMessage.GetOffset(), responseHeader));
 
-    VerifyOrExit((message = FindRelatedQuery(responseHeader, queryMetadata)) != NULL, OT_NOOP);
+    VerifyOrExit((message = FindRelatedQuery(responseHeader, queryMetadata)) != nullptr);
 
     // Check if response came from the server.
     VerifyOrExit(responseHeader.GetMode() == Header::kModeServer, error = OT_ERROR_FAILED);
@@ -401,7 +392,7 @@ void Client::HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessag
 
 exit:
 
-    if (message != NULL && error != OT_ERROR_NONE)
+    if (message != nullptr && error != OT_ERROR_NONE)
     {
         FinalizeSntpTransaction(*message, queryMetadata, 0, error);
     }

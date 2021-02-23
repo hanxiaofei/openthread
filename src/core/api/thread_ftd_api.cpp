@@ -37,6 +37,7 @@
 
 #include <openthread/thread_ftd.h>
 
+#include "backbone_router/bbr_manager.hpp"
 #include "common/instance.hpp"
 #include "common/locator-getters.hpp"
 #include "thread/mle_types.hpp"
@@ -109,19 +110,21 @@ void otThreadSetLocalLeaderWeight(otInstance *aInstance, uint8_t aWeight)
     instance.Get<Mle::MleRouter>().SetLeaderWeight(aWeight);
 }
 
-uint32_t otThreadGetLocalLeaderPartitionId(otInstance *aInstance)
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+uint32_t otThreadGetPreferredLeaderPartitionId(otInstance *aInstance)
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    return instance.Get<Mle::MleRouter>().GetLeaderPartitionId();
+    return instance.Get<Mle::MleRouter>().GetPreferredLeaderPartitionId();
 }
 
-void otThreadSetLocalLeaderPartitionId(otInstance *aInstance, uint32_t aPartitionId)
+void otThreadSetPreferredLeaderPartitionId(otInstance *aInstance, uint32_t aPartitionId)
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    return instance.Get<Mle::MleRouter>().SetLeaderPartitionId(aPartitionId);
+    instance.Get<Mle::MleRouter>().SetPreferredLeaderPartitionId(aPartitionId);
 }
+#endif
 
 uint16_t otThreadGetJoinerUdpPort(otInstance *aInstance)
 {
@@ -257,18 +260,18 @@ otError otThreadGetChildInfoById(otInstance *aInstance, uint16_t aChildId, otChi
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    OT_ASSERT(aChildInfo != NULL);
+    OT_ASSERT(aChildInfo != nullptr);
 
-    return instance.Get<Mle::MleRouter>().GetChildInfoById(aChildId, *aChildInfo);
+    return instance.Get<ChildTable>().GetChildInfoById(aChildId, *static_cast<Child::Info *>(aChildInfo));
 }
 
 otError otThreadGetChildInfoByIndex(otInstance *aInstance, uint16_t aChildIndex, otChildInfo *aChildInfo)
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    OT_ASSERT(aChildInfo != NULL);
+    OT_ASSERT(aChildInfo != nullptr);
 
-    return instance.Get<Mle::MleRouter>().GetChildInfoByIndex(aChildIndex, *aChildInfo);
+    return instance.Get<ChildTable>().GetChildInfoByIndex(aChildIndex, *static_cast<Child::Info *>(aChildInfo));
 }
 
 otError otThreadGetChildNextIp6Address(otInstance *               aInstance,
@@ -276,19 +279,25 @@ otError otThreadGetChildNextIp6Address(otInstance *               aInstance,
                                        otChildIp6AddressIterator *aIterator,
                                        otIp6Address *             aAddress)
 {
-    otError                   error    = OT_ERROR_NONE;
-    Instance &                instance = *static_cast<Instance *>(aInstance);
-    Child::Ip6AddressIterator iterator;
-    Ip6::Address *            address;
+    otError      error    = OT_ERROR_NONE;
+    Instance &   instance = *static_cast<Instance *>(aInstance);
+    const Child *child;
 
-    OT_ASSERT(aIterator != NULL && aAddress != NULL);
+    OT_ASSERT(aIterator != nullptr && aAddress != nullptr);
 
-    address = static_cast<Ip6::Address *>(aAddress);
-    iterator.Set(*aIterator);
+    child = instance.Get<ChildTable>().GetChildAtIndex(aChildIndex);
+    VerifyOrExit(child != nullptr, error = OT_ERROR_INVALID_ARGS);
+    VerifyOrExit(child->IsStateValidOrRestoring(), error = OT_ERROR_INVALID_ARGS);
 
-    SuccessOrExit(error = instance.Get<Mle::MleRouter>().GetChildNextIp6Address(aChildIndex, iterator, *address));
+    {
+        Child::AddressIterator iter(*child, *aIterator);
 
-    *aIterator = iterator.Get();
+        VerifyOrExit(!iter.IsDone(), error = OT_ERROR_NOT_FOUND);
+        *aAddress = *iter.GetAddress();
+
+        iter++;
+        *aIterator = iter.GetAsIndex();
+    }
 
 exit:
     return error;
@@ -311,16 +320,16 @@ otError otThreadGetRouterInfo(otInstance *aInstance, uint16_t aRouterId, otRoute
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    OT_ASSERT(aRouterInfo != NULL);
+    OT_ASSERT(aRouterInfo != nullptr);
 
-    return instance.Get<RouterTable>().GetRouterInfo(aRouterId, *aRouterInfo);
+    return instance.Get<RouterTable>().GetRouterInfo(aRouterId, *static_cast<Router::Info *>(aRouterInfo));
 }
 
 otError otThreadGetNextCacheEntry(otInstance *aInstance, otCacheEntryInfo *aEntryInfo, otCacheEntryIterator *aIterator)
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    OT_ASSERT((aIterator != NULL) && (aEntryInfo != NULL));
+    OT_ASSERT((aIterator != nullptr) && (aEntryInfo != nullptr));
 
     return instance.Get<AddressResolver>().GetNextCacheEntry(*aEntryInfo, *aIterator);
 }
@@ -374,7 +383,44 @@ void otThreadRegisterNeighborTableCallback(otInstance *aInstance, otNeighborTabl
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    instance.Get<Mle::MleRouter>().RegisterNeighborTableChangedCallback(aCallback);
+    instance.Get<NeighborTable>().RegisterCallback(aCallback);
 }
+
+void otThreadSetDiscoveryRequestCallback(otInstance *                     aInstance,
+                                         otThreadDiscoveryRequestCallback aCallback,
+                                         void *                           aContext)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+
+    instance.Get<Mle::MleRouter>().SetDiscoveryRequestCallback(aCallback, aContext);
+}
+
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+void otThreadSendAddressNotification(otInstance *              aInstance,
+                                     otIp6Address *            aDestination,
+                                     otIp6Address *            aTarget,
+                                     otIp6InterfaceIdentifier *aMlIid)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+
+    instance.Get<AddressResolver>().SendAddressQueryResponse(static_cast<Ip6::Address &>(*aTarget),
+                                                             static_cast<Ip6::InterfaceIdentifier &>(*aMlIid), nullptr,
+                                                             static_cast<Ip6::Address &>(*aDestination));
+}
+
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_DUA_NDPROXYING_ENABLE
+otError otThreadSendProactiveBackboneNotification(otInstance *              aInstance,
+                                                  otIp6Address *            aTarget,
+                                                  otIp6InterfaceIdentifier *aMlIid,
+                                                  uint32_t                  aTimeSinceLastTransaction)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+
+    return instance.Get<BackboneRouter::Manager>().SendProactiveBackboneNotification(
+        static_cast<Ip6::Address &>(*aTarget), static_cast<Ip6::InterfaceIdentifier &>(*aMlIid),
+        aTimeSinceLastTransaction);
+}
+#endif
+#endif
 
 #endif // OPENTHREAD_FTD

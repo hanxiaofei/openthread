@@ -38,7 +38,7 @@
 #include "common/instance.hpp"
 #include "common/locator-getters.hpp"
 #include "common/timer.hpp"
-#include "crypto/hmac_sha256.hpp"
+#include "crypto/hkdf_sha256.hpp"
 #include "thread/mle_router.hpp"
 #include "thread/thread_netif.hpp"
 
@@ -48,29 +48,17 @@ const uint8_t KeyManager::kThreadString[] = {
     'T', 'h', 'r', 'e', 'a', 'd',
 };
 
-const otMasterKey KeyManager::kDefaultMasterKey = {{
-    0x00,
-    0x11,
-    0x22,
-    0x33,
-    0x44,
-    0x55,
-    0x66,
-    0x77,
-    0x88,
-    0x99,
-    0xaa,
-    0xbb,
-    0xcc,
-    0xdd,
-    0xee,
-    0xff,
-}};
+#if OPENTHREAD_CONFIG_RADIO_LINK_TREL_ENABLE
+const uint8_t KeyManager::kHkdfExtractSaltString[] = {'T', 'h', 'r', 'e', 'a', 'd', 'S', 'e', 'q', 'u', 'e', 'n',
+                                                      'c', 'e', 'M', 'a', 's', 't', 'e', 'r', 'K', 'e', 'y'};
+
+const uint8_t KeyManager::kTrelInfoString[] = {'T', 'h', 'r', 'e', 'a', 'd', 'O', 'v', 'e',
+                                               'r', 'I', 'n', 'f', 'r', 'a', 'K', 'e', 'y'};
+#endif
 
 KeyManager::KeyManager(Instance &aInstance)
     : InstanceLocator(aInstance)
     , mKeySequence(0)
-    , mMacFrameCounter(0)
     , mMleFrameCounter(0)
     , mStoredMacFrameCounter(0)
     , mStoredMleFrameCounter(0)
@@ -78,14 +66,18 @@ KeyManager::KeyManager(Instance &aInstance)
     , mKeyRotationTime(kDefaultKeyRotationTime)
     , mKeySwitchGuardTime(kDefaultKeySwitchGuardTime)
     , mKeySwitchGuardEnabled(false)
-    , mKeyRotationTimer(aInstance, &KeyManager::HandleKeyRotationTimer, this)
+    , mKeyRotationTimer(aInstance, KeyManager::HandleKeyRotationTimer, this)
     , mKekFrameCounter(0)
-    , mSecurityPolicyFlags(0xff)
+    , mSecurityPolicyFlags(kDefaultSecurityPolicyFlags)
     , mIsPskcSet(false)
 {
-    mMasterKey = static_cast<const MasterKey &>(kDefaultMasterKey);
+    otError error = mMasterKey.GenerateRandom();
+
+    OT_ASSERT(error == OT_ERROR_NONE);
+    OT_UNUSED_VARIABLE(error);
+
+    mMacFrameCounters.Reset();
     mPskc.Clear();
-    ComputeKey(mKeySequence, mKey);
 }
 
 void KeyManager::Start(void)
@@ -102,7 +94,7 @@ void KeyManager::Stop(void)
 #if OPENTHREAD_MTD || OPENTHREAD_FTD
 void KeyManager::SetPskc(const Pskc &aPskc)
 {
-    IgnoreError(Get<Notifier>().Update(mPskc, aPskc, OT_CHANGED_PSKC));
+    IgnoreError(Get<Notifier>().Update(mPskc, aPskc, kEventPskcChanged));
     mIsPskcSet = true;
 }
 #endif // OPENTHREAD_MTD || OPENTHREAD_FTD
@@ -112,33 +104,35 @@ otError KeyManager::SetMasterKey(const MasterKey &aKey)
     otError error = OT_ERROR_NONE;
     Router *parent;
 
-    SuccessOrExit(
-        Get<Notifier>().Update(mMasterKey, aKey, OT_CHANGED_MASTER_KEY | OT_CHANGED_THREAD_KEY_SEQUENCE_COUNTER));
-
+    SuccessOrExit(Get<Notifier>().Update(mMasterKey, aKey, kEventMasterKeyChanged));
+    Get<Notifier>().Signal(kEventThreadKeySeqCounterChanged);
     mKeySequence = 0;
-    ComputeKey(mKeySequence, mKey);
+    UpdateKeyMaterial();
 
     // reset parent frame counters
     parent = &Get<Mle::MleRouter>().GetParent();
     parent->SetKeySequence(0);
-    parent->SetLinkFrameCounter(0);
+    parent->GetLinkFrameCounters().Reset();
+    parent->SetLinkAckFrameCounter(0);
     parent->SetMleFrameCounter(0);
 
 #if OPENTHREAD_FTD
     // reset router frame counters
-    for (RouterTable::Iterator iter(GetInstance()); !iter.IsDone(); iter++)
+    for (Router &router : Get<RouterTable>().Iterate())
     {
-        iter.GetRouter()->SetKeySequence(0);
-        iter.GetRouter()->SetLinkFrameCounter(0);
-        iter.GetRouter()->SetMleFrameCounter(0);
+        router.SetKeySequence(0);
+        router.GetLinkFrameCounters().Reset();
+        router.SetLinkAckFrameCounter(0);
+        router.SetMleFrameCounter(0);
     }
 
     // reset child frame counters
-    for (ChildTable::Iterator iter(GetInstance(), Child::kInStateAnyExceptInvalid); !iter.IsDone(); iter++)
+    for (Child &child : Get<ChildTable>().Iterate(Child::kInStateAnyExceptInvalid))
     {
-        iter.GetChild()->SetKeySequence(0);
-        iter.GetChild()->SetLinkFrameCounter(0);
-        iter.GetChild()->SetMleFrameCounter(0);
+        child.SetKeySequence(0);
+        child.GetLinkFrameCounters().Reset();
+        child.SetLinkAckFrameCounter(0);
+        child.SetMleFrameCounter(0);
     }
 #endif
 
@@ -146,7 +140,7 @@ exit:
     return error;
 }
 
-void KeyManager::ComputeKey(uint32_t aKeySequence, uint8_t *aKey)
+void KeyManager::ComputeKeys(uint32_t aKeySequence, HashKeys &aHashKeys)
 {
     Crypto::HmacSha256 hmac;
     uint8_t            keySequenceBytes[sizeof(uint32_t)];
@@ -154,22 +148,60 @@ void KeyManager::ComputeKey(uint32_t aKeySequence, uint8_t *aKey)
     hmac.Start(mMasterKey.m8, sizeof(mMasterKey.m8));
 
     Encoding::BigEndian::WriteUint32(aKeySequence, keySequenceBytes);
-    hmac.Update(keySequenceBytes, sizeof(keySequenceBytes));
-    hmac.Update(kThreadString, sizeof(kThreadString));
+    hmac.Update(keySequenceBytes);
+    hmac.Update(kThreadString);
 
-    hmac.Finish(aKey);
+    hmac.Finish(aHashKeys.mHash);
+}
+
+#if OPENTHREAD_CONFIG_RADIO_LINK_TREL_ENABLE
+void KeyManager::ComputeTrelKey(uint32_t aKeySequence, Mac::Key &aTrelKey)
+{
+    Crypto::HkdfSha256 hkdf;
+    uint8_t            salt[sizeof(uint32_t) + sizeof(kHkdfExtractSaltString)];
+
+    Encoding::BigEndian::WriteUint32(aKeySequence, salt);
+    memcpy(salt + sizeof(uint32_t), kHkdfExtractSaltString, sizeof(kHkdfExtractSaltString));
+
+    hkdf.Extract(salt, sizeof(salt), mMasterKey.m8, sizeof(MasterKey));
+    hkdf.Expand(kTrelInfoString, sizeof(kTrelInfoString), aTrelKey.m8, sizeof(Mac::Key));
+}
+#endif
+
+void KeyManager::UpdateKeyMaterial(void)
+{
+    HashKeys cur;
+#if OPENTHREAD_CONFIG_RADIO_LINK_IEEE_802_15_4_ENABLE
+    HashKeys prev;
+    HashKeys next;
+#endif
+
+    ComputeKeys(mKeySequence, cur);
+    mMleKey = cur.mKeys.mMleKey;
+
+#if OPENTHREAD_CONFIG_RADIO_LINK_IEEE_802_15_4_ENABLE
+    ComputeKeys(mKeySequence - 1, prev);
+    ComputeKeys(mKeySequence + 1, next);
+
+    Get<Mac::SubMac>().SetMacKey(Mac::Frame::kKeyIdMode1, (mKeySequence & 0x7f) + 1, prev.mKeys.mMacKey,
+                                 cur.mKeys.mMacKey, next.mKeys.mMacKey);
+#endif
+
+#if OPENTHREAD_CONFIG_RADIO_LINK_TREL_ENABLE
+    ComputeTrelKey(mKeySequence, mTrelKey);
+#endif
 }
 
 void KeyManager::SetCurrentKeySequence(uint32_t aKeySequence)
 {
-    VerifyOrExit(aKeySequence != mKeySequence, Get<Notifier>().SignalIfFirst(OT_CHANGED_THREAD_KEY_SEQUENCE_COUNTER));
+    VerifyOrExit(aKeySequence != mKeySequence, Get<Notifier>().SignalIfFirst(kEventThreadKeySeqCounterChanged));
 
     if ((aKeySequence == (mKeySequence + 1)) && mKeyRotationTimer.IsRunning())
     {
         if (mKeySwitchGuardEnabled)
         {
             // Check if the guard timer has expired if key rotation is requested.
-            VerifyOrExit(mHoursSinceKeyRotation >= mKeySwitchGuardTime, OT_NOOP);
+            VerifyOrExit(mHoursSinceKeyRotation >= mKeySwitchGuardTime);
             StartKeyRotationTimer();
         }
 
@@ -177,38 +209,72 @@ void KeyManager::SetCurrentKeySequence(uint32_t aKeySequence)
     }
 
     mKeySequence = aKeySequence;
-    ComputeKey(mKeySequence, mKey);
+    UpdateKeyMaterial();
 
-    mMacFrameCounter = 0;
+    mMacFrameCounters.Reset();
     mMleFrameCounter = 0;
 
-    Get<Notifier>().Signal(OT_CHANGED_THREAD_KEY_SEQUENCE_COUNTER);
+    Get<Notifier>().Signal(kEventThreadKeySeqCounterChanged);
 
 exit:
     return;
 }
 
-const uint8_t *KeyManager::GetTemporaryMacKey(uint32_t aKeySequence)
+const Mle::Key &KeyManager::GetTemporaryMleKey(uint32_t aKeySequence)
 {
-    ComputeKey(aKeySequence, mTemporaryKey);
-    return mTemporaryKey + kMacKeyOffset;
+    HashKeys hashKeys;
+
+    ComputeKeys(aKeySequence, hashKeys);
+    mTemporaryMleKey = hashKeys.mKeys.mMleKey;
+
+    return mTemporaryMleKey;
 }
 
-const uint8_t *KeyManager::GetTemporaryMleKey(uint32_t aKeySequence)
+#if OPENTHREAD_CONFIG_RADIO_LINK_TREL_ENABLE
+const Mac::Key &KeyManager::GetTemporaryTrelMacKey(uint32_t aKeySequence)
 {
-    ComputeKey(aKeySequence, mTemporaryKey);
-    return mTemporaryKey;
+    ComputeTrelKey(aKeySequence, mTemporaryTrelKey);
+
+    return mTemporaryTrelKey;
+}
+#endif
+
+void KeyManager::SetAllMacFrameCounters(uint32_t aMacFrameCounter)
+{
+    mMacFrameCounters.SetAll(aMacFrameCounter);
+
+#if OPENTHREAD_CONFIG_RADIO_LINK_IEEE_802_15_4_ENABLE
+    Get<Mac::SubMac>().SetFrameCounter(aMacFrameCounter);
+#endif
 }
 
-void KeyManager::IncrementMacFrameCounter(void)
+#if OPENTHREAD_CONFIG_RADIO_LINK_IEEE_802_15_4_ENABLE
+void KeyManager::MacFrameCounterUpdated(uint32_t aMacFrameCounter)
 {
-    mMacFrameCounter++;
+    mMacFrameCounters.Set154(aMacFrameCounter);
 
-    if (mMacFrameCounter >= mStoredMacFrameCounter)
+    if (mMacFrameCounters.Get154() >= mStoredMacFrameCounter)
     {
         IgnoreError(Get<Mle::MleRouter>().Store());
     }
 }
+#else
+void KeyManager::MacFrameCounterUpdated(uint32_t)
+{
+}
+#endif
+
+#if OPENTHREAD_CONFIG_RADIO_LINK_TREL_ENABLE
+void KeyManager::IncrementTrelMacFrameCounter(void)
+{
+    mMacFrameCounters.IncrementTrel();
+
+    if (mMacFrameCounters.GetTrel() >= mStoredMacFrameCounter)
+    {
+        IgnoreError(Get<Mle::MleRouter>().Store());
+    }
+}
+#endif
 
 void KeyManager::IncrementMleFrameCounter(void)
 {
@@ -246,7 +312,7 @@ exit:
 
 void KeyManager::SetSecurityPolicyFlags(uint8_t aSecurityPolicyFlags)
 {
-    IgnoreError(Get<Notifier>().Update(mSecurityPolicyFlags, aSecurityPolicyFlags, OT_CHANGED_SECURITY_POLICY));
+    IgnoreError(Get<Notifier>().Update(mSecurityPolicyFlags, aSecurityPolicyFlags, kEventSecurityPolicyChanged));
 }
 
 void KeyManager::StartKeyRotationTimer(void)
@@ -277,20 +343,6 @@ void KeyManager::HandleKeyRotationTimer(void)
     {
         SetCurrentKeySequence(mKeySequence + 1);
     }
-}
-
-void KeyManager::GenerateNonce(const Mac::ExtAddress &aAddress,
-                               uint32_t               aFrameCounter,
-                               uint8_t                aSecurityLevel,
-                               uint8_t *              aNonce)
-{
-    memcpy(aNonce, aAddress.m8, sizeof(Mac::ExtAddress));
-    aNonce += sizeof(Mac::ExtAddress);
-
-    Encoding::BigEndian::WriteUint32(aFrameCounter, aNonce);
-    aNonce += sizeof(uint32_t);
-
-    aNonce[0] = aSecurityLevel;
 }
 
 } // namespace ot

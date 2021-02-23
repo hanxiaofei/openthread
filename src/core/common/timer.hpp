@@ -45,6 +45,7 @@
 #include "common/debug.hpp"
 #include "common/linked_list.hpp"
 #include "common/locator.hpp"
+#include "common/non_copyable.hpp"
 #include "common/tasklet.hpp"
 #include "common/time.hpp"
 
@@ -79,12 +80,12 @@ public:
     static const uint32_t kMaxDelay = (Time::kMaxDuration >> 1);
 
     /**
-     * This function pointer is called when the timer expires.
+     * This type defines a function reference which is invoked when the timer expires.
      *
      * @param[in]  aTimer    A reference to the expired timer instance.
      *
      */
-    typedef void (*Handler)(Timer &aTimer);
+    typedef void (&Handler)(Timer &aTimer);
 
     /**
      * This constructor creates a timer instance.
@@ -131,7 +132,7 @@ protected:
      * @retval FALSE If the fire time of this timer object is the same or after aTimer's fire time.
      *
      */
-    bool DoesFireBefore(const Timer &aSecondTimer, Time aNow);
+    bool DoesFireBefore(const Timer &aSecondTimer, Time aNow) const;
 
     void Fired(void) { mHandler(*this); }
 
@@ -175,7 +176,7 @@ public:
      * @param[in]  aDelay      The delay in milliseconds. It must not be longer than `kMaxDelay`.
      *
      */
-    void StartAt(TimeMilli sStartTime, uint32_t aDelay);
+    void StartAt(TimeMilli aStartTime, uint32_t aDelay);
 
     /**
      * This method schedules the timer to fire at a given fire time.
@@ -251,7 +252,7 @@ private:
  * This class implements the base timer scheduler.
  *
  */
-class TimerScheduler : public InstanceLocator
+class TimerScheduler : public InstanceLocator, private NonCopyable
 {
     friend class Timer;
 
@@ -275,7 +276,6 @@ protected:
      */
     explicit TimerScheduler(Instance &aInstance)
         : InstanceLocator(aInstance)
-        , mTimerList()
     {
     }
 
@@ -436,7 +436,7 @@ public:
      * @param[in]  aInstance  A reference to the instance object.
      *
      */
-    TimerMicroScheduler(Instance &aInstance)
+    explicit TimerMicroScheduler(Instance &aInstance)
         : TimerScheduler(aInstance)
     {
     }

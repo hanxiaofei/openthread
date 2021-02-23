@@ -57,21 +57,21 @@ void VerifyPriorityQueueContent(ot::PriorityQueue &aPriorityQueue, int aExpected
     if (aExpectedLength == 0)
     {
         message = aPriorityQueue.GetHead();
-        VerifyOrQuit(message == NULL, "PriorityQueue is not empty when expected len is zero.");
+        VerifyOrQuit(message == nullptr, "PriorityQueue is not empty when expected len is zero.");
 
-        VerifyOrQuit(aPriorityQueue.GetHeadForPriority(ot::Message::kPriorityLow) == NULL,
-                     "GetHeadForPriority() non-NULL when empty");
-        VerifyOrQuit(aPriorityQueue.GetHeadForPriority(ot::Message::kPriorityNormal) == NULL,
-                     "GetHeadForPriority() non-NULL when empty");
-        VerifyOrQuit(aPriorityQueue.GetHeadForPriority(ot::Message::kPriorityHigh) == NULL,
-                     "GetHeadForPriority() non-NULL when empty");
-        VerifyOrQuit(aPriorityQueue.GetHeadForPriority(ot::Message::kPriorityNet) == NULL,
-                     "GetHeadForPriority() non-NULL when empty");
+        VerifyOrQuit(aPriorityQueue.GetHeadForPriority(ot::Message::kPriorityLow) == nullptr,
+                     "GetHeadForPriority() non-nullptr when empty");
+        VerifyOrQuit(aPriorityQueue.GetHeadForPriority(ot::Message::kPriorityNormal) == nullptr,
+                     "GetHeadForPriority() non-nullptr when empty");
+        VerifyOrQuit(aPriorityQueue.GetHeadForPriority(ot::Message::kPriorityHigh) == nullptr,
+                     "GetHeadForPriority() non-nullptr when empty");
+        VerifyOrQuit(aPriorityQueue.GetHeadForPriority(ot::Message::kPriorityNet) == nullptr,
+                     "GetHeadForPriority() non-nullptr when empty");
     }
     else
     {
         // Go through all messages in the queue and verify they match the passed-in messages
-        for (message = aPriorityQueue.GetHead(); message != NULL; message = message->GetNext())
+        for (message = aPriorityQueue.GetHead(); message != nullptr; message = message->GetNext())
         {
             VerifyOrQuit(aExpectedLength != 0, "PriorityQueue contains more entries than expected.");
 
@@ -81,14 +81,16 @@ void VerifyPriorityQueueContent(ot::PriorityQueue &aPriorityQueue, int aExpected
             {
                 for (curPriority--; curPriority != msgArg->GetPriority(); curPriority--)
                 {
-                    // Check the `GetHeadForPriority` is NULL if there are no expected message for this priority level.
+                    // Check the `GetHeadForPriority` is nullptr if there are no expected message for this priority
+                    // level.
                     VerifyOrQuit(
-                        aPriorityQueue.GetHeadForPriority(static_cast<uint8_t>(curPriority)) == NULL,
-                        "PriorityQueue::GetHeadForPriority is non-NULL when no expected msg for this priority.");
+                        aPriorityQueue.GetHeadForPriority(static_cast<ot::Message::Priority>(curPriority)) == nullptr,
+                        "PriorityQueue::GetHeadForPriority is non-nullptr when no expected msg for this priority.");
                 }
 
                 // Check the `GetHeadForPriority`.
-                VerifyOrQuit(aPriorityQueue.GetHeadForPriority(static_cast<uint8_t>(curPriority)) == msgArg,
+                VerifyOrQuit(aPriorityQueue.GetHeadForPriority(static_cast<ot::Message::Priority>(curPriority)) ==
+                                 msgArg,
                              "PriorityQueue::GetHeadForPriority failed.");
             }
 
@@ -100,11 +102,11 @@ void VerifyPriorityQueueContent(ot::PriorityQueue &aPriorityQueue, int aExpected
 
         VerifyOrQuit(aExpectedLength == 0, "PriorityQueue contains less entries than expected.");
 
-        // Check the `GetHeadForPriority` is NULL if there are no expected message for any remaining priority level.
+        // Check the `GetHeadForPriority` is nullptr if there are no expected message for any remaining priority level.
         for (curPriority--; curPriority >= 0; curPriority--)
         {
-            VerifyOrQuit(aPriorityQueue.GetHeadForPriority(static_cast<uint8_t>(curPriority)) == NULL,
-                         "PriorityQueue::GetHeadForPriority is non-NULL when no expected msg for this priority.");
+            VerifyOrQuit(aPriorityQueue.GetHeadForPriority(static_cast<ot::Message::Priority>(curPriority)) == nullptr,
+                         "PriorityQueue::GetHeadForPriority is non-nullptr when no expected msg for this priority.");
         }
     }
 
@@ -123,11 +125,11 @@ void VerifyMsgQueueContent(ot::MessageQueue &aMessageQueue, int aExpectedLength,
     if (aExpectedLength == 0)
     {
         message = aMessageQueue.GetHead();
-        VerifyOrQuit(message == NULL, "MessageQueue is not empty when expected len is zero.");
+        VerifyOrQuit(message == nullptr, "MessageQueue is not empty when expected len is zero.");
     }
     else
     {
-        for (message = aMessageQueue.GetHead(); message != NULL; message = message->GetNext())
+        for (message = aMessageQueue.GetHead(); message != nullptr; message = message->GetNext())
         {
             VerifyOrQuit(aExpectedLength != 0, "MessageQueue contains more entries than expected");
 
@@ -155,7 +157,7 @@ void TestPriorityQueue(void)
     ot::Message *     msgLow[kNumTestMessages];
 
     instance = testInitInstance();
-    VerifyOrQuit(instance != NULL, "Null OpenThread instance");
+    VerifyOrQuit(instance != nullptr, "Null OpenThread instance");
 
     messagePool = &instance->Get<ot::MessagePool>();
 
@@ -163,39 +165,31 @@ void TestPriorityQueue(void)
     for (int i = 0; i < kNumNewPriorityTestMessages; i++)
     {
         msgNet[i] = messagePool->New(ot::Message::kTypeIp6, 0, ot::Message::kPriorityNet);
-        VerifyOrQuit(msgNet[i] != NULL, "Message::New failed");
+        VerifyOrQuit(msgNet[i] != nullptr, "Message::New failed");
         msgHigh[i] = messagePool->New(ot::Message::kTypeIp6, 0, ot::Message::kPriorityHigh);
-        VerifyOrQuit(msgHigh[i] != NULL, "Message::New failed");
+        VerifyOrQuit(msgHigh[i] != nullptr, "Message::New failed");
         msgNor[i] = messagePool->New(ot::Message::kTypeIp6, 0, ot::Message::kPriorityNormal);
-        VerifyOrQuit(msgNor[i] != NULL, "Message::New failed");
+        VerifyOrQuit(msgNor[i] != nullptr, "Message::New failed");
         msgLow[i] = messagePool->New(ot::Message::kTypeIp6, 0, ot::Message::kPriorityLow);
-        VerifyOrQuit(msgLow[i] != NULL, "Message::New failed");
+        VerifyOrQuit(msgLow[i] != nullptr, "Message::New failed");
     }
-
-    // Check the failure case for `New()` for invalid argument.
-    VerifyOrQuit(messagePool->New(ot::Message::kTypeIp6, 0, ot::Message::kNumPriorities) == NULL,
-                 "Message::New() with out of range value did not fail as expected.");
 
     // Use the function "SetPriority()" to allocate messages with different priorities
     for (int i = kNumNewPriorityTestMessages; i < kNumTestMessages; i++)
     {
         msgNet[i] = messagePool->New(ot::Message::kTypeIp6, 0);
-        VerifyOrQuit(msgNet[i] != NULL, "Message::New failed");
+        VerifyOrQuit(msgNet[i] != nullptr, "Message::New failed");
         SuccessOrQuit(msgNet[i]->SetPriority(ot::Message::kPriorityNet), "Message:SetPriority failed");
         msgHigh[i] = messagePool->New(ot::Message::kTypeIp6, 0);
-        VerifyOrQuit(msgHigh[i] != NULL, "Message::New failed");
+        VerifyOrQuit(msgHigh[i] != nullptr, "Message::New failed");
         SuccessOrQuit(msgHigh[i]->SetPriority(ot::Message::kPriorityHigh), "Message:SetPriority failed");
         msgNor[i] = messagePool->New(ot::Message::kTypeIp6, 0);
-        VerifyOrQuit(msgNor[i] != NULL, "Message::New failed");
+        VerifyOrQuit(msgNor[i] != nullptr, "Message::New failed");
         SuccessOrQuit(msgNor[i]->SetPriority(ot::Message::kPriorityNormal), "Message:SetPriority failed");
         msgLow[i] = messagePool->New(ot::Message::kTypeIp6, 0);
-        VerifyOrQuit(msgLow[i] != NULL, "Message::New failed");
+        VerifyOrQuit(msgLow[i] != nullptr, "Message::New failed");
         SuccessOrQuit(msgLow[i]->SetPriority(ot::Message::kPriorityLow), "Message:SetPriority failed");
     }
-
-    // Check the failure case for `SetPriority()` for invalid argument.
-    VerifyOrQuit(msgNet[2]->SetPriority(ot::Message::kNumPriorities) == OT_ERROR_INVALID_ARGS,
-                 "Message::SetPriority() with out of range value did not fail as expected.");
 
     // Check the `GetPriority()`
     for (int i = 0; i < kNumTestMessages; i++)
@@ -210,60 +204,50 @@ void TestPriorityQueue(void)
     VerifyPriorityQueueContent(queue, 0);
 
     // Add msgs in different orders and check the content of queue.
-    SuccessOrQuit(queue.Enqueue(*msgHigh[0]), "PriorityQueue::Enqueue() failed.");
+    queue.Enqueue(*msgHigh[0]);
     VerifyPriorityQueueContent(queue, 1, msgHigh[0]);
-    SuccessOrQuit(queue.Enqueue(*msgHigh[1]), "PriorityQueue::Enqueue() failed.");
+    queue.Enqueue(*msgHigh[1]);
     VerifyPriorityQueueContent(queue, 2, msgHigh[0], msgHigh[1]);
-    SuccessOrQuit(queue.Enqueue(*msgNet[0]), "PriorityQueue::Enqueue() failed.");
+    queue.Enqueue(*msgNet[0]);
     VerifyPriorityQueueContent(queue, 3, msgNet[0], msgHigh[0], msgHigh[1]);
-    SuccessOrQuit(queue.Enqueue(*msgNet[1]), "PriorityQueue::Enqueue() failed.");
+    queue.Enqueue(*msgNet[1]);
     VerifyPriorityQueueContent(queue, 4, msgNet[0], msgNet[1], msgHigh[0], msgHigh[1]);
-    SuccessOrQuit(queue.Enqueue(*msgHigh[2]), "PriorityQueue::Enqueue() failed.");
+    queue.Enqueue(*msgHigh[2]);
     VerifyPriorityQueueContent(queue, 5, msgNet[0], msgNet[1], msgHigh[0], msgHigh[1], msgHigh[2]);
-    SuccessOrQuit(queue.Enqueue(*msgLow[0]), "PriorityQueue::Enqueue() failed.");
+    queue.Enqueue(*msgLow[0]);
     VerifyPriorityQueueContent(queue, 6, msgNet[0], msgNet[1], msgHigh[0], msgHigh[1], msgHigh[2], msgLow[0]);
-    SuccessOrQuit(queue.Enqueue(*msgNor[0]), "PriorityQueue::Enqueue() failed.");
+    queue.Enqueue(*msgNor[0]);
     VerifyPriorityQueueContent(queue, 7, msgNet[0], msgNet[1], msgHigh[0], msgHigh[1], msgHigh[2], msgNor[0],
                                msgLow[0]);
-    SuccessOrQuit(queue.Enqueue(*msgHigh[3]), "PriorityQueue::Enqueue() failed.");
+    queue.Enqueue(*msgHigh[3]);
     VerifyPriorityQueueContent(queue, 8, msgNet[0], msgNet[1], msgHigh[0], msgHigh[1], msgHigh[2], msgHigh[3],
                                msgNor[0], msgLow[0]);
 
     // Remove messages in different order and check the content of queue in each step.
-    SuccessOrQuit(queue.Dequeue(*msgNet[0]), "PriorityQueue::Dequeue() failed.");
+    queue.Dequeue(*msgNet[0]);
     VerifyPriorityQueueContent(queue, 7, msgNet[1], msgHigh[0], msgHigh[1], msgHigh[2], msgHigh[3], msgNor[0],
                                msgLow[0]);
-    SuccessOrQuit(queue.Dequeue(*msgHigh[2]), "PriorityQueue::Dequeue() failed.");
+    queue.Dequeue(*msgHigh[2]);
     VerifyPriorityQueueContent(queue, 6, msgNet[1], msgHigh[0], msgHigh[1], msgHigh[3], msgNor[0], msgLow[0]);
-    SuccessOrQuit(queue.Dequeue(*msgNor[0]), "PriorityQueue::Dequeue() failed.");
+    queue.Dequeue(*msgNor[0]);
     VerifyPriorityQueueContent(queue, 5, msgNet[1], msgHigh[0], msgHigh[1], msgHigh[3], msgLow[0]);
-    SuccessOrQuit(queue.Dequeue(*msgHigh[1]), "PriorityQueue::Dequeue() failed.");
+    queue.Dequeue(*msgHigh[1]);
     VerifyPriorityQueueContent(queue, 4, msgNet[1], msgHigh[0], msgHigh[3], msgLow[0]);
-    SuccessOrQuit(queue.Dequeue(*msgLow[0]), "PriorityQueue::Dequeue() failed.");
+    queue.Dequeue(*msgLow[0]);
     VerifyPriorityQueueContent(queue, 3, msgNet[1], msgHigh[0], msgHigh[3]);
-    SuccessOrQuit(queue.Dequeue(*msgNet[1]), "PriorityQueue::Dequeue() failed.");
+    queue.Dequeue(*msgNet[1]);
     VerifyPriorityQueueContent(queue, 2, msgHigh[0], msgHigh[3]);
-    SuccessOrQuit(queue.Dequeue(*msgHigh[0]), "PriorityQueue::Dequeue() failed.");
+    queue.Dequeue(*msgHigh[0]);
     VerifyPriorityQueueContent(queue, 1, msgHigh[3]);
-    SuccessOrQuit(queue.Dequeue(*msgHigh[3]), "PriorityQueue::Dequeue() failed.");
-    VerifyPriorityQueueContent(queue, 0);
-
-    // Check the failure cases: Enqueuing an already queued message, or dequeuing a message not queued.
-    SuccessOrQuit(queue.Enqueue(*msgNet[0]), "PriorityQueue::Enqueue() failed.");
-    VerifyPriorityQueueContent(queue, 1, msgNet[0]);
-    VerifyOrQuit(queue.Enqueue(*msgNet[0]) == OT_ERROR_ALREADY,
-                 "Enqueuing an already queued message did not fail as expected.");
-    VerifyOrQuit(queue.Dequeue(*msgHigh[0]) == OT_ERROR_NOT_FOUND,
-                 "Dequeuing a message not queued, did not fail as expected.");
-    SuccessOrQuit(queue.Dequeue(*msgNet[0]), "PriorityQueue::Dequeue() failed.");
+    queue.Dequeue(*msgHigh[3]);
     VerifyPriorityQueueContent(queue, 0);
 
     // Change the priority of an already queued message and check the order change in the queue.
-    SuccessOrQuit(queue.Enqueue(*msgNor[0]), "PriorityQueue::Enqueue() failed.");
+    queue.Enqueue(*msgNor[0]);
     VerifyPriorityQueueContent(queue, 1, msgNor[0]);
-    SuccessOrQuit(queue.Enqueue(*msgHigh[0]), "PriorityQueue::Enqueue() failed.");
+    queue.Enqueue(*msgHigh[0]);
     VerifyPriorityQueueContent(queue, 2, msgHigh[0], msgNor[0]);
-    SuccessOrQuit(queue.Enqueue(*msgLow[0]), "PriorityQueue::Enqueue() failed.");
+    queue.Enqueue(*msgLow[0]);
     VerifyPriorityQueueContent(queue, 3, msgHigh[0], msgNor[0], msgLow[0]);
 
     SuccessOrQuit(msgNor[0]->SetPriority(ot::Message::kPriorityNet),
@@ -287,9 +271,9 @@ void TestPriorityQueue(void)
                   "SetPriority failed for an already queued message.");
     VerifyPriorityQueueContent(queue, 3, msgHigh[0], msgNor[0], msgLow[0]);
 
-    SuccessOrQuit(messageQueue.Enqueue(*msgNor[1]), "MessageQueue::Enqueue() failed.");
-    SuccessOrQuit(messageQueue.Enqueue(*msgHigh[1]), "MessageQueue::Enqueue() failed.");
-    SuccessOrQuit(messageQueue.Enqueue(*msgNet[1]), "MessageQueue::Enqueue() failed.");
+    messageQueue.Enqueue(*msgNor[1]);
+    messageQueue.Enqueue(*msgHigh[1]);
+    messageQueue.Enqueue(*msgNet[1]);
     VerifyMsgQueueContent(messageQueue, 3, msgNor[1], msgHigh[1], msgNet[1]);
 
     // Change priority of message and check for not in messageQueue.
@@ -303,19 +287,19 @@ void TestPriorityQueue(void)
     VerifyMsgQueueContent(messageQueue, 3, msgNor[1], msgHigh[1], msgNet[1]);
 
     // Remove messages from the two queues
-    SuccessOrQuit(queue.Dequeue(*msgHigh[0]), "PriorityQueue::Dequeue() failed.");
+    queue.Dequeue(*msgHigh[0]);
     VerifyPriorityQueueContent(queue, 2, msgLow[0], msgNor[0]);
     VerifyMsgQueueContent(messageQueue, 3, msgNor[1], msgHigh[1], msgNet[1]);
 
-    SuccessOrQuit(messageQueue.Dequeue(*msgNet[1]), "MessageQueue::Dequeue() failed.");
+    messageQueue.Dequeue(*msgNet[1]);
     VerifyPriorityQueueContent(queue, 2, msgLow[0], msgNor[0]);
     VerifyMsgQueueContent(messageQueue, 2, msgNor[1], msgHigh[1]);
 
-    SuccessOrQuit(messageQueue.Dequeue(*msgHigh[1]), "MessageQueue::Dequeue() failed.");
+    messageQueue.Dequeue(*msgHigh[1]);
     VerifyPriorityQueueContent(queue, 2, msgLow[0], msgNor[0]);
     VerifyMsgQueueContent(messageQueue, 1, msgNor[1]);
 
-    SuccessOrQuit(queue.Dequeue(*msgLow[0]), "PriorityQueue::Dequeue() failed.");
+    queue.Dequeue(*msgLow[0]);
     VerifyPriorityQueueContent(queue, 1, msgNor[0]);
     VerifyMsgQueueContent(messageQueue, 1, msgNor[1]);
 

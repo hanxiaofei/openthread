@@ -41,6 +41,7 @@
 
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
+#include "common/logging.hpp"
 #include "common/random.hpp"
 #include "crypto/mbedtls.hpp"
 
@@ -63,7 +64,7 @@ RandomManager::RandomManager(void)
 
     OT_ASSERT(sInitCount < 0xffff);
 
-    VerifyOrExit(sInitCount == 0, OT_NOOP);
+    VerifyOrExit(sInitCount == 0);
 
 #if !OPENTHREAD_RADIO
     sEntropy.Init();
@@ -87,7 +88,7 @@ RandomManager::~RandomManager(void)
     OT_ASSERT(sInitCount > 0);
 
     sInitCount--;
-    VerifyOrExit(sInitCount == 0, OT_NOOP);
+    VerifyOrExit(sInitCount == 0);
 
 #if !OPENTHREAD_RADIO
     sCtrDrbg.Deinit();
@@ -126,7 +127,7 @@ uint32_t RandomManager::NonCryptoPrng::GetNext(void)
     uint32_t mlcg, p, q;
     uint64_t tmpstate;
 
-    tmpstate = (uint64_t)33614 * (uint64_t)mState;
+    tmpstate = static_cast<uint64_t>(33614) * static_cast<uint64_t>(mState);
     q        = tmpstate & 0xffffffff;
     q        = q >> 1;
     p        = tmpstate >> 32;
@@ -153,7 +154,7 @@ void RandomManager::Entropy::Init(void)
     mbedtls_entropy_init(&mEntropyContext);
 
 #ifndef OT_MBEDTLS_STRONG_DEFAULT_ENTROPY_PRESENT
-    mbedtls_entropy_add_source(&mEntropyContext, &RandomManager::Entropy::HandleMbedtlsEntropyPoll, NULL,
+    mbedtls_entropy_add_source(&mEntropyContext, &RandomManager::Entropy::HandleMbedtlsEntropyPoll, nullptr,
                                MBEDTLS_ENTROPY_MIN_HARDWARE, MBEDTLS_ENTROPY_SOURCE_STRONG);
 #endif // OT_MBEDTLS_STRONG_DEFAULT_ENTROPY_PRESENT
 }
@@ -175,7 +176,7 @@ int RandomManager::Entropy::HandleMbedtlsEntropyPoll(void *         aData,
     SuccessOrExit(otPlatEntropyGet(reinterpret_cast<uint8_t *>(aOutput), static_cast<uint16_t>(aInLen)));
     rval = 0;
 
-    VerifyOrExit(aOutLen != NULL, OT_NOOP);
+    VerifyOrExit(aOutLen != nullptr);
     *aOutLen = aInLen;
 
 exit:
@@ -190,8 +191,19 @@ exit:
 
 void RandomManager::CryptoCtrDrbg::Init(void)
 {
+    int rval;
+
     mbedtls_ctr_drbg_init(&mCtrDrbg);
-    mbedtls_ctr_drbg_seed(&mCtrDrbg, mbedtls_entropy_func, RandomManager::GetMbedTlsEntropyContext(), NULL, 0);
+
+    rval =
+        mbedtls_ctr_drbg_seed(&mCtrDrbg, mbedtls_entropy_func, RandomManager::GetMbedTlsEntropyContext(), nullptr, 0);
+
+    if (rval != 0)
+    {
+        otLogCritMbedTls("Failed to seed the CTR DRBG");
+    }
+
+    OT_ASSERT(rval == 0);
 }
 
 void RandomManager::CryptoCtrDrbg::Deinit(void)

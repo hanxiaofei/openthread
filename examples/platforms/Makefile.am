@@ -35,15 +35,15 @@ DIST_SUBDIRS                            = \
     cc2538                                \
     cc2650                                \
     cc2652                                \
-    efr32mg12                             \
-    efr32mg13                             \
-    efr32mg21                             \
+    efr32                                 \
     gp712                                 \
-    jn5189                                \
+    k32w                                  \
     kw41z                                 \
     nrf528xx                              \
     simulation                            \
     qpg6095                               \
+    qpg6100                               \
+    qpg7015m                              \
     samr21                                \
     utils                                 \
     $(NULL)
@@ -70,24 +70,16 @@ if OPENTHREAD_PLATFORM_CC2652
 SUBDIRS                                += cc2652
 endif
 
-if OPENTHREAD_PLATFORM_EFR32MG12
-SUBDIRS                                += efr32mg12
-endif
-
-if OPENTHREAD_PLATFORM_EFR32MG13
-SUBDIRS                                += efr32mg13
-endif
-
-if OPENTHREAD_PLATFORM_EFR32MG21
-SUBDIRS                                += efr32mg21
+if OPENTHREAD_PLATFORM_EFR32
+SUBDIRS                                += efr32
 endif
 
 if OPENTHREAD_PLATFORM_GP712
 SUBDIRS                                += gp712
 endif
 
-if OPENTHREAD_PLATFORM_JN5189
-SUBDIRS                                += jn5189
+if OPENTHREAD_PLATFORM_K32W
+SUBDIRS                                += k32w
 endif
 
 if OPENTHREAD_PLATFORM_KW41Z
@@ -106,7 +98,15 @@ if OPENTHREAD_PLATFORM_QPG6095
 SUBDIRS                                += qpg6095
 endif
 
-if OPENTHREAD_PLATFORM_SAMR21
+if OPENTHREAD_PLATFORM_QPG6100
+SUBDIRS                                += qpg6100
+endif
+
+if OPENTHREAD_PLATFORM_QPG7015M
+SUBDIRS                                += qpg7015m
+endif
+
+if OPENTHREAD_EXAMPLES_SAMR21
 SUBDIRS                                += samr21
 endif
 

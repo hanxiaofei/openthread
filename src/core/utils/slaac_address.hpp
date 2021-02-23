@@ -37,8 +37,10 @@
 #include "openthread-core-config.h"
 
 #include "common/locator.hpp"
+#include "common/non_copyable.hpp"
 #include "common/notifier.hpp"
 #include "net/netif.hpp"
+#include "thread/network_data.hpp"
 
 namespace ot {
 namespace Utils {
@@ -56,8 +58,10 @@ namespace Utils {
  * This class implements the SLAAC utility for Thread protocol.
  *
  */
-class Slaac : public InstanceLocator
+class Slaac : public InstanceLocator, private NonCopyable
 {
+    friend class ot::Notifier;
+
 public:
     enum
     {
@@ -115,7 +119,7 @@ public:
      * boolean value from handler determines whether the address is filtered or added (TRUE to filter the address,
      * FALSE to add address).
      *
-     * The filter can be set to `NULL` to disable filtering (i.e., allow SLAAC addresses for all prefixes).
+     * The filter can be set to `nullptr` to disable filtering (i.e., allow SLAAC addresses for all prefixes).
      *
      */
     void SetFilter(otIp6SlaacPrefixFilter aFilter);
@@ -136,9 +140,9 @@ public:
      *
      */
     otError GenerateIid(Ip6::NetifUnicastAddress &aAddress,
-                        uint8_t *                 aNetworkId       = NULL,
+                        uint8_t *                 aNetworkId       = nullptr,
                         uint8_t                   aNetworkIdLength = 0,
-                        uint8_t *                 aDadCounter      = NULL) const;
+                        uint8_t *                 aDadCounter      = nullptr) const;
 
 private:
     enum
@@ -158,15 +162,15 @@ private:
 
     typedef uint8_t UpdateMode;
 
-    bool        ShouldFilter(const otIp6Prefix &aPrefix) const;
+    bool        ShouldFilter(const Ip6::Prefix &aPrefix) const;
     void        Update(UpdateMode aMode);
     void        GetIidSecretKey(IidSecretKey &aKey) const;
-    static void HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags);
-    void        HandleStateChanged(otChangedFlags aFlags);
+    void        HandleNotifierEvents(Events aEvents);
+    static bool DoesConfigMatchNetifAddr(const NetworkData::OnMeshPrefixConfig &aConfig,
+                                         const Ip6::NetifUnicastAddress &       aAddr);
 
     bool                     mEnabled;
     otIp6SlaacPrefixFilter   mFilter;
-    Notifier::Callback       mNotifierCallback;
     Ip6::NetifUnicastAddress mAddresses[OPENTHREAD_CONFIG_IP6_SLAAC_NUM_ADDRESSES];
 };
 

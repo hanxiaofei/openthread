@@ -48,7 +48,6 @@ namespace ot {
 
 AnnounceSenderBase::AnnounceSenderBase(Instance &aInstance, Timer::Handler aHandler)
     : InstanceLocator(aInstance)
-    , mChannelMask()
     , mPeriod(0)
     , mJitter(0)
     , mCount(0)
@@ -57,18 +56,13 @@ AnnounceSenderBase::AnnounceSenderBase(Instance &aInstance, Timer::Handler aHand
 {
 }
 
-otError AnnounceSenderBase::SendAnnounce(Mac::ChannelMask aChannelMask,
-                                         uint8_t          aCount,
-                                         uint32_t         aPeriod,
-                                         uint16_t         aJitter)
+void AnnounceSenderBase::SendAnnounce(Mac::ChannelMask aChannelMask, uint8_t aCount, uint32_t aPeriod, uint16_t aJitter)
 {
-    otError error = OT_ERROR_NONE;
-
-    VerifyOrExit(aPeriod != 0, error = OT_ERROR_INVALID_ARGS);
-    VerifyOrExit(aJitter < aPeriod, error = OT_ERROR_INVALID_ARGS);
+    VerifyOrExit(aPeriod != 0);
+    VerifyOrExit(aJitter < aPeriod);
 
     aChannelMask.Intersect(Get<Mac::Mac>().GetSupportedChannelMask());
-    VerifyOrExit(!aChannelMask.IsEmpty(), error = OT_ERROR_INVALID_ARGS);
+    VerifyOrExit(!aChannelMask.IsEmpty());
 
     mChannelMask = aChannelMask;
     mCount       = aCount;
@@ -78,8 +72,11 @@ otError AnnounceSenderBase::SendAnnounce(Mac::ChannelMask aChannelMask,
 
     mTimer.Start(Random::NonCrypto::AddJitter(mPeriod, mJitter));
 
+    otLogInfoMle("Starting periodic MLE Announcements tx, mask %s, count %u, period %u, jitter %u",
+                 aChannelMask.ToString().AsCString(), aCount, aPeriod, aJitter);
+
 exit:
-    return error;
+    return;
 }
 
 void AnnounceSenderBase::HandleTimer(void)
@@ -93,7 +90,7 @@ void AnnounceSenderBase::HandleTimer(void)
         if (mCount != 0)
         {
             mCount--;
-            VerifyOrExit(mCount != 0, OT_NOOP);
+            VerifyOrExit(mCount != 0);
         }
 
         mChannel = Mac::ChannelMask::kChannelIteratorFirst;
@@ -102,7 +99,7 @@ void AnnounceSenderBase::HandleTimer(void)
 
     OT_ASSERT(error == OT_ERROR_NONE);
 
-    IgnoreError(Get<Mle::MleRouter>().SendAnnounce(mChannel, false));
+    Get<Mle::MleRouter>().SendAnnounce(mChannel, false);
 
     mTimer.Start(Random::NonCrypto::AddJitter(mPeriod, mJitter));
 
@@ -113,8 +110,7 @@ exit:
 #if OPENTHREAD_CONFIG_ANNOUNCE_SENDER_ENABLE
 
 AnnounceSender::AnnounceSender(Instance &aInstance)
-    : AnnounceSenderBase(aInstance, &AnnounceSender::HandleTimer)
-    , mNotifierCallback(aInstance, HandleStateChanged, this)
+    : AnnounceSenderBase(aInstance, AnnounceSender::HandleTimer)
 {
 }
 
@@ -146,7 +142,7 @@ void AnnounceSender::CheckState(void)
         }
 #endif
 
-        // fall through
+        OT_FALL_THROUGH;
 
     case Mle::kRoleDisabled:
     case Mle::kRoleDetached:
@@ -163,12 +159,9 @@ void AnnounceSender::CheckState(void)
         period = kMinTxPeriod;
     }
 
-    VerifyOrExit(!IsRunning() || (period != GetPeriod()) || (GetChannelMask() != channelMask), OT_NOOP);
+    VerifyOrExit(!IsRunning() || (period != GetPeriod()) || (GetChannelMask() != channelMask));
 
-    IgnoreError(SendAnnounce(channelMask, 0, period, kMaxJitter));
-
-    otLogInfoMle("Starting periodic MLE Announcements tx, period %u, mask %s", period,
-                 channelMask.ToString().AsCString());
+    SendAnnounce(channelMask, 0, period, kMaxJitter);
 
 exit:
     return;
@@ -180,14 +173,9 @@ void AnnounceSender::Stop(void)
     otLogInfoMle("Stopping periodic MLE Announcements tx");
 }
 
-void AnnounceSender::HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags)
+void AnnounceSender::HandleNotifierEvents(Events aEvents)
 {
-    aCallback.GetOwner<AnnounceSender>().HandleStateChanged(aFlags);
-}
-
-void AnnounceSender::HandleStateChanged(otChangedFlags aFlags)
-{
-    if ((aFlags & OT_CHANGED_THREAD_ROLE) != 0)
+    if (aEvents.Contains(kEventThreadRoleChanged))
     {
         CheckState();
     }

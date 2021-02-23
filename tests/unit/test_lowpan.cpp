@@ -32,7 +32,6 @@
 #include "test_util.hpp"
 
 using namespace ot;
-using ot::Encoding::BigEndian::HostSwap16;
 
 namespace ot {
 
@@ -79,27 +78,24 @@ void TestIphcVector::GetUncompressedStream(uint8_t *aIp6, uint16_t &aIp6Length)
 
 void TestIphcVector::GetUncompressedStream(Message &aMessage)
 {
-    SuccessOrQuit(aMessage.Append(reinterpret_cast<uint8_t *>(&mIpHeader), sizeof(mIpHeader)),
-                  "6lo: Message::Append failed");
+    SuccessOrQuit(aMessage.Append(mIpHeader), "6lo: Message::Append failed");
 
     if (mExtHeader.mLength)
     {
-        SuccessOrQuit(aMessage.Append(mExtHeader.mData, mExtHeader.mLength), "6lo: Message::Append failed");
+        SuccessOrQuit(aMessage.AppendBytes(mExtHeader.mData, mExtHeader.mLength), "6lo: Message::Append failed");
     }
 
     if (mIpTunneledHeader.GetPayloadLength())
     {
-        SuccessOrQuit(aMessage.Append(reinterpret_cast<uint8_t *>(&mIpTunneledHeader), sizeof(mIpTunneledHeader)),
-                      "6lo: Message::Append failed");
+        SuccessOrQuit(aMessage.Append(mIpTunneledHeader), "6lo: Message::Append failed");
     }
 
     if (mUdpHeader.GetLength())
     {
-        SuccessOrQuit(aMessage.Append(reinterpret_cast<uint8_t *>(&mUdpHeader), sizeof(mUdpHeader)),
-                      "6lo: Message::Append failed");
+        SuccessOrQuit(aMessage.Append(mUdpHeader), "6lo: Message::Append failed");
     }
 
-    SuccessOrQuit(aMessage.Append(mPayload.mData, mPayload.mLength), "6lo: Message::Append failed");
+    SuccessOrQuit(aMessage.AppendBytes(mPayload.mData, mPayload.mLength), "6lo: Message::Append failed");
 }
 
 /**
@@ -129,9 +125,9 @@ static void Init(void)
     };
 
     Message *message = sInstance->Get<MessagePool>().New(Message::kTypeIp6, 0);
-    VerifyOrQuit(message != NULL, "6lo: Ip6::NewMessage failed");
+    VerifyOrQuit(message != nullptr, "6lo: Ip6::NewMessage failed");
 
-    SuccessOrQuit(message->Append(mockNetworkData, sizeof(mockNetworkData)), "6lo: Message::Append failed");
+    SuccessOrQuit(message->AppendBytes(mockNetworkData, sizeof(mockNetworkData)), "6lo: Message::Append failed");
 
     IgnoreError(sInstance->Get<NetworkData::Leader>().SetNetworkData(0, 0, true, *message, 0));
 }
@@ -149,7 +145,7 @@ static void Init(void)
  */
 static void Test(TestIphcVector &aVector, bool aCompress, bool aDecompress)
 {
-    Message *message = NULL;
+    Message *message = nullptr;
     uint8_t  result[512];
     uint8_t  iphc[512];
     uint8_t  ip6[512];
@@ -175,7 +171,7 @@ static void Test(TestIphcVector &aVector, bool aCompress, bool aDecompress)
     {
         Lowpan::BufferWriter buffer(result, 127);
 
-        VerifyOrQuit((message = sInstance->Get<MessagePool>().New(Message::kTypeIp6, 0)) != NULL,
+        VerifyOrQuit((message = sInstance->Get<MessagePool>().New(Message::kTypeIp6, 0)) != nullptr,
                      "6lo: Ip6::NewMessage failed");
 
         aVector.GetUncompressedStream(*message);
@@ -188,7 +184,8 @@ static void Test(TestIphcVector &aVector, bool aCompress, bool aDecompress)
             uint8_t compressBytes = static_cast<uint8_t>(buffer.GetWritePointer() - result);
 
             // Append payload to the LOWPAN_IPHC.
-            message->Read(message->GetOffset(), message->GetLength() - message->GetOffset(), result + compressBytes);
+            message->ReadBytes(message->GetOffset(), result + compressBytes,
+                               message->GetLength() - message->GetOffset());
 
             DumpBuffer("Resulted LOWPAN_IPHC compressed frame", result,
                        compressBytes + message->GetLength() - message->GetOffset());
@@ -199,18 +196,18 @@ static void Test(TestIphcVector &aVector, bool aCompress, bool aDecompress)
         }
 
         message->Free();
-        message = NULL;
+        message = nullptr;
     }
 
     if (aDecompress)
     {
-        VerifyOrQuit((message = sInstance->Get<MessagePool>().New(Message::kTypeIp6, 0)) != NULL,
+        VerifyOrQuit((message = sInstance->Get<MessagePool>().New(Message::kTypeIp6, 0)) != nullptr,
                      "6lo: Ip6::NewMessage failed");
 
         int decompressedBytes =
             sLowpan->Decompress(*message, aVector.mMacSource, aVector.mMacDestination, iphc, iphcLength, 0);
 
-        message->Read(0, message->GetLength(), result);
+        message->ReadBytes(0, result, message->GetLength());
 
         if (aVector.mError == OT_ERROR_NONE)
         {
@@ -232,7 +229,7 @@ static void Test(TestIphcVector &aVector, bool aCompress, bool aDecompress)
         }
 
         message->Free();
-        message = NULL;
+        message = nullptr;
     }
 
     printf("PASS\n\n");
@@ -1745,7 +1742,7 @@ void TestLowpanIphc(void)
 {
     sInstance = testInitInstance();
 
-    VerifyOrQuit(sInstance != NULL, "NULL instance");
+    VerifyOrQuit(sInstance != nullptr, "nullptr instance");
 
     sIp6    = &sInstance->Get<Ip6::Ip6>();
     sLowpan = &sInstance->Get<Lowpan::Lowpan>();

@@ -137,23 +137,16 @@ case ${host_os} in
 
     *darwin*)
         OPENTHREAD_TARGET=darwin
-        OPENTHREAD_TARGET_DEFINES="-DOPENTHREAD_TARGET_DARWIN"
         ;;
 
     *linux*)
         OPENTHREAD_TARGET=linux
-        OPENTHREAD_TARGET_DEFINES="-DOPENTHREAD_TARGET_LINUX"
         ;;
 
 esac
 
-AC_SUBST(OPENTHREAD_TARGET_DARWIN)
 AM_CONDITIONAL([OPENTHREAD_TARGET_DARWIN], [test "${OPENTHREAD_TARGET}" = "darwin"])
-
-AC_SUBST(OPENTHREAD_TARGET_LINUX)
 AM_CONDITIONAL([OPENTHREAD_TARGET_LINUX], [test "${OPENTHREAD_TARGET}" = "linux"])
-
-AC_SUBST(OPENTHREAD_TARGET_DEFINES)
 
 #
 # Checks for build host programs
@@ -234,7 +227,7 @@ AC_PROG_LIBTOOL
 #
 
 PROSPECTIVE_CFLAGS="-Wall -Wextra -Wshadow -Wundef -Wcast-align -Werror -Wno-error=undef -std=c99 -pedantic-errors"
-PROSPECTIVE_CXXFLAGS="-Wall -Wextra -Wshadow -Wundef -Wcast-align -Werror -Wno-error=undef -std=gnu++98 -Wno-c++14-compat -fno-exceptions"
+PROSPECTIVE_CXXFLAGS="-Wall -Wextra -Wshadow -Wundef -Wcast-align -Werror -Wno-error=undef -std=c++11 -Wno-c++14-compat -fno-exceptions -pedantic-errors"
 
 AC_CACHE_CHECK([whether $CC is Clang],
     [nl_cv_clang],
@@ -255,7 +248,7 @@ if test "${nl_cv_clang}" = "yes"; then
     PROSPECTIVE_CXXFLAGS="${PROSPECTIVE_CXXFLAGS} -Wconversion"
 fi
 
-function convert_warning_flags_to_positive() {
+convert_warning_flags_to_positive() {
     flags_to_check=""
     warning_flag_backup=""
     for option in ${1}; do
@@ -270,7 +263,7 @@ function convert_warning_flags_to_positive() {
     done
 }
 
-function restore_negative_form_of_warning_flags() {
+restore_negative_form_of_warning_flags() {
     final_flags=${1}
     for positive_option in ${warning_flag_backup}; do
         final_flags=$(echo $ECHO_N $final_flags | $SED "s|-W${positive_option}|-Wno-${positive_option}|g")
@@ -279,7 +272,7 @@ function restore_negative_form_of_warning_flags() {
     unset warning_flag_backup
 }
 
-function check_prospective_CFLAGS() {
+check_prospective_CFLAGS() {
     if test "${nl_cv_clang}" = "yes"; then
         AX_CHECK_COMPILER_OPTIONS([C], ${PROSPECTIVE_CFLAGS})
     else
@@ -291,7 +284,7 @@ function check_prospective_CFLAGS() {
     fi
 }
 
-function check_prospective_CXXFLAGS() {
+check_prospective_CXXFLAGS() {
     if test "${nl_cv_clang}" = "yes"; then
         AX_CHECK_COMPILER_OPTIONS([C++], ${PROSPECTIVE_CXXFLAGS})
     else
@@ -787,15 +780,15 @@ AC_MSG_CHECKING([whether to build examples])
 
 AC_ARG_WITH(examples,
     [AS_HELP_STRING([--with-examples=TARGET],
-        [Build example applications for one of: simulation, cc1352, cc2538, cc2650, cc2652, efr32mg12, efr32mg13, efr32mg21,
-         gp712, jn5189, kw41z, nrf52811, nrf52833, nrf52840, qpg6095, samr21 @<:@default=no@:>@.
+        [Build example applications for one of: simulation, cc1352, cc2538, cc2650, cc2652, efr32mg1, efr32mg12, efr32mg13, efr32mg21,
+         gp712, jn5189, k32w061, kw41z, nrf52811, nrf52833, nrf52840, qpg6095, qpg6100, qpg7015m, samr21 @<:@default=no@:>@.
          Note that building example applications also builds the associated OpenThread platform libraries
          and any third_party libraries needed to support the examples.])],
     [
         case "${with_examples}" in
         no)
             ;;
-        simulation|cc1352|cc2538|cc2650|cc2652|efr32mg12|efr32mg13|efr32mg21|gp712|jn5189|kw41z|nrf52811|nrf52833|nrf52840|qpg6095|samr21)
+        simulation|cc1352|cc2538|cc2650|cc2652|efr32mg1|efr32mg12|efr32mg13|efr32mg21|gp712|jn5189|k32w061|kw41z|nrf52811|nrf52833|nrf52840|qpg6095|qpg6100|qpg7015m|samr21)
             ;;
         *)
             AC_MSG_RESULT(ERROR)
@@ -812,21 +805,26 @@ AM_CONDITIONAL([OPENTHREAD_EXAMPLES_CC1352],    [test "${with_examples}" = "cc13
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_CC2538],    [test "${with_examples}" = "cc2538"])
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_CC2650],    [test "${with_examples}" = "cc2650"])
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_CC2652],    [test "${with_examples}" = "cc2652"])
+AM_CONDITIONAL([OPENTHREAD_EXAMPLES_EFR32MG1],  [test "${with_examples}" = "efr32mg1"])
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_EFR32MG12], [test "${with_examples}" = "efr32mg12"])
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_EFR32MG13], [test "${with_examples}" = "efr32mg13"])
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_EFR32MG21], [test "${with_examples}" = "efr32mg21"])
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_GP712],     [test "${with_examples}" = "gp712"])
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_JN5189],    [test "${with_examples}" = "jn5189"])
+AM_CONDITIONAL([OPENTHREAD_EXAMPLES_K32W061],   [test "${with_examples}" = "k32w061"])
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_KW41Z],     [test "${with_examples}" = "kw41z"])
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_NRF52811],  [test "${with_examples}" = "nrf52811"])
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_NRF52833],  [test "${with_examples}" = "nrf52833"])
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_NRF52840],  [test "${with_examples}" = "nrf52840"])
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_QPG6095],   [test "${with_examples}" = "qpg6095"])
+AM_CONDITIONAL([OPENTHREAD_EXAMPLES_QPG6100],   [test "${with_examples}" = "qpg6100"])
+AM_CONDITIONAL([OPENTHREAD_EXAMPLES_QPG7015M],  [test "${with_examples}" = "qpg7015m"])
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_SAMR21],    [test "${with_examples}" = "samr21"])
 
 AM_COND_IF([OPENTHREAD_EXAMPLES_SIMULATION], CPPFLAGS="${CPPFLAGS} -DOPENTHREAD_EXAMPLES_SIMULATION=1", CPPFLAGS="${CPPFLAGS} -DOPENTHREAD_EXAMPLES_SIMULATION=0")
 
 AM_CONDITIONAL([OPENTHREAD_EXAMPLES_NRF528XX], [test OPENTHREAD_EXAMPLES_NRF52811 || test OPENTHREAD_EXAMPLES_NRF52833 || test OPENTHREAD_EXAMPLES_NRF52840])
+AM_CONDITIONAL([OPENTHREAD_EXAMPLES_EFR32], [test "${with_examples}" = "efr32mg1" -o "${with_examples}" = "efr32mg12" -o "${with_examples}" = "efr32mg13" -o "${with_examples}" = "efr32mg21"])
 
 case ${with_examples} in
     no)
@@ -846,11 +844,11 @@ AC_MSG_CHECKING([whether to build platform libraries])
 AC_ARG_WITH(platform,
     [AS_HELP_STRING([--with-platform=TARGET],
         [Build OpenThread platform libraries for one of: cc1352, cc2538, cc2650, cc2652,
-         efr32mg12, efr32mg13, efr32mg21, gp712, jn5189, kw41z, nrf52811, nrf52833, nrf52840, posix, qpg6095, samr21, simulation @<:@default=simulation@:>@.])],
+         efr32mg1, efr32mg12, efr32mg13, efr32mg21, gp712, jn5189, kw41z, nrf52811, nrf52833, nrf52840, posix, qpg6095, qpg6100, qpg7015m, samr21, simulation @<:@default=simulation@:>@.])],
     [
         # Make sure the given target is valid.
         case "${with_platform}" in
-        no|cc1352|cc2538|cc2650|cc2652|efr32mg12|efr32mg13|efr32mg21|gp712|jn5189|kw41z|nrf52811|nrf52833|nrf52840|posix|qpg6095|samr21|simulation)
+        no|cc1352|cc2538|cc2650|cc2652|efr32mg1|efr32mg12|efr32mg13|efr32mg21|gp712|jn5189|kw41z|nrf52811|nrf52833|nrf52840|posix|qpg6095|qpg6100|qpg7015m|samr21|simulation)
             ;;
         *)
             AC_MSG_RESULT(ERROR)
@@ -885,6 +883,7 @@ AM_CONDITIONAL([OPENTHREAD_PLATFORM_CC1352],    [test "${with_platform}" = "cc13
 AM_CONDITIONAL([OPENTHREAD_PLATFORM_CC2538],    [test "${with_platform}" = "cc2538"])
 AM_CONDITIONAL([OPENTHREAD_PLATFORM_CC2650],    [test "${with_platform}" = "cc2650"])
 AM_CONDITIONAL([OPENTHREAD_PLATFORM_CC2652],    [test "${with_platform}" = "cc2652"])
+AM_CONDITIONAL([OPENTHREAD_PLATFORM_EFR32MG1],  [test "${with_platform}" = "efr32mg1"])
 AM_CONDITIONAL([OPENTHREAD_PLATFORM_EFR32MG12], [test "${with_platform}" = "efr32mg12"])
 AM_CONDITIONAL([OPENTHREAD_PLATFORM_EFR32MG13], [test "${with_platform}" = "efr32mg13"])
 AM_CONDITIONAL([OPENTHREAD_PLATFORM_EFR32MG21], [test "${with_platform}" = "efr32mg21"])
@@ -896,10 +895,14 @@ AM_CONDITIONAL([OPENTHREAD_PLATFORM_NRF52833],  [test "${with_platform}" = "nrf5
 AM_CONDITIONAL([OPENTHREAD_PLATFORM_NRF52840],  [test "${with_platform}" = "nrf52840"])
 AM_CONDITIONAL([OPENTHREAD_PLATFORM_POSIX],     [test "${with_platform}" = "posix"])
 AM_CONDITIONAL([OPENTHREAD_PLATFORM_QPG6095],   [test "${with_platform}" = "qpg6095"])
+AM_CONDITIONAL([OPENTHREAD_PLATFORM_QPG6100],   [test "${with_platform}" = "qpg6100"])
+AM_CONDITIONAL([OPENTHREAD_PLATFORM_QPG7015M],  [test "${with_platform}" = "qpg7015m"])
 AM_CONDITIONAL([OPENTHREAD_PLATFORM_SAMR21],    [test "${with_platform}" = "samr21"])
 AM_CONDITIONAL([OPENTHREAD_PLATFORM_SIMULATION],[test "${with_platform}" = "simulation"])
 
 AM_CONDITIONAL([OPENTHREAD_PLATFORM_NRF528XX], [test OPENTHREAD_PLATFORM_NRF52811 || test OPENTHREAD_PLATFORM_NRF52833 || test OPENTHREAD_PLATFORM_NRF52840])
+AM_CONDITIONAL([OPENTHREAD_PLATFORM_EFR32], [test "${with_platform}" = "efr32mg1" -o "${with_platform}" = "efr32mg12" -o "${with_platform}" = "efr32mg13" -o "${with_platform}" = "efr32mg21"])
+AM_CONDITIONAL([OPENTHREAD_PLATFORM_K32W], [test OPENTHREAD_PLATFORM_K32W061 || test OPENTHREAD_PLATFORM_JN5189])
 
 AM_COND_IF([OPENTHREAD_PLATFORM_POSIX], CPPFLAGS="${CPPFLAGS} -DOPENTHREAD_PLATFORM_POSIX=1", CPPFLAGS="${CPPFLAGS} -DOPENTHREAD_PLATFORM_POSIX=0")
 
@@ -1017,8 +1020,6 @@ NL_RESTORE_WERROR
 AC_CONFIG_FILES([
 Makefile
 include/Makefile
-include/openthread/Makefile
-include/openthread/platform/Makefile
 src/Makefile
 src/cli/Makefile
 src/ncp/Makefile
@@ -1029,6 +1030,7 @@ src/lib/Makefile
 src/lib/hdlc/Makefile
 src/lib/platform/Makefile
 src/lib/spinel/Makefile
+src/lib/url/Makefile
 third_party/Makefile
 third_party/jlink/Makefile
 third_party/mbedtls/Makefile
@@ -1043,23 +1045,17 @@ examples/platforms/cc1352/Makefile
 examples/platforms/cc2538/Makefile
 examples/platforms/cc2650/Makefile
 examples/platforms/cc2652/Makefile
-examples/platforms/efr32mg12/Makefile
-examples/platforms/efr32mg12/sleepy-demo/Makefile
-examples/platforms/efr32mg12/sleepy-demo/sleepy-demo-ftd/Makefile
-examples/platforms/efr32mg12/sleepy-demo/sleepy-demo-mtd/Makefile
-examples/platforms/efr32mg13/Makefile
-examples/platforms/efr32mg13/sleepy-demo/Makefile
-examples/platforms/efr32mg13/sleepy-demo/sleepy-demo-ftd/Makefile
-examples/platforms/efr32mg13/sleepy-demo/sleepy-demo-mtd/Makefile
-examples/platforms/efr32mg21/Makefile
-examples/platforms/efr32mg21/sleepy-demo/Makefile
-examples/platforms/efr32mg21/sleepy-demo/sleepy-demo-ftd/Makefile
-examples/platforms/efr32mg21/sleepy-demo/sleepy-demo-mtd/Makefile
+examples/platforms/efr32/Makefile
+examples/platforms/efr32/sleepy-demo/Makefile
+examples/platforms/efr32/sleepy-demo/sleepy-demo-mtd/Makefile
+examples/platforms/efr32/sleepy-demo/sleepy-demo-ftd/Makefile
 examples/platforms/gp712/Makefile
-examples/platforms/jn5189/Makefile
+examples/platforms/k32w/Makefile
 examples/platforms/kw41z/Makefile
 examples/platforms/nrf528xx/Makefile
 examples/platforms/qpg6095/Makefile
+examples/platforms/qpg6100/Makefile
+examples/platforms/qpg7015m/Makefile
 examples/platforms/samr21/Makefile
 examples/platforms/simulation/Makefile
 examples/platforms/utils/Makefile
@@ -1090,7 +1086,7 @@ AC_MSG_NOTICE([
   ---------------------
   Package                                   : ${PACKAGE_NAME}
   Version                                   : ${PACKAGE_VERSION}
-  Interface                                 : ${LIBOPENTHREAD_VERSION_INFO//:/.}
+  Interface                                 : $(echo $LIBOPENTHREAD_VERSION_INFO | $SED 's/:/./g')
   Build system                              : ${build}
   Host system                               : ${host}
   Host architecture                         : ${host_cpu}

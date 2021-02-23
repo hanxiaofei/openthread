@@ -41,17 +41,20 @@ class TestCoapObserve(thread_cert.TestCase):
     """
     Test suite for CoAP Observations (RFC7641).
     """
-    topology = {
+
+    SUPPORT_NCP = False
+
+    TOPOLOGY = {
         LEADER: {
-            'mode': 'rsdn',
+            'mode': 'rdn',
             'panid': 0xface,
-            'whitelist': [ROUTER]
+            'allowlist': [ROUTER]
         },
         ROUTER: {
-            'mode': 'rsdn',
+            'mode': 'rdn',
             'panid': 0xface,
             'router_selection_jitter': 1,
-            'whitelist': [LEADER]
+            'allowlist': [LEADER]
         },
     }
 

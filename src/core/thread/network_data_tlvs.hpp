@@ -40,6 +40,7 @@
 
 #include "common/debug.hpp"
 #include "common/encoding.hpp"
+#include "common/equatable.hpp"
 #include "net/ip6_address.hpp"
 
 namespace ot {
@@ -223,7 +224,7 @@ private:
  *
  */
 OT_TOOL_PACKED_BEGIN
-class HasRouteEntry
+class HasRouteEntry : public Equatable<HasRouteEntry>
 {
 public:
     /**
@@ -288,20 +289,6 @@ public:
      */
     const HasRouteEntry *GetNext(void) const { return (this + 1); }
 
-    /**
-     * This method indicates whether two entries fully match.
-     *
-     * @param[in]  aOtherEntry  Another entry to compare with it.
-     *
-     * @retval TRUE  The two entries are equal.
-     * @retval FALSE The two entries are not equal.
-     *
-     */
-    bool operator==(const HasRouteEntry &aOtherEntry) const
-    {
-        return (memcmp(this, &aOtherEntry, sizeof(HasRouteEntry)) == 0);
-    }
-
 private:
     enum
     {
@@ -346,29 +333,29 @@ public:
     uint8_t GetNumEntries(void) const { return GetLength() / sizeof(HasRouteEntry); }
 
     /**
-     * This method returns a pointer to the i'th HasRoute entry.
+     * This method returns a pointer to the HasRoute entry at a given index.
      *
-     * @param[in]  i  An index.
+     * @param[in]  aIndex  An index.
      *
-     * @returns A pointer to the i'th HasRoute entry.
+     * @returns A pointer to the HasRoute entry at @p aIndex.
      *
      */
-    HasRouteEntry *GetEntry(uint8_t i)
+    HasRouteEntry *GetEntry(uint8_t aIndex)
     {
-        return reinterpret_cast<HasRouteEntry *>(GetValue() + (i * sizeof(HasRouteEntry)));
+        return reinterpret_cast<HasRouteEntry *>(GetValue() + (aIndex * sizeof(HasRouteEntry)));
     }
 
     /**
-     * This method returns a pointer to the i'th HasRoute entry.
+     * This method returns a pointer to the HasRoute entry at a given index.
      *
-     * @param[in]  i  An index.
+     * @param[in]  aIndex  An index.
      *
-     * @returns A pointer to the i'th HasRoute entry.
+     * @returns A pointer to the HasRoute entry at @p aIndex.
      *
      */
-    const HasRouteEntry *GetEntry(uint8_t i) const
+    const HasRouteEntry *GetEntry(uint8_t aIndex) const
     {
-        return reinterpret_cast<const HasRouteEntry *>(GetValue() + (i * sizeof(HasRouteEntry)));
+        return reinterpret_cast<const HasRouteEntry *>(GetValue() + (aIndex * sizeof(HasRouteEntry)));
     }
 
     /**
@@ -442,8 +429,20 @@ public:
         SetType(kTypePrefix);
         mDomainId     = aDomainId;
         mPrefixLength = aPrefixLength;
-        memcpy(GetPrefix(), aPrefix, BitVectorBytes(aPrefixLength));
+        memcpy(GetPrefix(), aPrefix, Ip6::Prefix::SizeForLength(aPrefixLength));
         SetSubTlvsLength(0);
+    }
+
+    /**
+     * This method initializes the TLV.
+     *
+     * @param[in]  aDomainId      The Domain ID.
+     * @param[in]  aPrefix        The Prefix.
+     *
+     */
+    void Init(uint8_t aDomainId, const Ip6::Prefix aPrefix)
+    {
+        Init(aDomainId, aPrefix.GetLength(), aPrefix.GetBytes());
     }
 
     /**
@@ -456,8 +455,8 @@ public:
     bool IsValid(void) const
     {
         return ((GetLength() >= sizeof(*this) - sizeof(NetworkDataTlv)) &&
-                (GetLength() >= BitVectorBytes(mPrefixLength) + sizeof(*this) - sizeof(NetworkDataTlv)) &&
-                (BitVectorBytes(mPrefixLength) <= sizeof(Ip6::Address)));
+                (GetLength() >= Ip6::Prefix::SizeForLength(mPrefixLength) + sizeof(*this) - sizeof(NetworkDataTlv)) &&
+                (Ip6::Prefix::SizeForLength(mPrefixLength) <= sizeof(Ip6::Address)));
     }
 
     /**
@@ -493,6 +492,42 @@ public:
     const uint8_t *GetPrefix(void) const { return reinterpret_cast<const uint8_t *>(this) + sizeof(*this); }
 
     /**
+     * This method copies the Prefix from TLV into a given `Ip6::Prefix`.
+     *
+     * @param[out] aPrefix  An `Ip6::Prefix` to copy the Prefix from TLV into.
+     *
+     */
+    void CopyPrefixTo(Ip6::Prefix &aPrefix) const { aPrefix.Set(GetPrefix(), GetPrefixLength()); }
+
+    /**
+     * This method indicates whether the Prefix from TLV is equal to a given `Ip6::Prefix`.
+     *
+     * @param[in] aPrefix  A Prefix to compare with.
+     *
+     * @retval TRUE   The TLV's Prefix is equal to @p aPrefix.
+     * @retval FALSE  The TLV's Prefix is not equal to @p aPrefix.
+     *
+     */
+    bool IsEqual(Ip6::Prefix &aPrefix) const { return aPrefix.IsEqual(GetPrefix(), GetPrefixLength()); }
+
+    /**
+     * This method indicates whether the Prefix from TLV is equal to a given Prefix.
+     *
+     * @param[in]  aPrefix        A pointer to an IPv6 prefix to compare with.
+     * @param[in]  aPrefixLength  The prefix length pointed to by @p aPrefix (in bits).
+     *
+     * @retval TRUE   The TLV's Prefix is equal to @p aPrefix.
+     * @retval FALSE  The TLV's Prefix is not euqal @p aPrefix.
+     *
+     */
+    bool IsEqual(const uint8_t *aPrefix, uint8_t aPrefixLength) const
+    {
+        return (aPrefixLength == mPrefixLength) &&
+               (Ip6::Prefix::MatchLength(GetPrefix(), aPrefix, Ip6::Prefix::SizeForLength(aPrefixLength)) >=
+                mPrefixLength);
+    }
+
+    /**
      * This method returns a pointer to the Sub-TLVs.
      *
      * @returns A pointer to the Sub-TLVs.
@@ -500,7 +535,7 @@ public:
      */
     NetworkDataTlv *GetSubTlvs(void)
     {
-        return reinterpret_cast<NetworkDataTlv *>(GetPrefix() + BitVectorBytes(mPrefixLength));
+        return reinterpret_cast<NetworkDataTlv *>(GetPrefix() + Ip6::Prefix::SizeForLength(mPrefixLength));
     }
 
     /**
@@ -511,7 +546,7 @@ public:
      */
     const NetworkDataTlv *GetSubTlvs(void) const
     {
-        return reinterpret_cast<const NetworkDataTlv *>(GetPrefix() + BitVectorBytes(mPrefixLength));
+        return reinterpret_cast<const NetworkDataTlv *>(GetPrefix() + Ip6::Prefix::SizeForLength(mPrefixLength));
     }
 
     /**
@@ -522,7 +557,7 @@ public:
      */
     uint8_t GetSubTlvsLength(void) const
     {
-        return GetLength() - (sizeof(*this) - sizeof(NetworkDataTlv) + BitVectorBytes(mPrefixLength));
+        return GetLength() - (sizeof(*this) - sizeof(NetworkDataTlv) + Ip6::Prefix::SizeForLength(mPrefixLength));
     }
 
     /**
@@ -533,7 +568,7 @@ public:
      */
     void SetSubTlvsLength(uint8_t aLength)
     {
-        SetLength(sizeof(*this) - sizeof(NetworkDataTlv) + BitVectorBytes(mPrefixLength) + aLength);
+        SetLength(sizeof(*this) - sizeof(NetworkDataTlv) + Ip6::Prefix::SizeForLength(mPrefixLength) + aLength);
     }
 
     /**
@@ -547,7 +582,10 @@ public:
      * @returns    The size (number of bytes) of the Prefix TLV.
      *
      */
-    static uint16_t CalculateSize(uint8_t aPrefixLength) { return sizeof(PrefixTlv) + BitVectorBytes(aPrefixLength); }
+    static uint16_t CalculateSize(uint8_t aPrefixLength)
+    {
+        return sizeof(PrefixTlv) + Ip6::Prefix::SizeForLength(aPrefixLength);
+    }
 
 private:
     uint8_t mDomainId;
@@ -559,7 +597,7 @@ private:
  *
  */
 OT_TOOL_PACKED_BEGIN
-class BorderRouterEntry
+class BorderRouterEntry : public Equatable<BorderRouterEntry>
 {
 public:
     enum
@@ -730,20 +768,6 @@ public:
      */
     const BorderRouterEntry *GetNext(void) const { return (this + 1); }
 
-    /**
-     * This method indicates whether two entries fully match.
-     *
-     * @param[in]  aOtherEntry  Another entry to compare with it.
-     *
-     * @retval TRUE  The two entries are equal.
-     * @retval FALSE The two entries are not equal.
-     *
-     */
-    bool operator==(const BorderRouterEntry &aOtherEntry) const
-    {
-        return (memcmp(this, &aOtherEntry, sizeof(BorderRouterEntry)) == 0);
-    }
-
 private:
     uint16_t mRloc;
     uint16_t mFlags;
@@ -782,29 +806,29 @@ public:
     uint8_t GetNumEntries(void) const { return GetLength() / sizeof(BorderRouterEntry); }
 
     /**
-     * This method returns a pointer to the i'th Border Router entry.
+     * This method returns a pointer to the Border Router entry at a given index
      *
-     * @param[in]  i  The index.
+     * @param[in]  aIndex  The index.
      *
-     * @returns A pointer to the i'th Border Router entry.
+     * @returns A pointer to the Border Router entry at @p aIndex.
      *
      */
-    BorderRouterEntry *GetEntry(uint8_t i)
+    BorderRouterEntry *GetEntry(uint8_t aIndex)
     {
-        return reinterpret_cast<BorderRouterEntry *>(GetValue() + (i * sizeof(BorderRouterEntry)));
+        return reinterpret_cast<BorderRouterEntry *>(GetValue() + (aIndex * sizeof(BorderRouterEntry)));
     }
 
     /**
-     * This method returns a pointer to the i'th Border Router entry.
+     * This method returns a pointer to the Border Router entry at a given index.
      *
-     * @param[in]  i  The index.
+     * @param[in]  aIndex  The index.
      *
-     * @returns A pointer to the i'th Border Router entry.
+     * @returns A pointer to the Border Router entry at @p aIndex
      *
      */
-    const BorderRouterEntry *GetEntry(uint8_t i) const
+    const BorderRouterEntry *GetEntry(uint8_t aIndex) const
     {
-        return reinterpret_cast<const BorderRouterEntry *>(GetValue() + (i * sizeof(BorderRouterEntry)));
+        return reinterpret_cast<const BorderRouterEntry *>(GetValue() + (aIndex * sizeof(BorderRouterEntry)));
     }
 
     /**

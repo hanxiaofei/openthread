@@ -87,8 +87,7 @@ void otSysInit(int argc, char *argv[])
 
     nrf_drv_clock_init();
 
-#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED) || \
-    (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_NCP_SPINEL)
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
     nrf5LogInit();
 #endif
     nrf5AlarmInit();
@@ -103,16 +102,14 @@ void otSysInit(int argc, char *argv[])
     nrf5MiscInit();
     nrf5RadioInit();
     nrf5TempInit();
-
-#if PLATFORM_FEM_ENABLE_DEFAULT_CONFIG
-    PlatformFemSetConfigParams(&PLATFORM_FEM_DEFAULT_CONFIG);
-#endif
+    nrf5FemInit();
 
     gPlatformPseudoResetWasRequested = false;
 }
 
 void otSysDeinit(void)
 {
+    nrf5FemDeinit();
     nrf5TempDeinit();
     nrf5RadioDeinit();
     nrf5MiscDeinit();
@@ -125,8 +122,7 @@ void otSysDeinit(void)
     nrf5TransportDeinit(gPlatformPseudoResetWasRequested);
     nrf5RandomDeinit();
     nrf5AlarmDeinit();
-#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED) || \
-    (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_NCP_SPINEL)
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
     nrf5LogDeinit();
 #endif
 

@@ -39,7 +39,7 @@
 #include <stdint.h>
 
 #if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
-#include "backbone_router/leader.hpp"
+#include "backbone_router/bbr_leader.hpp"
 #endif
 
 #include "coap/coap.hpp"
@@ -137,10 +137,10 @@ public:
     /**
      * This method performs a route lookup using the Network Data.
      *
-     * @param[in]   aSource       A reference to the IPv6 source address.
-     * @param[in]   aDestination  A reference to the IPv6 destination address.
-     * @param[out]  aPrefixMatch  A pointer to the longest prefix match length in bits.
-     * @param[out]  aRloc16       A pointer to the RLOC16 for the selected route.
+     * @param[in]   aSource             A reference to the IPv6 source address.
+     * @param[in]   aDestination        A reference to the IPv6 destination address.
+     * @param[out]  aPrefixMatchLength  A pointer to output the longest prefix match length in bits.
+     * @param[out]  aRloc16             A pointer to the RLOC16 for the selected route.
      *
      * @retval OT_ERROR_NONE      Successfully found a route.
      * @retval OT_ERROR_NO_ROUTE  No valid route was found.
@@ -148,7 +148,7 @@ public:
      */
     otError RouteLookup(const Ip6::Address &aSource,
                         const Ip6::Address &aDestination,
-                        uint8_t *           aPrefixMatch,
+                        uint8_t *           aPrefixMatchLength,
                         uint16_t *          aRloc16) const;
 
     /**
@@ -171,20 +171,9 @@ public:
                            uint16_t       aMessageOffset);
 
     /**
-     * This method sends a Server Data Notification message to the Leader indicating an invalid RLOC16.
-     *
-     * @param[in]  aRloc16  The invalid RLOC16 to notify.
-     *
-     * @retval OT_ERROR_NONE     Successfully enqueued the notification message.
-     * @retval OT_ERROR_NO_BUFS  Insufficient message buffers to generate the notification message.
-     *
-     */
-    otError SendServerDataNotification(uint16_t aRloc16);
-
-    /**
      * This method returns a pointer to the Commissioning Data.
      *
-     * @returns A pointer to the Commissioning Data or NULL if no Commissioning Data exists.
+     * @returns A pointer to the Commissioning Data or nullptr if no Commissioning Data exists.
      *
      */
     CommissioningDataTlv *GetCommissioningData(void)
@@ -195,7 +184,7 @@ public:
     /**
      * This method returns a pointer to the Commissioning Data.
      *
-     * @returns A pointer to the Commissioning Data or NULL if no Commissioning Data exists.
+     * @returns A pointer to the Commissioning Data or nullptr if no Commissioning Data exists.
      *
      */
     const CommissioningDataTlv *GetCommissioningData(void) const;
@@ -205,7 +194,7 @@ public:
      *
      * @param[in]  aType  The TLV type value.
      *
-     * @returns A pointer to the Commissioning Data Sub-TLV or NULL if no Sub-TLV exists.
+     * @returns A pointer to the Commissioning Data Sub-TLV or nullptr if no Sub-TLV exists.
      *
      */
     MeshCoP::Tlv *GetCommissioningDataSubTlv(MeshCoP::Tlv::Type aType)
@@ -218,7 +207,7 @@ public:
      *
      * @param[in]  aType  The TLV type value.
      *
-     * @returns A pointer to the Commissioning Data Sub-TLV or NULL if no Sub-TLV exists.
+     * @returns A pointer to the Commissioning Data Sub-TLV or nullptr if no Sub-TLV exists.
      *
      */
     const MeshCoP::Tlv *GetCommissioningDataSubTlv(MeshCoP::Tlv::Type aType) const;
@@ -244,6 +233,30 @@ public:
      *
      */
     otError SetCommissioningData(const uint8_t *aValue, uint8_t aValueLength);
+
+    /**
+     * This method checks if the steering data includes a Joiner.
+     *
+     * @param[in]  aEui64             A reference to the Joiner's IEEE EUI-64.
+     *
+     * @retval OT_ERROR_NONE          @p aEui64 is in the bloom filter.
+     * @retval OT_ERROR_INVALID_STATE No steering data present.
+     * @retval OT_ERROR_NOT_FOUND     @p aEui64 is not in the bloom filter.
+     *
+     */
+    otError SteeringDataCheckJoiner(const Mac::ExtAddress &aEui64) const;
+
+    /**
+     * This method checks if the steering data includes a Joiner with a given discerner value.
+     *
+     * @param[in]  aDiscerner         A reference to the Joiner Discerner.
+     *
+     * @retval OT_ERROR_NONE          @p aDiscerner is in the bloom filter.
+     * @retval OT_ERROR_INVALID_STATE No steering data present.
+     * @retval OT_ERROR_NOT_FOUND     @p aDiscerner is not in the bloom filter.
+     *
+     */
+    otError SteeringDataCheckJoiner(const MeshCoP::JoinerDiscerner &aDiscerner) const;
 
     /**
      * This method gets the Rloc of Dhcp Agent of specified contextId.
@@ -294,15 +307,18 @@ protected:
     uint8_t mVersion;
 
 private:
+    using FilterIndexes = MeshCoP::SteeringData::HashBitIndexes;
+
     const PrefixTlv *FindNextMatchingPrefix(const Ip6::Address &aAddress, const PrefixTlv *aPrevTlv) const;
 
-    otError RemoveCommissioningData(void);
+    void RemoveCommissioningData(void);
 
     otError ExternalRouteLookup(uint8_t             aDomainId,
                                 const Ip6::Address &aDestination,
-                                uint8_t *           aPrefixMatch,
+                                uint8_t *           aPrefixMatchLength,
                                 uint16_t *          aRloc16) const;
     otError DefaultRouteLookup(const PrefixTlv &aPrefix, uint16_t *aRloc16) const;
+    otError SteeringDataCheck(const FilterIndexes &aFilterIndexes) const;
 };
 
 /**

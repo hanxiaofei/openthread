@@ -38,6 +38,7 @@
 #include "common/code_utils.hpp"
 #include "common/encoding.hpp"
 #include "common/instance.hpp"
+#include "common/random.hpp"
 #include "net/netif.hpp"
 
 using ot::Encoding::BigEndian::HostSwap32;
@@ -45,10 +46,190 @@ using ot::Encoding::BigEndian::HostSwap32;
 namespace ot {
 namespace Ip6 {
 
-void Address::Clear(void)
+//---------------------------------------------------------------------------------------------------------------------
+// NetworkPrefix methods
+
+otError NetworkPrefix::GenerateRandomUla(void)
 {
-    memset(mFields.m8, 0, sizeof(mFields));
+    m8[0] = 0xfd;
+
+    return Random::Crypto::FillBuffer(&m8[1], kSize - 1);
 }
+
+//---------------------------------------------------------------------------------------------------------------------
+// Prefix methods
+
+void Prefix::Set(const uint8_t *aPrefix, uint8_t aLength)
+{
+    memcpy(mPrefix.mFields.m8, aPrefix, SizeForLength(aLength));
+    mLength = aLength;
+}
+
+bool Prefix::IsEqual(const uint8_t *aPrefixBytes, uint8_t aPrefixLength) const
+{
+    return (mLength == aPrefixLength) && (MatchLength(GetBytes(), aPrefixBytes, GetBytesSize()) >= mLength);
+}
+
+uint8_t Prefix::MatchLength(const uint8_t *aPrefixA, const uint8_t *aPrefixB, uint8_t aMaxSize)
+{
+    uint8_t matchedLength = 0;
+
+    OT_ASSERT(aMaxSize <= Address::kSize);
+
+    for (uint8_t i = 0; i < aMaxSize; i++)
+    {
+        uint8_t diff = aPrefixA[i] ^ aPrefixB[i];
+
+        if (diff == 0)
+        {
+            matchedLength += CHAR_BIT;
+        }
+        else
+        {
+            while ((diff & 0x80) == 0)
+            {
+                matchedLength++;
+                diff <<= 1;
+            }
+
+            break;
+        }
+    }
+
+    return matchedLength;
+}
+
+Prefix::InfoString Prefix::ToString(void) const
+{
+    InfoString string;
+    uint8_t    sizeInUint16 = (GetBytesSize() + sizeof(uint16_t) - 1) / sizeof(uint16_t);
+
+    for (uint16_t i = 0; i < sizeInUint16; i++)
+    {
+        IgnoreError(string.Append("%s%x", (i > 0) ? ":" : "", HostSwap16(mPrefix.mFields.m16[i])));
+    }
+
+    if (GetBytesSize() < Address::kSize - 1)
+    {
+        IgnoreError(string.Append("::"));
+    }
+
+    IgnoreError(string.Append("/%d", mLength));
+
+    return string;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+// InterfaceIdentifier methods
+
+bool InterfaceIdentifier::IsUnspecified(void) const
+{
+    return (mFields.m32[0] == 0) && (mFields.m32[1] == 0);
+}
+
+bool InterfaceIdentifier::IsReserved(void) const
+{
+    return IsSubnetRouterAnycast() || IsReservedSubnetAnycast() || IsAnycastLocator();
+}
+
+bool InterfaceIdentifier::IsSubnetRouterAnycast(void) const
+{
+    return (mFields.m32[0] == 0) && (mFields.m32[1] == 0);
+}
+
+bool InterfaceIdentifier::IsReservedSubnetAnycast(void) const
+{
+    // Format of IID in a Reserved Subnet Anycast Address (RFC 2526)
+    //
+    // |      57 bits     |   7 bits   |
+    // +------------------+------------+
+    // | 1111110111...111 | anycast ID |
+    // +------------------+------------+
+
+    return (mFields.m32[0] == HostSwap32(0xfdffffff) && mFields.m16[2] == HostSwap16(0xffff) && mFields.m8[6] == 0xff &&
+            mFields.m8[7] >= 0x80);
+}
+
+void InterfaceIdentifier::GenerateRandom(void)
+{
+    otError error;
+
+    OT_UNUSED_VARIABLE(error);
+
+    error = Random::Crypto::FillBuffer(mFields.m8, kSize);
+
+    OT_ASSERT(error == OT_ERROR_NONE);
+}
+
+void InterfaceIdentifier::SetBytes(const uint8_t *aBuffer)
+{
+    memcpy(mFields.m8, aBuffer, kSize);
+}
+
+void InterfaceIdentifier::SetFromExtAddress(const Mac::ExtAddress &aExtAddress)
+{
+    Mac::ExtAddress addr;
+
+    addr = aExtAddress;
+    addr.ToggleLocal();
+    addr.CopyTo(mFields.m8);
+}
+
+void InterfaceIdentifier::ConvertToExtAddress(Mac::ExtAddress &aExtAddress) const
+{
+    aExtAddress.Set(mFields.m8);
+    aExtAddress.ToggleLocal();
+}
+
+void InterfaceIdentifier::ConvertToMacAddress(Mac::Address &aMacAddress) const
+{
+    aMacAddress.SetExtended(mFields.m8);
+    aMacAddress.GetExtended().ToggleLocal();
+}
+
+void InterfaceIdentifier::SetToLocator(uint16_t aLocator)
+{
+    // Locator IID pattern `0000:00ff:fe00:xxxx`
+    mFields.m32[0] = HostSwap32(0x000000ff);
+    mFields.m16[2] = HostSwap16(0xfe00);
+    mFields.m16[3] = HostSwap16(aLocator);
+}
+
+bool InterfaceIdentifier::IsLocator(void) const
+{
+    // Locator IID pattern 0000:00ff:fe00:xxxx
+    return (mFields.m32[0] == HostSwap32(0x000000ff) && mFields.m16[2] == HostSwap16(0xfe00));
+}
+
+bool InterfaceIdentifier::IsRoutingLocator(void) const
+{
+    return (IsLocator() && (mFields.m8[6] < kAloc16Mask) && ((mFields.m8[6] & kRloc16ReservedBitMask) == 0));
+}
+
+bool InterfaceIdentifier::IsAnycastLocator(void) const
+{
+    // Anycast locator range 0xfc00- 0xfcff (`kAloc16Mask` is 0xfc)
+    return (IsLocator() && (mFields.m8[6] == kAloc16Mask));
+}
+
+bool InterfaceIdentifier::IsAnycastServiceLocator(void) const
+{
+    uint16_t locator = GetLocator();
+
+    return (IsLocator() && (locator >= Mle::kAloc16ServiceStart) && (locator <= Mle::kAloc16ServiceEnd));
+}
+
+InterfaceIdentifier::InfoString InterfaceIdentifier::ToString(void) const
+{
+    InfoString string;
+
+    IgnoreError(string.AppendHexBytes(mFields.m8, kSize));
+
+    return string;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+// Address methods
 
 bool Address::IsUnspecified(void) const
 {
@@ -69,10 +250,10 @@ void Address::SetToLinkLocalAddress(const Mac::ExtAddress &aExtAddress)
 {
     mFields.m32[0] = HostSwap32(0xfe800000);
     mFields.m32[1] = 0;
-    SetIid(aExtAddress);
+    GetIid().SetFromExtAddress(aExtAddress);
 }
 
-void Address::SetToLinkLocalAddress(const uint8_t *aIid)
+void Address::SetToLinkLocalAddress(const InterfaceIdentifier &aIid)
 {
     mFields.m32[0] = HostSwap32(0xfe800000);
     mFields.m32[1] = 0;
@@ -144,49 +325,24 @@ void Address::SetToRealmLocalAllMplForwarders(void)
     *this = GetRealmLocalAllMplForwarders();
 }
 
-bool Address::IsSubnetRouterAnycast(void) const
+bool Address::MatchesPrefix(const Prefix &aPrefix) const
 {
-    return (mFields.m32[2] == 0 && mFields.m32[3] == 0);
+    return Prefix::MatchLength(mFields.m8, aPrefix.GetBytes(), aPrefix.GetBytesSize()) >= aPrefix.GetLength();
 }
 
-bool Address::IsReservedSubnetAnycast(void) const
+bool Address::MatchesPrefix(const uint8_t *aPrefix, uint8_t aPrefixLength) const
 {
-    return (mFields.m32[2] == HostSwap32(0xfdffffff) && mFields.m16[6] == 0xffff && mFields.m8[14] == 0xff &&
-            mFields.m8[15] >= 0x80);
+    return Prefix::MatchLength(mFields.m8, aPrefix, Prefix::SizeForLength(aPrefixLength)) >= aPrefixLength;
 }
 
-bool Address::IsIidReserved(void) const
+void Address::SetPrefix(const NetworkPrefix &aNetworkPrefix)
 {
-    return IsSubnetRouterAnycast() || IsReservedSubnetAnycast() || IsIidAnycastLocator();
+    mFields.mComponents.mNetworkPrefix = aNetworkPrefix;
 }
 
-bool Address::IsIidLocator(void) const
+void Address::SetPrefix(const Prefix &aPrefix)
 {
-    // IID pattern 0000:00ff:fe00:xxxx
-    return (mFields.m32[2] == HostSwap32(0x000000ff) && mFields.m16[6] == HostSwap16(0xfe00));
-}
-
-bool Address::IsIidRoutingLocator(void) const
-{
-    return (IsIidLocator() && (mFields.m8[14] < kAloc16Mask) && ((mFields.m8[14] & kRloc16ReservedBitMask) == 0));
-}
-
-bool Address::IsIidAnycastLocator(void) const
-{
-    // Anycast locator range 0xfc00- 0xfcff (`kAloc16Max` is 0xfc)
-    return (IsIidLocator() && (mFields.m8[14] == kAloc16Mask));
-}
-
-bool Address::IsIidAnycastServiceLocator(void) const
-{
-    uint16_t locator = GetLocator();
-
-    return (IsIidLocator() && (locator >= Mle::kAloc16ServiceStart) && (locator <= Mle::kAloc16ServiceEnd));
-}
-
-void Address::SetPrefix(const uint8_t *aPrefix, uint8_t aPrefixLength)
-{
-    SetPrefix(0, aPrefix, aPrefixLength);
+    SetPrefix(0, aPrefix.GetBytes(), aPrefix.GetLength());
 }
 
 void Address::SetPrefix(uint8_t aOffset, const uint8_t *aPrefix, uint8_t aPrefixLength)
@@ -203,7 +359,7 @@ void Address::SetPrefix(uint8_t aOffset, const uint8_t *aPrefix, uint8_t aPrefix
         uint8_t index = aOffset + bytes;
         uint8_t mask  = ((0x80 >> (extraBits - 1)) - 1);
 
-        // `mask` has its higher (msb) `extraBits` bits as `0` and the reminaing as `1`.
+        // `mask` has its higher (msb) `extraBits` bits as `0` and the remaining as `1`.
         // Example with `extraBits` = 3:
         // ((0x80 >> 2) - 1) = (0b0010_0000 - 1) = 0b0001_1111
 
@@ -218,44 +374,10 @@ void Address::SetMulticastNetworkPrefix(const uint8_t *aPrefix, uint8_t aPrefixL
     mFields.m8[kMulticastNetworkPrefixLengthOffset] = aPrefixLength;
 }
 
-void Address::SetIid(const uint8_t *aIid)
+void Address::SetToLocator(const NetworkPrefix &aNetworkPrefix, uint16_t aLocator)
 {
-    memcpy(mFields.m8 + kInterfaceIdentifierOffset, aIid, kInterfaceIdentifierSize);
-}
-
-void Address::SetIid(const Mac::ExtAddress &aExtAddress)
-{
-    Mac::ExtAddress addr;
-
-    addr = aExtAddress;
-    addr.ToggleLocal();
-    addr.CopyTo(mFields.m8 + kInterfaceIdentifierOffset);
-}
-
-void Address::SetIidToLocator(uint16_t aLocator)
-{
-    // Locator IID pattern `0000:00ff:fe00:xxxx`
-    mFields.m32[2] = HostSwap32(0x000000ff);
-    mFields.m16[6] = HostSwap16(0xfe00);
-    mFields.m16[7] = HostSwap16(aLocator);
-}
-
-void Address::SetToLocator(const Mle::MeshLocalPrefix &aMeshLocalPrefix, uint16_t aLocator)
-{
-    SetPrefix(aMeshLocalPrefix);
-    SetIidToLocator(aLocator);
-}
-
-void Address::ToExtAddress(Mac::ExtAddress &aExtAddress) const
-{
-    aExtAddress.Set(mFields.m8 + kInterfaceIdentifierOffset);
-    aExtAddress.ToggleLocal();
-}
-
-void Address::ToExtAddress(Mac::Address &aMacAddress) const
-{
-    aMacAddress.SetExtended(mFields.m8 + kInterfaceIdentifierOffset);
-    aMacAddress.GetExtended().ToggleLocal();
+    SetPrefix(aNetworkPrefix);
+    GetIid().SetToLocator(aLocator);
 }
 
 uint8_t Address::GetScope(void) const
@@ -282,47 +404,34 @@ uint8_t Address::GetScope(void) const
     return rval;
 }
 
-uint8_t Address::PrefixMatch(const uint8_t *aPrefixA, const uint8_t *aPrefixB, uint8_t aMaxLength)
+uint8_t Address::PrefixMatch(const Address &aOther) const
 {
-    uint8_t rval = 0;
-    uint8_t diff;
-
-    if (aMaxLength > sizeof(Address))
-    {
-        aMaxLength = sizeof(Address);
-    }
-
-    for (uint8_t i = 0; i < aMaxLength; i++)
-    {
-        diff = aPrefixA[i] ^ aPrefixB[i];
-
-        if (diff == 0)
-        {
-            rval += 8;
-        }
-        else
-        {
-            while ((diff & 0x80) == 0)
-            {
-                rval++;
-                diff <<= 1;
-            }
-
-            break;
-        }
-    }
-
-    return rval;
+    return Prefix::MatchLength(mFields.m8, aOther.mFields.m8, sizeof(Address));
 }
 
-uint8_t Address::PrefixMatch(const otIp6Address &aOther) const
+bool Address::MatchesFilter(TypeFilter aFilter) const
 {
-    return PrefixMatch(mFields.m8, aOther.mFields.m8, sizeof(Address));
-}
+    bool matches = true;
 
-bool Address::operator==(const Address &aOther) const
-{
-    return memcmp(mFields.m8, aOther.mFields.m8, sizeof(mFields.m8)) == 0;
+    switch (aFilter)
+    {
+    case kTypeAny:
+        break;
+
+    case kTypeUnicast:
+        matches = !IsUnspecified() && !IsMulticast();
+        break;
+
+    case kTypeMulticast:
+        matches = IsMulticast();
+        break;
+
+    case kTypeMulticastLargerThanRealmLocal:
+        matches = IsMulticastLargerThanRealmLocal();
+        break;
+    }
+
+    return matches;
 }
 
 otError Address::FromString(const char *aBuf)
@@ -330,8 +439,8 @@ otError Address::FromString(const char *aBuf)
     otError     error  = OT_ERROR_NONE;
     uint8_t *   dst    = reinterpret_cast<uint8_t *>(mFields.m8);
     uint8_t *   endp   = reinterpret_cast<uint8_t *>(mFields.m8 + 15);
-    uint8_t *   colonp = NULL;
-    const char *colonc = NULL;
+    uint8_t *   colonp = nullptr;
+    const char *colonc = nullptr;
     uint16_t    val    = 0;
     uint8_t     count  = 0;
     bool        first  = true;
@@ -365,7 +474,7 @@ otError Address::FromString(const char *aBuf)
             }
             else if (ch == ':')
             {
-                VerifyOrExit(colonp == NULL || first, error = OT_ERROR_PARSE);
+                VerifyOrExit(colonp == nullptr || first, error = OT_ERROR_PARSE);
                 colonp = dst;
             }
 

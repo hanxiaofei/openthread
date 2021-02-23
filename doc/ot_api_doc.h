@@ -56,6 +56,7 @@
  * @defgroup api-dns                  DNSv6
  * @defgroup api-icmp6                ICMPv6
  * @defgroup api-ip6                  IPv6
+ * @defgroup api-srp                  SRP
  * @defgroup api-udp-group            UDP
  *
  * @{
@@ -72,11 +73,14 @@
  * @{
  *
  * @defgroup api-link-link            Link
+ * @defgroup api-link-metrics         Link Metrics
  * @defgroup api-link-raw             Raw Link
  *
  * @}
  *
  * @defgroup api-message              Message
+ *
+ * @defgroup api-multi-radio          Multi Radio Link
  *
  * @defgroup api-thread               Thread
  *
@@ -89,6 +93,7 @@
  * @defgroup api-thread-general       General
  * @brief This module includes functions for all Thread roles.
  * @defgroup api-joiner               Joiner
+ * @defgroup api-operational-dataset  Operational Dataset
  * @defgroup api-thread-router        Router/Leader
  * @brief This module includes functions for Thread Routers and Leaders.
  * @defgroup api-server               Server
@@ -145,7 +150,6 @@
  * @{
  *
  * @defgroup plat-alarm               Alarm
- * @defgroup plat-ble                 BLE Host
  * @defgroup plat-entropy             Entropy
  * @defgroup plat-factory-diagnostics Factory Diagnostics
  * @defgroup plat-logging             Logging
@@ -158,6 +162,7 @@
  * @defgroup plat-spi-slave           SPI Slave
  * @defgroup plat-time                Time Service
  * @defgroup plat-toolchain           Toolchain
+ * @defgroup plat-trel                TREL
  * @defgroup plat-uart                UART
  *
  * @}

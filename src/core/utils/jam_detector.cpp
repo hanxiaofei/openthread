@@ -47,10 +47,9 @@ namespace Utils {
 
 JamDetector::JamDetector(Instance &aInstance)
     : InstanceLocator(aInstance)
-    , mHandler(NULL)
-    , mContext(NULL)
-    , mNotifierCallback(aInstance, HandleStateChanged, this)
-    , mTimer(aInstance, &JamDetector::HandleTimer, this)
+    , mHandler(nullptr)
+    , mContext(nullptr)
+    , mTimer(aInstance, JamDetector::HandleTimer, this)
     , mHistoryBitmap(0)
     , mCurSecondStartTime(0)
     , mSampleInterval(0)
@@ -68,7 +67,7 @@ otError JamDetector::Start(Handler aHandler, void *aContext)
     otError error = OT_ERROR_NONE;
 
     VerifyOrExit(!mEnabled, error = OT_ERROR_ALREADY);
-    VerifyOrExit(aHandler != NULL, error = OT_ERROR_INVALID_ARGS);
+    VerifyOrExit(aHandler != nullptr, error = OT_ERROR_INVALID_ARGS);
 
     mHandler = aHandler;
     mContext = aContext;
@@ -101,18 +100,18 @@ exit:
 
 void JamDetector::CheckState(void)
 {
-    VerifyOrExit(mEnabled, OT_NOOP);
+    VerifyOrExit(mEnabled);
 
     switch (Get<Mle::MleRouter>().GetRole())
     {
     case Mle::kRoleDisabled:
-        VerifyOrExit(mTimer.IsRunning(), OT_NOOP);
+        VerifyOrExit(mTimer.IsRunning());
         mTimer.Stop();
         SetJamState(false);
         break;
 
     default:
-        VerifyOrExit(!mTimer.IsRunning(), OT_NOOP);
+        VerifyOrExit(!mTimer.IsRunning());
         mCurSecondStartTime   = TimerMilli::GetNow();
         mAlwaysAboveThreshold = true;
         mHistoryBitmap        = 0;
@@ -170,7 +169,7 @@ void JamDetector::HandleTimer(void)
     int8_t rssi;
     bool   didExceedThreshold = true;
 
-    VerifyOrExit(mEnabled, OT_NOOP);
+    VerifyOrExit(mEnabled);
 
     rssi = Get<Radio>().GetRssi();
 
@@ -271,14 +270,9 @@ void JamDetector::SetJamState(bool aNewState)
     }
 }
 
-void JamDetector::HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags)
+void JamDetector::HandleNotifierEvents(Events aEvents)
 {
-    aCallback.GetOwner<JamDetector>().HandleStateChanged(aFlags);
-}
-
-void JamDetector::HandleStateChanged(otChangedFlags aFlags)
-{
-    if (aFlags & OT_CHANGED_THREAD_ROLE)
+    if (aEvents.Contains(kEventThreadRoleChanged))
     {
         CheckState();
     }

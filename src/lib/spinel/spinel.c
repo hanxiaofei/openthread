@@ -54,7 +54,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include "utils/wrap_string.h"
+#include <string.h>
 #endif // #ifndef SPINEL_PLATFORM_HEADER
 
 // ----------------------------------------------------------------------------
@@ -1379,6 +1379,10 @@ const char *spinel_prop_key_to_cstr(spinel_prop_key_t prop_key)
         ret = "PHY_TX_POWER";
         break;
 
+    case SPINEL_PROP_PHY_FEM_LNA_GAIN:
+        ret = "PHY_FEM_LNA_GAIN";
+        break;
+
     case SPINEL_PROP_PHY_RSSI:
         ret = "PHY_RSSI";
         break;
@@ -1393,6 +1397,10 @@ const char *spinel_prop_key_to_cstr(spinel_prop_key_t prop_key)
 
     case SPINEL_PROP_PHY_CHAN_PREFERRED:
         ret = "PHY_CHAN_PREFERRED";
+        break;
+
+    case SPINEL_PROP_PHY_CHAN_MAX_POWER:
+        ret = "PHY_CHAN_MAX_POWER";
         break;
 
     case SPINEL_PROP_JAM_DETECT_ENABLE:
@@ -1495,12 +1503,12 @@ const char *spinel_prop_key_to_cstr(spinel_prop_key_t prop_key)
         ret = "MAC_DATA_POLL_PERIOD";
         break;
 
-    case SPINEL_PROP_MAC_WHITELIST:
-        ret = "MAC_WHITELIST";
+    case SPINEL_PROP_MAC_ALLOWLIST:
+        ret = "MAC_ALLOWLIST";
         break;
 
-    case SPINEL_PROP_MAC_WHITELIST_ENABLED:
-        ret = "MAC_WHITELIST_ENABLED";
+    case SPINEL_PROP_MAC_ALLOWLIST_ENABLED:
+        ret = "MAC_ALLOWLIST_ENABLED";
         break;
 
     case SPINEL_PROP_MAC_EXTENDED_ADDR:
@@ -1519,12 +1527,12 @@ const char *spinel_prop_key_to_cstr(spinel_prop_key_t prop_key)
         ret = "MAC_SRC_MATCH_EXTENDED_ADDRESSES";
         break;
 
-    case SPINEL_PROP_MAC_BLACKLIST:
-        ret = "MAC_BLACKLIST";
+    case SPINEL_PROP_MAC_DENYLIST:
+        ret = "MAC_DENYLIST";
         break;
 
-    case SPINEL_PROP_MAC_BLACKLIST_ENABLED:
-        ret = "MAC_BLACKLIST_ENABLED";
+    case SPINEL_PROP_MAC_DENYLIST_ENABLED:
+        ret = "MAC_DENYLIST_ENABLED";
         break;
 
     case SPINEL_PROP_MAC_FIXED_RSS:
@@ -1891,6 +1899,10 @@ const char *spinel_prop_key_to_cstr(spinel_prop_key_t prop_key)
         ret = "MESHCOP_COMMISSIONER_SESSION_ID";
         break;
 
+    case SPINEL_PROP_MESHCOP_JOINER_DISCERNER:
+        ret = "MESHCOP_JOINER_DISCERNER";
+        break;
+
     case SPINEL_PROP_MESHCOP_COMMISSIONER_ANNOUNCE_BEGIN:
         ret = "MESHCOP_COMMISSIONER_ANNOUNCE_BEGIN";
         break;
@@ -1983,6 +1995,54 @@ const char *spinel_prop_key_to_cstr(spinel_prop_key_t prop_key)
         ret = "SLAAC_ENABLED";
         break;
 
+    case SPINEL_PROP_SUPPORTED_RADIO_LINKS:
+        ret = "SUPPORTED_RADIO_LINKS";
+        break;
+
+    case SPINEL_PROP_NEIGHBOR_TABLE_MULTI_RADIO_INFO:
+        ret = "NEIGHBOR_TABLE_MULTI_RADIO_INFO";
+        break;
+
+    case SPINEL_PROP_SRP_CLIENT_START:
+        ret = "SRP_CLIENT_START";
+        break;
+
+    case SPINEL_PROP_SRP_CLIENT_LEASE_INTERVAL:
+        ret = "SRP_CLIENT_LEASE_INTERVAL";
+        break;
+
+    case SPINEL_PROP_SRP_CLIENT_KEY_LEASE_INTERVAL:
+        ret = "SRP_CLIENT_KEY_LEASE_INTERVAL";
+        break;
+
+    case SPINEL_PROP_SRP_CLIENT_HOST_INFO:
+        ret = "SRP_CLIENT_HOST_INFO";
+        break;
+
+    case SPINEL_PROP_SRP_CLIENT_HOST_NAME:
+        ret = "SRP_CLIENT_HOST_NAME";
+        break;
+
+    case SPINEL_PROP_SRP_CLIENT_HOST_ADDRESSES:
+        ret = "SRP_CLIENT_HOST_ADDRESSES";
+        break;
+
+    case SPINEL_PROP_SRP_CLIENT_SERVICES:
+        ret = "SRP_CLIENT_SERVICES";
+        break;
+
+    case SPINEL_PROP_SRP_CLIENT_HOST_SERVICES_REMOVE:
+        ret = "SRP_CLIENT_HOST_SERVICES_REMOVE";
+        break;
+
+    case SPINEL_PROP_SRP_CLIENT_HOST_SERVICES_CLEAR:
+        ret = "SRP_CLIENT_HOST_SERVICES_CLEAR";
+        break;
+
+    case SPINEL_PROP_SRP_CLIENT_EVENT:
+        ret = "SRP_CLIENT_EVENT";
+        break;
+
     case SPINEL_PROP_SERVER_ALLOW_LOCAL_DATA_CHANGE:
         ret = "SERVER_ALLOW_LOCAL_DATA_CHANGE";
         break;
@@ -1993,6 +2053,10 @@ const char *spinel_prop_key_to_cstr(spinel_prop_key_t prop_key)
 
     case SPINEL_PROP_SERVER_LEADER_SERVICES:
         ret = "SERVER_LEADER_SERVICES";
+        break;
+
+    case SPINEL_PROP_RCP_API_VERSION:
+        ret = "RCP_API_VERSION";
         break;
 
     case SPINEL_PROP_UART_BITRATE:
@@ -2241,6 +2305,22 @@ const char *spinel_prop_key_to_cstr(spinel_prop_key_t prop_key)
 
     case SPINEL_PROP_DEBUG_TEST_WATCHDOG:
         ret = "DEBUG_TEST_WATCHDOG";
+        break;
+
+    case SPINEL_PROP_RCP_MAC_FRAME_COUNTER:
+        ret = "RCP_MAC_FRAME_COUNTER";
+        break;
+
+    case SPINEL_PROP_RCP_MAC_KEY:
+        ret = "RCP_MAC_KEY";
+        break;
+
+    case SPINEL_PROP_DEBUG_LOG_TIMESTAMP_BASE:
+        ret = "DEBUG_LOG_TIMESTAMP_BASE";
+        break;
+
+    case SPINEL_PROP_DEBUG_TREL_TEST_MODE_ENABLE:
+        ret = "DEBUG_TREL_TEST_MODE_ENABLE";
         break;
 
     default:
@@ -2599,8 +2679,12 @@ const char *spinel_capability_to_cstr(spinel_capability_t capability)
         ret = "NET_THREAD_1_1";
         break;
 
-    case SPINEL_CAP_MAC_WHITELIST:
-        ret = "MAC_WHITELIST";
+    case SPINEL_CAP_RCP_API_VERSION:
+        ret = "RCP_API_VERSION";
+        break;
+
+    case SPINEL_CAP_MAC_ALLOWLIST:
+        ret = "MAC_ALLOWLIST";
         break;
 
     case SPINEL_CAP_MAC_RAW:
@@ -2647,6 +2731,14 @@ const char *spinel_capability_to_cstr(spinel_capability_t capability)
         ret = "MAC_RETRY_HISTOGRAM";
         break;
 
+    case SPINEL_CAP_MULTI_RADIO:
+        ret = "MULTI_RADIO";
+        break;
+
+    case SPINEL_CAP_SRP_CLIENT:
+        ret = "SRP_CLIENT";
+        break;
+
     case SPINEL_CAP_ERROR_RATE_TRACKING:
         ret = "ERROR_RATE_TRACKING";
         break;
@@ -2685,6 +2777,27 @@ const char *spinel_capability_to_cstr(spinel_capability_t capability)
 
     case SPINEL_CAP_NEST_TRANSMIT_HOOK:
         ret = "NEST_TRANSMIT_HOOK";
+        break;
+
+    default:
+        break;
+    }
+
+    return ret;
+}
+
+const char *spinel_radio_link_to_cstr(uint32_t radio)
+{
+    const char *ret = "UNKNOWN";
+
+    switch (radio)
+    {
+    case SPINEL_RADIO_LINK_IEEE_802_15_4:
+        ret = "IEEE_802_15_4";
+        break;
+
+    case SPINEL_RADIO_LINK_TREL_UDP6:
+        ret = "TREL_UDP6";
         break;
 
     default:
