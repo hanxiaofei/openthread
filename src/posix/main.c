@@ -139,9 +139,6 @@ static void PrintUsage(const char *aProgramName, FILE *aStream, int aExitCode)
             "    -d  --debug-level             Debug level of logging.\n"
             "    -h  --help                    Display this usage information.\n"
             "    -I  --interface-name name     Thread network interface name.\n"
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-            "    -i  --pan-index index         Radio PAN index.\n"
-#endif
             "    -n  --dry-run                 Just verify if arguments is valid and radio spinel is compatible.\n"
             "        --radio-version           Print radio firmware version.\n"
             "    -s  --time-speed factor       Time speed up factor.\n"
