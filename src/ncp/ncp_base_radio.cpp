@@ -148,12 +148,6 @@ void NcpBase::LinkRawTransmitDone(otRadioFrame *aFrame, otRadioFrame *aAckFrame,
 
     if (mCurTransmitTID)
     {
-
-
-        uint8_t header       = SPINEL_HEADER_FLAG;
-
-        header |= static_cast<uint8_t>(mCurTransmitTID << SPINEL_HEADER_TID_SHIFT);
-#else
         uint8_t header       = SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0 | mCurTransmitTID;
 
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
