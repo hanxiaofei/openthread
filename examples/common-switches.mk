@@ -68,8 +68,8 @@ MESSAGE_USE_HEAP          ?= 0
 MLE_LONG_ROUTES           ?= 0
 MLR                       ?= 0
 MTD_NETDIAG               ?= 0
-MULTIPLE_INSTANCE         ?= 0
 MULTIPAN_RCP              ?= 0
+MULTIPLE_INSTANCE         ?= 0
 OTNS                      ?= 0
 PLATFORM_UDP              ?= 0
 REFERENCE_DEVICE          ?= 0
@@ -251,12 +251,12 @@ ifeq ($(MTD_NETDIAG),1)
 COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_TMF_NETWORK_DIAG_MTD_ENABLE=1
 endif
 
-ifeq ($(MULTIPLE_INSTANCE),1)
-COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_MULTIPLE_INSTANCE_ENABLE=1
-endif
-
 ifeq ($(MULTIPAN_RCP),1)
 COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE=1
+endif
+
+ifeq ($(MULTIPLE_INSTANCE),1)
+COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_MULTIPLE_INSTANCE_ENABLE=1
 endif
 
 ifeq ($(PLATFORM_UDP),1)
