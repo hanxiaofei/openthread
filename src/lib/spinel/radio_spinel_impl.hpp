@@ -467,7 +467,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleReceivedFrame(void)
     spinel_iid_t iid = SPINEL_HEADER_GET_IID(header);
     if (iid != 0 && iid != mIid)
     {
-        otLogInfoPlat("Discarding SPINEL message from IID %u", iid);
+        otLogInfoPlat("Discarding SPINEL message with IID=%u", iid);
         mRxFrameBuffer.DiscardFrame();
         ExitNow();
     }

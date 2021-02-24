@@ -893,7 +893,6 @@ private:
                                         va_list           aArgs);
     otError WaitResponse(void);
     otError SendReset(void);
-
     otError SendCommand(uint32_t          command,
                         spinel_prop_key_t key,
                         spinel_tid_t      tid,
@@ -955,7 +954,10 @@ private:
     va_list           mPropertyArgs;    ///< The arguments pack or unpack spinel property of current transaction.
     uint32_t          mExpectedCommand; ///< Expected response command of current transaction.
     otError           mError;           ///< The result of current transaction.
-
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+    spinel_iid_t      mIid;             ///< The SPINEL iid used by this process.
+#endif
+  
     uint8_t       mRxPsdu[OT_RADIO_FRAME_MAX_SIZE];
     uint8_t       mTxPsdu[OT_RADIO_FRAME_MAX_SIZE];
     uint8_t       mAckPsdu[OT_RADIO_FRAME_MAX_SIZE];
@@ -963,10 +965,6 @@ private:
     otRadioFrame  mTxRadioFrame;
     otRadioFrame  mAckRadioFrame;
     otRadioFrame *mTransmitFrame; ///< Points to the frame to send
-
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-    spinel_iid_t   mIid;
-#endif
 
     otExtAddress mExtendedAddress;
     uint16_t     mShortAddress;
