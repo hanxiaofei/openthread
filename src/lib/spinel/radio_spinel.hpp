@@ -957,7 +957,7 @@ private:
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     spinel_iid_t      mIid;             ///< The SPINEL iid used by this process.
 #endif
-  
+
     uint8_t       mRxPsdu[OT_RADIO_FRAME_MAX_SIZE];
     uint8_t       mTxPsdu[OT_RADIO_FRAME_MAX_SIZE];
     uint8_t       mAckPsdu[OT_RADIO_FRAME_MAX_SIZE];
