@@ -468,13 +468,16 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleReceivedFrame(void)
     if (iid != 0 && iid != mIid)
     {
         otLogInfoPlat("Discarding SPINEL message from IID %u", iid);
-        return;
+        mRxFrameBuffer.DiscardFrame();
+        ExitNow();
     }
-#endif
-
+    VerifyOrExit(unpacked > 0 && (header & SPINEL_HEADER_FLAG) == SPINEL_HEADER_FLAG,
+                 error = OT_ERROR_PARSE);    
+#else
     VerifyOrExit(unpacked > 0 && (header & SPINEL_HEADER_FLAG) == SPINEL_HEADER_FLAG &&
                  SPINEL_HEADER_GET_IID(header) == 0,
                  error = OT_ERROR_PARSE);
+#endif
 
     if (SPINEL_HEADER_GET_TID(header) == 0)
     {
@@ -607,7 +610,6 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleResponse(const uint8_
     else
     {
         otLogWarnPlat("Unexpected Spinel transaction message: %u", SPINEL_HEADER_GET_TID(header));
-        otLogWarnPlat("Spinel resp: cmd:%s, prop:%s, iid:%02x, tid:%02x\n", spinel_command_to_cstr(cmd), spinel_prop_key_to_cstr(key), SPINEL_HEADER_GET_IID(header), SPINEL_HEADER_GET_TID(header));        
         error = OT_ERROR_DROP;
     }
 
