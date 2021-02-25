@@ -91,7 +91,7 @@ public:
     static NcpBase *GetNcpInstance(void);
 
     /**
-     * This method returns the radio IID of the host application
+     * This method returns the IID of the current SPINEL command.
      *
      * @returns IID.
      *
@@ -208,11 +208,9 @@ protected:
      */
     struct ResponseEntry
     {
-
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-        uint8_t      mIid : 2;              ///< Spinel Interface Identifier.
+        uint8_t      mIid : 2;              ///< Spinel interface id.
 #endif
-        
         uint8_t      mTid : 4;              ///< Spinel transaction id.
         bool         mIsInUse : 1;          ///< `true` if this entry is in use, `false` otherwise.
         ResponseType mType : 2;             ///< Response type.
@@ -543,10 +541,6 @@ protected:
     Spinel::Decoder        mDecoder;
     bool                   mHostPowerStateInProgress;
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-    uint8_t                mIid;
-#endif
-
     enum
     {
         kTxBufferSize       = OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE, // Tx Buffer size (used by mTxFrameBuffer).
@@ -576,7 +570,7 @@ protected:
 
     uint8_t mTxBuffer[kTxBufferSize];
 
-    spinel_tid_t mNextExpectedTid;
+    spinel_tid_t mNextExpectedTid;  // This should be an array indexed by iid
 
     uint8_t       mResponseQueueHead;
     uint8_t       mResponseQueueTail;
@@ -599,13 +593,12 @@ protected:
     uint8_t mPreferredRouteId;
 #endif
 
-#if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
-    uint8_t mCurTransmitTID;
-
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-    uint8_t mCurTransmitIID;
+    uint8_t mCurCommandIID;
 #endif
 
+#if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
+    uint8_t mCurTransmitTID;
     int8_t  mCurScanChannel;
     bool    mSrcMatchEnabled;
 #endif // OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE

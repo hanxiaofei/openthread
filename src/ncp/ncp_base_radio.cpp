@@ -151,7 +151,7 @@ void NcpBase::LinkRawTransmitDone(otRadioFrame *aFrame, otRadioFrame *aAckFrame,
         uint8_t header       = SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0 | mCurTransmitTID;
 
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-        header |= static_cast<uint8_t>(mCurTransmitIID << SPINEL_HEADER_IID_SHIFT);
+        header |= static_cast<uint8_t>(mCurCommandIID << SPINEL_HEADER_IID_SHIFT);
 #endif
 
         bool    framePending = (aAckFrame != nullptr && static_cast<Mac::RxFrame *>(aAckFrame)->GetFramePending());
@@ -454,11 +454,6 @@ exit:
     {
         // Cache the transaction ID for async response
         mCurTransmitTID = SPINEL_HEADER_GET_TID(aHeader);
-
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-        mCurTransmitIID = SPINEL_HEADER_GET_IID(aHeader);
-#endif
-        
     }
     else
     {

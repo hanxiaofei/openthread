@@ -261,10 +261,11 @@ static otInstance *InitInstance(PosixConfig *aConfig)
 
     syslog(LOG_INFO, "Running %s", otGetVersionString());
     syslog(LOG_INFO, "Thread version: %hu", otThreadGetVersion());
-    IgnoreError(otLoggingSetLevel(aConfig->mLogLevel));
 
     instance = otSysInit(&aConfig->mPlatformConfig);
 
+    IgnoreError(otLoggingSetLevel(aConfig->mLogLevel));
+    
     atexit(otSysDeinit);
 
     if (aConfig->mPrintRadioVersion)
