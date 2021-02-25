@@ -158,6 +158,7 @@ void NcpBase::LinkRawTransmitDone(otRadioFrame *aFrame, otRadioFrame *aAckFrame,
 
         // Clear cached transmit TID
         mCurTransmitTID = 0;
+
         SuccessOrExit(mEncoder.BeginFrame(header, SPINEL_CMD_PROP_VALUE_IS, SPINEL_PROP_LAST_STATUS));
         SuccessOrExit(mEncoder.WriteUintPacked(ThreadErrorToSpinelStatus(aError)));
         SuccessOrExit(mEncoder.WriteBool(framePending));
