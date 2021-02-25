@@ -364,6 +364,12 @@ void NcpBase::HandleReceive(const uint8_t *aBuf, uint16_t aBufLength)
 
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     mCurCommandIID = SPINEL_HEADER_GET_IID(header);
+#else
+    if (SPINEL_HEADER_GET_IID(header) != 0)
+    {
+        IgnoreError(WriteLastStatusFrame(header, SPINEL_STATUS_INVALID_INTERFACE));
+        ExitNow();
+    }
 #endif
 
     mRxSpinelFrameCounter++;
