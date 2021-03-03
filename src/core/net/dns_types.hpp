@@ -37,6 +37,7 @@
 #include "openthread-core-config.h"
 
 #include <openthread/dns.h>
+#include <openthread/dns_client.h>
 
 #include "common/clearable.hpp"
 #include "common/encoding.hpp"
@@ -490,9 +491,34 @@ class Name : public Clearable<Name>
 public:
     enum : uint8_t
     {
-        kMaxLabelLength   = 63,  ///< Max number of characters in a label.
-        kMaxLength        = 254, ///< Max number of characters in a name.
-        kMaxEncodedLength = 255, ///< Max length of an encoded name.
+        /**
+         * Max size (number of chars) in a name string array (includes null char at the end of string).
+         *
+         */
+        kMaxNameSize = OT_DNS_MAX_NAME_SIZE,
+
+        /**
+         * Maximum length in a name string (does not include null char at the end of string).
+         *
+         */
+        kMaxNameLength = kMaxNameSize - 1,
+
+        /**
+         * Max size (number of chars) in a label string array (includes null char at the end of the string).
+         *
+         */
+        kMaxLabelSize = OT_DNS_MAX_LABEL_SIZE,
+
+        /**
+         * Maximum length in a label string (does not include null char at the end of string).
+         *
+         */
+        kMaxLabelLength = kMaxLabelSize - 1,
+    };
+
+    enum : char
+    {
+        kLabelSeperatorChar = '.',
     };
 
     /**
@@ -648,6 +674,26 @@ public:
     static otError AppendLabel(const char *aLabel, Message &aMessage);
 
     /**
+     * This static method encodes and appends a single name label of specified length to a message.
+     *
+     * The @p aLabel is assumed to contain a single name label of given @p aLength.  @p aLabel must not contain
+     * '\0' characters within the length @p aLength. Unlike `AppendMultipleLabels()` which parses the label string
+     * and treats it as sequence of multiple (dot-separated) labels, this method always appends @p aLabel as a single
+     * whole label. This allows the label string to even contain dot '.' character, which, for example, is useful for
+     * "Service Instance Names" where <Instance> portion is a user-friendly name and can contain dot characters.
+     *
+     * @param[in] aLabel         The label string to append. MUST NOT be nullptr.
+     * @param[in] aLength        The length of the label to append.
+     * @param[in] aMessage       The message to append to.
+     *
+     * @retval OT_ERROR_NONE          Successfully encoded and appended the name label to @p aMessage.
+     * @retval OT_ERROR_INVALID_ARGS  @p aLabel is not valid (e.g., label length is not within valid range).
+     * @retval OT_ERROR_NO_BUFS       Insufficient available buffers to grow the message.
+     *
+     */
+    static otError AppendLabel(const char *aLabel, uint8_t aLength, Message &aMessage);
+
+    /**
      * This static method encodes and appends a sequence of name labels to a given message.
      *
      * The @p aLabels must follow  "<label1>.<label2>.<label3>", i.e., a sequence of labels separated by dot '.' char.
@@ -668,6 +714,33 @@ public:
      *
      */
     static otError AppendMultipleLabels(const char *aLabels, Message &aMessage);
+
+    /**
+     * This static method encodes and appends a sequence of name labels within the specified length to a given message.
+     * This method stops appending labels if @p aLength characters are read or '\0' is found before @p aLength
+     * characters.
+     *
+     * This method is useful for appending a number of labels of the name instead of appending all labels.
+     *
+     * The @p aLabels must follow  "<label1>.<label2>.<label3>", i.e., a sequence of labels separated by dot '.' char.
+     * E.g., "_http._tcp", "_http._tcp." (same as previous one), "host-1.test".
+     *
+     * This method validates that the @p aLabels is a valid name format, i.e., no empty label, and labels are
+     * `kMaxLabelLength` (63) characters or less.
+     *
+     * @note This method NEVER adds a label terminator (empty label) to the message, even in the case where @p aLabels
+     * ends with a dot character, e.g., "host-1.test." is treated same as "host-1.test".
+     *
+     * @param[in]  aLabels            A name label string. Can be nullptr (then treated as "").
+     * @param[in]  aLength            The max length of the name labels to encode.
+     * @param[in]  aMessage           The message to which to append the encoded name.
+     *
+     * @retval OT_ERROR_NONE          Successfully encoded and appended the name label(s) to @p aMessage.
+     * @retval OT_ERROR_INVALID_ARGS  Name label @p aLabels is not valid.
+     * @retval OT_ERROR_NO_BUFS       Insufficient available buffers to grow the message.
+     *
+     */
+    static otError AppendMultipleLabels(const char *aLabels, uint8_t aLength, Message &aMessage);
 
     /**
      * This static method appends a name label terminator to a message.
@@ -906,8 +979,7 @@ public:
 private:
     enum : char
     {
-        kNullChar           = '\0',
-        kLabelSeperatorChar = '.',
+        kNullChar = '\0',
     };
 
     enum : uint8_t
@@ -921,6 +993,8 @@ private:
         kLabelTypeMask    = 0xc0, // 0b1100_0000 (first two bits)
         kTextLabelType    = 0x00, // Text label type (00)
         kPointerLabelType = 0xc0, // Pointer label type - compressed name (11)
+
+        kMaxEncodedLength = 255, ///< Max length of an encoded name.
     };
 
     enum : uint16_t
@@ -956,8 +1030,6 @@ private:
         uint16_t       mNameEndOffset;    // Offset in `mMessage` to the byte after the end of domain name field.
     };
 
-    static otError AppendLabel(const char *aLabel, uint8_t aLabelLength, Message &aMessage);
-
     Name(const char *aString, const Message *aMessage, uint16_t aOffset)
         : mString(aString)
         , mMessage(aMessage)
@@ -979,6 +1051,91 @@ class TxtEntry : public otDnsTxtEntry
     friend class TxtRecord;
 
 public:
+    enum : uint8_t
+    {
+        kMinKeyLength = OT_DNS_TXT_KEY_MIN_LENGTH, ///< Minimum length of key string (RFC 6763 - section 6.4).
+        kMaxKeyLength = OT_DNS_TXT_KEY_MAX_LENGTH, ///< Recommended max length of key string (RFC 6763 - section 6.4).
+    };
+
+    /**
+     * This class represents an iterator for TXT record entires (key/value pairs).
+     *
+     */
+    class Iterator : public otDnsTxtEntryIterator
+    {
+        friend class TxtEntry;
+
+    public:
+        /**
+         * This method initializes a TXT record iterator.
+         *
+         * The buffer pointer @p aTxtData and its content MUST persist and remain unchanged while the iterator object
+         * is being used.
+         *
+         * @param[in] aTxtData        A pointer to buffer containing the encoded TXT data.
+         * @param[in] aTxtDataLength  The length (number of bytes) of @p aTxtData.
+         *
+         */
+        void Init(const uint8_t *aTxtData, uint16_t aTxtDataLength);
+
+        /**
+         * This method parses the TXT data from the `Iterator` and gets the next TXT record entry (key/value pair).
+         *
+         * The `Iterator` instance MUST be initialized using `Init()` before calling this method and the TXT data
+         * buffer used to initialize the iterator MUST persist and remain unchanged.
+         *
+         * If the parsed key string length is smaller than or equal to `kMaxKeyLength` (recommended max key length)
+         * the key string is returned in `mKey` in @p aEntry. But if the key is longer, then `mKey` is set to NULL and
+         * the entire encoded TXT entry is returned in `mValue` and `mValueLength`.
+         *
+         * @param[out] aEntry          A reference to a `TxtEntry` to output the parsed/read entry.
+         *
+         * @retval OT_ERROR_NONE       The next entry was parsed successfully. @p aEntry is updated.
+         * @retval OT_ERROR_NOT_FOUND  No more entries in TXT data.
+         * @retval OT_ERROR_PARSE      The TXT data from `Iterator` is not well-formed.
+         *
+         */
+        otError GetNextEntry(TxtEntry &aEntry);
+
+    private:
+        enum : uint8_t
+        {
+            kIndexTxtLength   = 0,
+            kIndexTxtPosition = 1,
+        };
+
+        const char *GetTxtData(void) const { return reinterpret_cast<const char *>(mPtr); }
+        void        SetTxtData(const uint8_t *aTxtData) { mPtr = aTxtData; }
+        uint16_t    GetTxtDataLength(void) const { return mData[kIndexTxtLength]; }
+        void        SetTxtDataLength(uint16_t aLength) { mData[kIndexTxtLength] = aLength; }
+        uint16_t    GetTxtDataPosition(void) const { return mData[kIndexTxtPosition]; }
+        void        SetTxtDataPosition(uint16_t aValue) { mData[kIndexTxtPosition] = aValue; }
+        void        IncreaseTxtDataPosition(uint16_t aIncrement) { mData[kIndexTxtPosition] += aIncrement; }
+        char *      GetKeyBuffer(void) { return mChar; }
+        const char *GetTxtDataEnd(void) const { return GetTxtData() + GetTxtDataLength(); }
+    };
+
+    /**
+     * This is the default constructor for a `TxtEntry` object.
+     *
+     */
+    TxtEntry(void) = default;
+
+    /**
+     * This constructor initializes a `TxtEntry` object.
+     *
+     * @param[in] aKey           A pointer to the key string.
+     * @param[in] aValue         A pointer to a buffer containing the value.
+     * @param[in] aValueLength   Number of bytes in @p aValue buffer.
+     *
+     */
+    TxtEntry(const char *aKey, const uint8_t *aValue, uint8_t aValueLength)
+    {
+        mKey         = aKey;
+        mValue       = aValue;
+        mValueLength = aValueLength;
+    }
+
     /**
      * This method encodes and appends the `TxtEntry` to a message.
      *
@@ -998,7 +1155,6 @@ public:
      * @param[in] aNumEntries  The number of entries in @p aEntries array.
      * @param[in] aMessage     The message to append to.
      *
-     *
      * @retval OT_ERROR_NONE           Entries appended successfully to @p aMessage.
      * @retval OT_ERROR_INVALID_ARGS   The `TxTEntry` info is not valid.
      * @retval OT_ERROR_NO_BUFS        Insufficient available buffers to grow the message.
@@ -1007,16 +1163,15 @@ public:
     static otError AppendEntries(const TxtEntry *aEntries, uint8_t aNumEntries, Message &aMessage);
 
 private:
+    enum : uint8_t
+    {
+        kMaxKeyValueEncodedSize = 255,
+    };
+
     enum : char
     {
         kKeyValueSeparator = '=',
-    };
-
-    enum : uint8_t
-    {
-        kMinKeyLength           = 1,
-        kMaxKeyLength           = 9,
-        kMaxKeyValueEncodedSize = 255,
+        kNullChar          = '\0',
     };
 };
 
@@ -1036,17 +1191,18 @@ public:
      */
     enum : uint16_t
     {
-        kTypeZero = 0,   ///< Zero is used as a special indicator for the SIG RR (SIG(0) from RFC 2931).
-        kTypeA    = 1,   ///< Address record (IPv4).
-        kTypeSoa  = 6,   ///< Start of (zone of) authority.
-        kTypePtr  = 12,  ///< PTR record.
-        kTypeTxt  = 16,  ///< TXT record.
-        kTypeSig  = 24,  ///< SIG record.
-        kTypeKey  = 25,  ///< KEY record.
-        kTypeAaaa = 28,  ///< IPv6 address record.
-        kTypeSrv  = 33,  ///< SRV locator record.
-        kTypeOpt  = 41,  ///< Option record.
-        kTypeAny  = 255, ///< ANY record.
+        kTypeZero  = 0,   ///< Zero is used as a special indicator for the SIG RR (SIG(0) from RFC 2931).
+        kTypeA     = 1,   ///< Address record (IPv4).
+        kTypeSoa   = 6,   ///< Start of (zone of) authority.
+        kTypeCname = 5,   ///< CNAME record.
+        kTypePtr   = 12,  ///< PTR record.
+        kTypeTxt   = 16,  ///< TXT record.
+        kTypeSig   = 24,  ///< SIG record.
+        kTypeKey   = 25,  ///< KEY record.
+        kTypeAaaa  = 28,  ///< IPv6 address record.
+        kTypeSrv   = 33,  ///< SRV locator record.
+        kTypeOpt   = 41,  ///< Option record.
+        kTypeAny   = 255, ///< ANY record.
     };
 
     /**
@@ -1325,6 +1481,60 @@ private:
 } OT_TOOL_PACKED_END;
 
 /**
+ * This class implements Resource Record body format of CNAME type.
+ *
+ */
+OT_TOOL_PACKED_BEGIN
+class CnameRecord : public ResourceRecord
+{
+public:
+    enum : uint16_t
+    {
+        kType = kTypeCname, ///< The CNAME record type.
+    };
+
+    /**
+     * This method initializes the CNAME Resource Record by setting its type and class.
+     *
+     * Other record fields (TTL, length) remain unchanged/uninitialized.
+     *
+     * @param[in] aClass  The class of the resource record (default is `kClassInternet`).
+     *
+     */
+    void Init(uint16_t aClass = kClassInternet) { ResourceRecord::Init(kTypeCname, aClass); }
+
+    /**
+     * This method parses and reads the CNAME alias name from a message.
+     *
+     * This method also verifies that the CNAME record is well-formed (e.g., the record data length `GetLength()`
+     * matches the CNAME encoded name).
+     *
+     * @param[in]     aMessage          The message to read from. `aMessage.GetOffset()` MUST point to the start of
+     *                                  DNS header.
+     * @param[inout]  aOffset           On input, the offset in @p aMessage to start of CNAME name field.
+     *                                  On exit when successfully read, @p aOffset is updated to point to the byte
+     *                                  after the entire PTR record (skipping over the record).
+     * @param[out]    aNameBuffer       A pointer to a char array to output the read name as a null-terminated C string
+     *                                  (MUST NOT be nullptr).
+     * @param[in]     aNameBufferSize   The size of @p aNameBuffer.
+     *
+     * @retval OT_ERROR_NONE            The CNAME name was read successfully. @p aOffset and @p aNameBuffer are updated.
+     * @retval OT_ERROR_PARSE           The CNAME record in @p aMessage could not be parsed (invalid format).
+     * @retval OT_ERROR_NO_BUFS         Name could not fit in @p aNameBufferSize chars.
+     *
+     */
+    otError ReadCanonicalName(const Message &aMessage,
+                              uint16_t &     aOffset,
+                              char *         aNameBuffer,
+                              uint16_t       aNameBufferSize) const
+    {
+        return ResourceRecord::ReadName(aMessage, aOffset, /* aStartOffset */ aOffset - sizeof(CnameRecord),
+                                        aNameBuffer, aNameBufferSize, /* aSkipRecord */ true);
+    }
+
+} OT_TOOL_PACKED_END;
+
+/**
  * This class implements Resource Record body format of PTR type.
  *
  */
@@ -1426,8 +1636,6 @@ public:
         kType = kTypeTxt, ///< The TXT record type.
     };
 
-    typedef otDnsTxtIterator TxtIterator;
-
     /**
      * This method initializes the TXT Resource Record by setting its type and class.
      *
@@ -1472,26 +1680,6 @@ public:
      *
      */
     static bool VerifyTxtData(const uint8_t *aTxtData, uint16_t aTxtLength);
-
-    /**
-     * This static method returns the next TXT entry in the encoded TXT data buffer.
-     *
-     * This method assumes that @p aTxtData has already been verified by `VerifyTxtData()`.
-     *
-     * @param[in]     aTxtData    The encoded TXT data buffer.
-     * @param[in]     aTxtLength  The length of the encoded TXT data.
-     * @param[inout]  aIterator   A reference to the TXT iterator context. To get the first
-     *                            TXT entry, it should be set to OT_DNS_TXT_ITERATOR_INIT.
-     * @param[out]    aTxtEntry   A reference to where the TXT entry will be placed.
-     *
-     * @retval OT_ERROR_NONE       Successfully found the next TXT entry.
-     * @retval OT_ERROR_NOT_FOUND  No subsequent TXT entry exists in the service.
-     *
-     */
-    static otError GetNextTxtEntry(const uint8_t *aTxtData,
-                                   uint16_t       aTxtLength,
-                                   TxtIterator &  aIterator,
-                                   TxtEntry &     aTxtEntry);
 
 } OT_TOOL_PACKED_END;
 
@@ -2091,7 +2279,7 @@ private:
 } OT_TOOL_PACKED_END;
 
 /**
- * This class implements DNS OPT Pseudo Resource Record header for EDNS(0) (RFC 6981 - Section 6.1).
+ * This class implements DNS OPT Pseudo Resource Record header for EDNS(0) (RFC 6891 - Section 6.1).
  *
  */
 OT_TOOL_PACKED_BEGIN
@@ -2144,10 +2332,7 @@ public:
      * @return The upper 8-bit of the extended 12-bit Response Code.
      *
      */
-    uint8_t GetExtendedResponseCode(void) const
-    {
-        return static_cast<uint8_t>((mTtl & kExtRCodeMask) >> kExtRCodeffset);
-    }
+    uint8_t GetExtendedResponseCode(void) const { return GetTtlByteAt(kExtRCodeByteIndex); }
 
     /**
      * This method sets the upper 8-bit of the extended 12-bit Response Code.
@@ -2157,11 +2342,7 @@ public:
      * @param[in] aExtendedResponse The upper 8-bit of the extended 12-bit Response Code.
      *
      */
-    void SetExtnededResponseCode(uint8_t aExtendedResponse)
-    {
-        mTtl &= ~kExtRCodeffset;
-        mTtl |= (static_cast<uint32_t>(aExtendedResponse) << kExtRCodeffset);
-    }
+    void SetExtnededResponseCode(uint8_t aExtendedResponse) { GetTtlByteAt(kExtRCodeByteIndex) = aExtendedResponse; }
 
     /**
      * This method gets the Version field.
@@ -2169,7 +2350,7 @@ public:
      * @returns The version.
      *
      */
-    uint8_t GetVersion(void) const { return static_cast<uint8_t>((mTtl & kVersionMask) >> kVersionOffset); }
+    uint8_t GetVersion(void) const { return GetTtlByteAt(kVersionByteIndex); }
 
     /**
      * This method set the Version field.
@@ -2177,11 +2358,7 @@ public:
      * @param[in] aVersion  The version.
      *
      */
-    void SetVersion(uint8_t aVersion)
-    {
-        mTtl &= ~kVersionMask;
-        mTtl |= (static_cast<uint32_t>(aVersion) << kVersionOffset);
-    }
+    void SetVersion(uint8_t aVersion) { GetTtlByteAt(kVersionByteIndex) = aVersion; }
 
     /**
      * This method indicates whether the DNSSEC OK flag is set or not.
@@ -2189,19 +2366,19 @@ public:
      * @returns True if DNSSEC OK flag is set in the header, false otherwise.
      *
      */
-    bool IsDnsSecurityFlagSet(void) const { return (mTtl & kDnsSecFlag) != 0; }
+    bool IsDnsSecurityFlagSet(void) const { return (GetTtlByteAt(kFlagByteIndex) & kDnsSecFlag) != 0; }
 
     /**
      * This method clears the DNSSEC OK bit flag.
      *
      */
-    void ClearDnsSecurityFlag(void) { mTtl &= ~kDnsSecFlag; }
+    void ClearDnsSecurityFlag(void) { GetTtlByteAt(kFlagByteIndex) &= ~kDnsSecFlag; }
 
     /**
      * This method sets the DNSSEC OK bit flag.
      *
      */
-    void SetDnsSecurityFlag(void) { mTtl |= kDnsSecFlag; }
+    void SetDnsSecurityFlag(void) { GetTtlByteAt(kFlagByteIndex) |= kDnsSecFlag; }
 
 private:
     // The OPT RR re-purposes the existing CLASS and TTL fields in the
@@ -2213,19 +2390,21 @@ private:
     //  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
     //  |         EXTENDED-RCODE        |            VERSION            |
     //  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
-    //  | DO|                           Z                               |
+    //  | DO|                Z          |             Z                 |
     //  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
     //
     // The variable data part of OPT RR can contain zero of more `Option`.
 
-    enum : uint32_t
+    enum : uint8_t
     {
-        kExtRCodeffset = 24,                    // Extended RCODE field offset.
-        kExtRCodeMask  = 0xf << kExtRCodeffset, // Extended RCODE field mask.
-        kVersionOffset = 16,                    // Version field offset.
-        kVersionMask   = 0xf << kVersionOffset, // Version field mask.
-        kDnsSecFlag    = 1 << 15,               // DnsSec bit flag.
+        kExtRCodeByteIndex = 0,      // Byte index of Extended RCODE within the TTL field.
+        kVersionByteIndex  = 1,      // Byte index of Version within the TTL field.
+        kFlagByteIndex     = 2,      // Byte index of flag byte within the TTL field.
+        kDnsSecFlag        = 1 << 7, // DNSSec OK bit flag.
     };
+
+    uint8_t  GetTtlByteAt(uint8_t aIndex) const { return reinterpret_cast<const uint8_t *>(&mTtl)[aIndex]; }
+    uint8_t &GetTtlByteAt(uint8_t aIndex) { return reinterpret_cast<uint8_t *>(&mTtl)[aIndex]; }
 
 } OT_TOOL_PACKED_END;
 
@@ -2375,6 +2554,12 @@ class Question
 {
 public:
     /**
+     * Default constructor for Question
+     *
+     */
+    Question(void) = default;
+
+    /**
      * Constructor for Question.
      *
      */
@@ -2416,21 +2601,9 @@ public:
      */
     void SetClass(uint16_t aClass) { mClass = HostSwap16(aClass); }
 
-    /**
-     * This method appends the question data to the message.
-     *
-     * @param[in]  aMessage  A reference to the message.
-     *
-     * @retval OT_ERROR_NONE     Successfully appended the question data.
-     * @retval OT_ERROR_NO_BUFS  Insufficient available buffers to grow the message.
-     *
-     */
-    otError AppendTo(Message &aMessage) const { return aMessage.Append(*this); }
-
 private:
     uint16_t mType;  // The type of the data in question section.
     uint16_t mClass; // The class of the data in question section.
-
 } OT_TOOL_PACKED_END;
 
 /**

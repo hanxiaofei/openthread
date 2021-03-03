@@ -76,6 +76,8 @@ SrpClient::SrpClient(Interpreter &aInterpreter)
     }
 
     memset(mHostAddresses, 0, sizeof(mHostAddresses));
+
+    otSrpClientSetCallback(mInterpreter.mInstance, SrpClient::HandleCallback, this);
 }
 
 otError SrpClient::Process(uint8_t aArgsLength, char *aArgs[])
@@ -94,13 +96,46 @@ exit:
     return error;
 }
 
+#if OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_API_ENABLE
+
+otError SrpClient::ProcessAutoStart(uint8_t aArgsLength, char *aArgs[])
+{
+    otError error = OT_ERROR_NONE;
+
+    if (aArgsLength == 0)
+    {
+        mInterpreter.OutputEnabledDisabledStatus(otSrpClientIsAutoStartModeEnabled(mInterpreter.mInstance));
+        ExitNow();
+    }
+
+    VerifyOrExit(aArgsLength == 1, error = OT_ERROR_INVALID_ARGS);
+
+    if (strcmp(aArgs[0], "enable") == 0)
+    {
+        otSrpClientEnableAutoStartMode(mInterpreter.mInstance, /* aCallback */ nullptr, /* aContext */ nullptr);
+    }
+    else if (strcmp(aArgs[0], "disable") == 0)
+    {
+        otSrpClientDisableAutoStartMode(mInterpreter.mInstance);
+    }
+    else
+    {
+        error = OT_ERROR_INVALID_COMMAND;
+    }
+
+exit:
+    return error;
+}
+
+#endif // OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_API_ENABLE
+
 otError SrpClient::ProcessCallback(uint8_t aArgsLength, char *aArgs[])
 {
     otError error = OT_ERROR_NONE;
 
     if (aArgsLength == 0)
     {
-        mInterpreter.OutputLine(mCallbackEnabled ? "Enabled" : "Disabled");
+        mInterpreter.OutputEnabledDisabledStatus(mCallbackEnabled);
         ExitNow();
     }
 
@@ -269,6 +304,39 @@ exit:
     return error;
 }
 
+otError SrpClient::ProcessServer(uint8_t aArgsLength, char *aArgs[])
+{
+    otError           error          = OT_ERROR_NONE;
+    const otSockAddr *serverSockAddr = otSrpClientGetServerAddress(mInterpreter.mInstance);
+
+    if (aArgsLength == 0)
+    {
+        mInterpreter.OutputFormat("[");
+        mInterpreter.OutputIp6Address(serverSockAddr->mAddress);
+        mInterpreter.OutputLine("]:%u", serverSockAddr->mPort);
+        ExitNow();
+    }
+
+    VerifyOrExit(aArgsLength == 1, error = OT_ERROR_INVALID_ARGS);
+
+    if (strcmp(aArgs[0], "address") == 0)
+    {
+        mInterpreter.OutputIp6Address(serverSockAddr->mAddress);
+        mInterpreter.OutputLine("");
+    }
+    else if (strcmp(aArgs[0], "port") == 0)
+    {
+        mInterpreter.OutputLine("%u", serverSockAddr->mPort);
+    }
+    else
+    {
+        error = OT_ERROR_INVALID_COMMAND;
+    }
+
+exit:
+    return error;
+}
+
 otError SrpClient::ProcessService(uint8_t aArgsLength, char *aArgs[])
 {
     otError error = OT_ERROR_NONE;
@@ -322,8 +390,7 @@ otError SrpClient::ProcessService(uint8_t aArgsLength, char *aArgs[])
         {
             entry->mService.mNumTxtEntries = 1;
             entry->mService.mTxtEntries    = &entry->mTxtEntry;
-            entry->mTxtEntry.mKey          = nullptr; // Treat`mValue` as an already encoded TXT-DATA
-            entry->mTxtEntry.mKeyLength    = 0;
+            entry->mTxtEntry.mKey          = nullptr; // Treat `mValue` as an already encoded TXT-DATA
             entry->mTxtEntry.mValue        = entry->mTxtBuffer;
             entry->mTxtEntry.mValueLength  = sizeof(entry->mTxtBuffer);
 
@@ -422,7 +489,21 @@ otError SrpClient::ProcessStart(uint8_t aArgsLength, char *aArgs[])
     SuccessOrExit(error = ParseAsIp6Address(aArgs[0], serverSockAddr.mAddress));
     SuccessOrExit(error = ParseAsUint16(aArgs[1], serverSockAddr.mPort));
 
-    error = otSrpClientStart(mInterpreter.mInstance, &serverSockAddr, SrpClient::HandleCallback, this);
+    error = otSrpClientStart(mInterpreter.mInstance, &serverSockAddr);
+
+exit:
+    return error;
+}
+
+otError SrpClient::ProcessState(uint8_t aArgsLength, char *aArgs[])
+{
+    OT_UNUSED_VARIABLE(aArgs);
+
+    otError error = OT_ERROR_NONE;
+
+    VerifyOrExit(aArgsLength == 0, error = OT_ERROR_INVALID_ARGS);
+
+    mInterpreter.OutputEnabledDisabledStatus(otSrpClientIsRunning(mInterpreter.mInstance));
 
 exit:
     return error;

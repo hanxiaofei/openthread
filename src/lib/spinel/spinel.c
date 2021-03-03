@@ -1823,6 +1823,22 @@ const char *spinel_prop_key_to_cstr(spinel_prop_key_t prop_key)
         ret = "THREAD_NEW_DATASET";
         break;
 
+    case SPINEL_PROP_THREAD_CSL_PERIOD:
+        ret = "SPINEL_PROP_THREAD_CSL_PERIOD";
+        break;
+
+    case SPINEL_PROP_THREAD_CSL_TIMEOUT:
+        ret = "SPINEL_PROP_THREAD_CSL_TIMEOUT";
+        break;
+
+    case SPINEL_PROP_THREAD_CSL_CHANNEL:
+        ret = "SPINEL_PROP_THREAD_CSL_CHANNEL";
+        break;
+
+    case SPINEL_PROP_THREAD_DOMAIN_NAME:
+        ret = "SPINEL_PROP_THREAD_DOMAIN_NAME";
+        break;
+
     case SPINEL_PROP_MESHCOP_JOINER_STATE:
         ret = "MESHCOP_JOINER_STATE";
         break;
@@ -2679,6 +2695,10 @@ const char *spinel_capability_to_cstr(spinel_capability_t capability)
         ret = "NET_THREAD_1_1";
         break;
 
+    case SPINEL_CAP_NET_THREAD_1_2:
+        ret = "NET_THREAD_1_2";
+        break;
+
     case SPINEL_CAP_RCP_API_VERSION:
         ret = "RCP_API_VERSION";
         break;
@@ -2765,6 +2785,10 @@ const char *spinel_capability_to_cstr(spinel_capability_t capability)
 
     case SPINEL_CAP_THREAD_SERVICE:
         ret = "THREAD_SERVICE";
+        break;
+
+    case SPINEL_CAP_THREAD_CSL_RECEIVER:
+        ret = "THREAD_CSL_RECEIVER";
         break;
 
     case SPINEL_CAP_NEST_LEGACY_INTERFACE:

@@ -618,6 +618,12 @@ enum
 
 enum
 {
+    SPINEL_NET_FLAG_EXT_DP  = (1 << 6),
+    SPINEL_NET_FLAG_EXT_DNS = (1 << 7),
+};
+
+enum
+{
     SPINEL_ROUTE_PREFERENCE_HIGH   = (1 << SPINEL_NET_FLAG_PREFERENCE_OFFSET),
     SPINEL_ROUTE_PREFERENCE_MEDIUM = (0 << SPINEL_NET_FLAG_PREFERENCE_OFFSET),
     SPINEL_ROUTE_PREFERENCE_LOW    = (3 << SPINEL_NET_FLAG_PREFERENCE_OFFSET),
@@ -1158,6 +1164,7 @@ enum
     SPINEL_CAP_NET__BEGIN     = 52,
     SPINEL_CAP_NET_THREAD_1_0 = (SPINEL_CAP_NET__BEGIN + 0),
     SPINEL_CAP_NET_THREAD_1_1 = (SPINEL_CAP_NET__BEGIN + 1),
+    SPINEL_CAP_NET_THREAD_1_2 = (SPINEL_CAP_NET__BEGIN + 2),
     SPINEL_CAP_NET__END       = 64,
 
     SPINEL_CAP_RCP__BEGIN      = 64,
@@ -1189,6 +1196,7 @@ enum
     SPINEL_CAP_THREAD_JOINER        = (SPINEL_CAP_THREAD__BEGIN + 3),
     SPINEL_CAP_THREAD_BORDER_ROUTER = (SPINEL_CAP_THREAD__BEGIN + 4),
     SPINEL_CAP_THREAD_SERVICE       = (SPINEL_CAP_THREAD__BEGIN + 5),
+    SPINEL_CAP_THREAD_CSL_RECEIVER  = (SPINEL_CAP_THREAD__BEGIN + 6),
     SPINEL_CAP_THREAD__END          = 1152,
 
     SPINEL_CAP_NEST__BEGIN           = 15296,
@@ -2292,7 +2300,7 @@ enum
     SPINEL_PROP_THREAD_STABLE_NETWORK_DATA_VERSION = SPINEL_PROP_THREAD__BEGIN + 9,
 
     /// On-Mesh Prefixes
-    /** Format: `A(t(6CbCbS))`
+    /** Format: `A(t(6CbCbSC))`
      *
      * Data per item is:
      *
@@ -2303,8 +2311,11 @@ enum
      *  `b`: "Is defined locally" flag. Set if this network was locally
      *       defined. Assumed to be true for set, insert and replace. Clear if
      *       the on mesh network was defined by another node.
+     *       This field is ignored for INSERT and REMOVE commands.
      *  `S`: The RLOC16 of the device that registered this on-mesh prefix entry.
      *       This value is not used and ignored when adding an on-mesh prefix.
+     *       This field is ignored for INSERT and REMOVE commands.
+     *  `C`: TLV flags extended (additional field for Thread 1.2 features).
      *
      */
     SPINEL_PROP_THREAD_ON_MESH_NETS = SPINEL_PROP_THREAD__BEGIN + 10,
@@ -2896,6 +2907,42 @@ enum
      *
      */
     SPINEL_PROP_THREAD_NEW_DATASET = SPINEL_PROP_THREAD_EXT__BEGIN + 40,
+
+    /// MAC CSL Period
+    /** Format: `S`
+     * Required capability: `SPINEL_CAP_THREAD_CSL_RECEIVER`
+     *
+     * The CSL period in units of 10 symbols. Value of 0 indicates that CSL should be disabled.
+     */
+    SPINEL_PROP_THREAD_CSL_PERIOD = SPINEL_PROP_THREAD_EXT__BEGIN + 41,
+
+    /// MAC CSL Timeout
+    /** Format: `L`
+     * Required capability: `SPINEL_CAP_THREAD_CSL_RECEIVER`
+     *
+     * The CSL timeout in seconds.
+     */
+    SPINEL_PROP_THREAD_CSL_TIMEOUT = SPINEL_PROP_THREAD_EXT__BEGIN + 42,
+
+    /// MAC CSL Channel
+    /** Format: `C`
+     * Required capability: `SPINEL_CAP_THREAD_CSL_RECEIVER`
+     *
+     * The CSL channel as described in chapter 4.6.5.1.2 of the Thread v1.2.0 Specification.
+     * Value of 0 means that CSL reception (if enabled) occurs on the Thread Network channel.
+     * Value from range [11,26] is an alternative channel on which a CSL reception occurs.
+     */
+    SPINEL_PROP_THREAD_CSL_CHANNEL = SPINEL_PROP_THREAD_EXT__BEGIN + 43,
+
+    /// Thread Domain Name
+    /** Format `U` - Read-write
+     * Required capability: `SPINEL_CAP_NET_THREAD_1_2`
+     *
+     * This property is available since Thread 1.2.0.
+     * Write to this property succeeds only when Thread protocols are disabled.
+     *
+     */
+    SPINEL_PROP_THREAD_DOMAIN_NAME = SPINEL_PROP_THREAD_EXT__BEGIN + 44,
 
     SPINEL_PROP_THREAD_EXT__END = 0x1600,
 

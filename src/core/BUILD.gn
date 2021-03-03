@@ -132,6 +132,10 @@ if (openthread_enable_core_config_args) {
       defines += [ "OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE=1" ]
     }
 
+    if (openthread_config_dnssd_server_enable) {
+      defines += [ "OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE=1" ]
+    }
+
     if (openthread_config_ecdsa_enable) {
       defines += [ "OPENTHREAD_CONFIG_ECDSA_ENABLE=1" ]
     }
@@ -468,8 +472,10 @@ openthread_core_files = [
   "net/dhcp6_server.hpp",
   "net/dns_client.cpp",
   "net/dns_client.hpp",
-  "net/dns_headers.cpp",
-  "net/dns_headers.hpp",
+  "net/dns_types.cpp",
+  "net/dns_types.hpp",
+  "net/dnssd_server.cpp",
+  "net/dnssd_server.hpp",
   "net/icmp6.cpp",
   "net/icmp6.hpp",
   "net/ip6.cpp",
@@ -486,6 +492,7 @@ openthread_core_files = [
   "net/netif.hpp",
   "net/sntp_client.cpp",
   "net/sntp_client.hpp",
+  "net/socket.cpp",
   "net/socket.hpp",
   "net/srp_client.cpp",
   "net/srp_client.hpp",
@@ -494,6 +501,7 @@ openthread_core_files = [
   "net/tcp.hpp",
   "net/udp6.cpp",
   "net/udp6.hpp",
+  "radio/max_power_table.hpp",
   "radio/radio.cpp",
   "radio/radio.hpp",
   "radio/radio_callbacks.cpp",
@@ -559,6 +567,8 @@ openthread_core_files = [
   "thread/network_data_local.hpp",
   "thread/network_data_notifier.cpp",
   "thread/network_data_notifier.hpp",
+  "thread/network_data_service.cpp",
+  "thread/network_data_service.hpp",
   "thread/network_data_tlvs.hpp",
   "thread/network_diagnostic.cpp",
   "thread/network_diagnostic.hpp",
@@ -658,6 +668,7 @@ source_set("libopenthread_core_config") {
     "config/dhcp6_server.h",
     "config/diag.h",
     "config/dns_client.h",
+    "config/dnssd_server.h",
     "config/ip6.h",
     "config/joiner.h",
     "config/link_quality.h",

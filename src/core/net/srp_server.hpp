@@ -56,7 +56,7 @@
 #include "common/notifier.hpp"
 #include "common/timer.hpp"
 #include "crypto/ecdsa.hpp"
-#include "net/dns_headers.hpp"
+#include "net/dns_types.hpp"
 #include "net/ip6.hpp"
 #include "net/ip6_address.hpp"
 #include "net/udp6.hpp"
@@ -80,7 +80,7 @@ public:
      * This class implements a server-side SRP service.
      *
      */
-    class Service : public InstanceLocator, public LinkedListEntry<Service>, private NonCopyable
+    class Service : public LinkedListEntry<Service>, private NonCopyable
     {
         friend class LinkedListEntry<Service>;
         friend class Server;
@@ -89,14 +89,13 @@ public:
         /**
          * This method creates a new Service object with given full name.
          *
-         * @param[in]  aInstance  A reference to the OpenThread instance.
          * @param[in]  aFullName  The full name of the service instance.
          *
-         * @returns  A pointer to the newly created Service object. nullptr if
+         * @returns  A pointer to the newly created Service object, nullptr if
          *           cannot allocate memory for the object.
          *
          */
-        static Service *New(Instance &aInstance, const char *aFullName);
+        static Service *New(const char *aFullName);
 
         /**
          * This method frees the Service object.
@@ -151,17 +150,20 @@ public:
         uint16_t GetPriority(void) const { return mPriority; }
 
         /**
-         * This method returns the next TXT entry of the service instance.
+         * This method returns the TXT record data of the service instance.
          *
-         * @param[inout]  aIterator  A pointer to the TXT iterator context. To get the first
-         *                           TXT entry, it should be set to OT_DNS_TXT_ITERATOR_INIT.
-         * @param[out]    aTxtEntry  A pointer to where the TXT entry will be placed.
-         *
-         * @retval OT_ERROR_NONE       Successfully found the next TXT entry.
-         * @retval OT_ERROR_NOT_FOUND  No subsequent TXT entry exists in the service.
+         * @returns A pointer to the buffer containing the TXT record data.
          *
          */
-        otError GetNextTxtEntry(Dns::TxtRecord::TxtIterator &aIterator, Dns::TxtEntry &aTxtEntry) const;
+        const uint8_t *GetTxtData(void) const { return mTxtData; }
+
+        /**
+         * This method returns the TXT recored data length of the service instance.
+         *
+         * @return The TXT record data length (number of bytes in buffer returned from `GetTxtData()`).
+         *
+         */
+        uint16_t GetTxtDataLength(void) const { return mTxtLength; }
 
         /**
          * This method returns the host which the service instance reside on.
@@ -197,8 +199,19 @@ public:
          */
         bool Matches(const char *aFullName) const;
 
+        /**
+         * This method tells whether this service matches a given service name <Service>.<Domain>.
+         *
+         * @param[in] aServiceName  The full service name to match.
+         *
+         * @retval  TRUE   If the service matches the full service name.
+         * @retval  FALSE  If the service does not match the full service name.
+         *
+         */
+        bool MatchesServiceName(const char *aServiceName) const;
+
     private:
-        explicit Service(Instance &aInstance);
+        explicit Service(void);
         otError SetFullName(const char *aFullName);
         otError SetTxtData(const uint8_t *aTxtData, uint16_t aTxtDataLength);
         otError SetTxtDataFromMessage(const Message &aMessage, uint16_t aOffset, uint16_t aLength);
@@ -222,22 +235,20 @@ public:
      * This class implements the Host which registers services on the SRP server.
      *
      */
-    class Host : public InstanceLocator, public LinkedListEntry<Host>, private NonCopyable
+    class Host : public LinkedListEntry<Host>, private NonCopyable
     {
         friend class LinkedListEntry<Host>;
         friend class Server;
 
     public:
         /**
-         * This method creates a new Host object with given full name.
+         * This method creates a new Host object.
          *
-         * @param[in]  aInstance  A reference to the OpenThread instance.
-         *
-         * @returns  A pointer to the newly created Host object. nullptr if
+         * @returns  A pointer to the newly created Host object, nullptr if
          *           cannot allocate memory for the object.
          *
          */
-        static Host *New(Instance &aInstance);
+        static Host *New(void);
 
         /**
          * This method Frees the Host object.
@@ -348,7 +359,7 @@ public:
             kMaxAddressesNum = OPENTHREAD_CONFIG_SRP_SERVER_MAX_ADDRESSES_NUM,
         };
 
-        explicit Host(Instance &aInstance);
+        explicit Host(void);
         otError  SetFullName(const char *aFullName);
         void     SetKey(Dns::Ecdsa256KeyRecord &aKey);
         void     SetLease(uint32_t aLease);
@@ -480,11 +491,6 @@ public:
     void HandleAdvertisingResult(const Host *aHost, otError aError);
 
 private:
-    enum : uint8_t
-    {
-        kThreadServiceTypeSrpServer = OPENTHREAD_CONFIG_SRP_SERVER_SERVICE_TYPE,
-    };
-
     enum : uint16_t
     {
         kUdpPayloadSize = Ip6::Ip6::kMaxDatagramLength - sizeof(Ip6::Udp::Header), // Max UDP payload size

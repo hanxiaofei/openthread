@@ -111,6 +111,23 @@ static uint8_t BorderRouterConfigToFlagByte(const otBorderRouterConfig &aConfig)
     return flags;
 }
 
+static uint8_t BorderRouterConfigToFlagByteExtended(const otBorderRouterConfig &aConfig)
+{
+    uint8_t flags(0);
+
+    if (aConfig.mNdDns)
+    {
+        flags |= SPINEL_NET_FLAG_EXT_DNS;
+    }
+
+    if (aConfig.mDp)
+    {
+        flags |= SPINEL_NET_FLAG_EXT_DP;
+    }
+
+    return flags;
+}
+
 static uint8_t ExternalRoutePreferenceToFlagByte(int aPreference)
 {
     uint8_t flags;
@@ -185,6 +202,62 @@ otError NcpBase::EncodeNeighborInfo(const otNeighborInfo &aNeighborInfo)
 exit:
     return error;
 }
+
+#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
+template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_THREAD_CSL_PERIOD>(void)
+{
+    uint16_t cslPeriod;
+    otError  error = OT_ERROR_NONE;
+
+    SuccessOrExit(error = mDecoder.ReadUint16(cslPeriod));
+
+    error = otLinkCslSetPeriod(mInstance, cslPeriod);
+
+exit:
+    return error;
+}
+
+template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_THREAD_CSL_PERIOD>(void)
+{
+    return mEncoder.WriteUint16(otLinkCslGetPeriod(mInstance));
+}
+
+template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_THREAD_CSL_TIMEOUT>(void)
+{
+    uint32_t cslTimeout;
+    otError  error = OT_ERROR_NONE;
+
+    SuccessOrExit(error = mDecoder.ReadUint32(cslTimeout));
+
+    error = otLinkCslSetTimeout(mInstance, cslTimeout);
+
+exit:
+    return error;
+}
+
+template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_THREAD_CSL_TIMEOUT>(void)
+{
+    return mEncoder.WriteUint32(otLinkCslGetTimeout(mInstance));
+}
+
+template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_THREAD_CSL_CHANNEL>(void)
+{
+    uint8_t cslChannel;
+    otError error = OT_ERROR_NONE;
+
+    SuccessOrExit(error = mDecoder.ReadUint8(cslChannel));
+
+    error = otLinkCslSetChannel(mInstance, cslChannel);
+
+exit:
+    return error;
+}
+
+template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_THREAD_CSL_CHANNEL>(void)
+{
+    return mEncoder.WriteUint8(otLinkCslGetChannel(mInstance));
+}
+#endif // OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
 
 template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_MAC_DATA_POLL_PERIOD>(void)
 {
@@ -712,6 +785,7 @@ template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_THREAD_ON_MESH_NETS>(
         SuccessOrExit(error = mEncoder.WriteUint8(BorderRouterConfigToFlagByte(borderRouterConfig)));
         SuccessOrExit(error = mEncoder.WriteBool(false)); // isLocal
         SuccessOrExit(error = mEncoder.WriteUint16(borderRouterConfig.mRloc16));
+        SuccessOrExit(error = mEncoder.WriteUint8(BorderRouterConfigToFlagByteExtended(borderRouterConfig)));
 
         SuccessOrExit(error = mEncoder.CloseStruct());
     }
@@ -731,6 +805,7 @@ template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_THREAD_ON_MESH_NETS>(
         SuccessOrExit(error = mEncoder.WriteUint8(BorderRouterConfigToFlagByte(borderRouterConfig)));
         SuccessOrExit(error = mEncoder.WriteBool(true)); // isLocal
         SuccessOrExit(error = mEncoder.WriteUint16(borderRouterConfig.mRloc16));
+        SuccessOrExit(error = mEncoder.WriteUint8(BorderRouterConfigToFlagByteExtended(borderRouterConfig)));
 
         SuccessOrExit(error = mEncoder.CloseStruct());
     }
@@ -746,8 +821,11 @@ template <> otError NcpBase::HandlePropertyInsert<SPINEL_PROP_THREAD_ON_MESH_NET
     otError              error = OT_ERROR_NONE;
     otBorderRouterConfig borderRouterConfig;
     bool                 stable = false;
-    uint8_t              flags  = 0;
+    bool                 isLocal;
+    uint8_t              flags         = 0;
+    uint8_t              flagsExtended = 0;
     uint8_t              prefixLength;
+    uint16_t             rloc16;
 
     memset(&borderRouterConfig, 0, sizeof(otBorderRouterConfig));
 
@@ -767,6 +845,16 @@ template <> otError NcpBase::HandlePropertyInsert<SPINEL_PROP_THREAD_ON_MESH_NET
     borderRouterConfig.mConfigure    = ((flags & SPINEL_NET_FLAG_CONFIGURE) != 0);
     borderRouterConfig.mDefaultRoute = ((flags & SPINEL_NET_FLAG_DEFAULT_ROUTE) != 0);
     borderRouterConfig.mOnMesh       = ((flags & SPINEL_NET_FLAG_ON_MESH) != 0);
+
+    // A new field 'TLV flags extended' has been added to the SPINEL_PROP_THREAD_ON_MESH_NETS property.
+    // To correctly handle a new field for INSERT command, the additional fields 'isLocal' and 'rloc16' are read and
+    // ignored.
+    if ((mDecoder.ReadBool(isLocal) == OT_ERROR_NONE) && (mDecoder.ReadUint16(rloc16) == OT_ERROR_NONE) &&
+        (mDecoder.ReadUint8(flagsExtended) == OT_ERROR_NONE))
+    {
+        borderRouterConfig.mNdDns = ((flagsExtended & SPINEL_NET_FLAG_EXT_DNS) != 0);
+        borderRouterConfig.mDp    = ((flagsExtended & SPINEL_NET_FLAG_EXT_DP) != 0);
+    }
 
     error = otBorderRouterAddOnMeshPrefix(mInstance, &borderRouterConfig);
 
@@ -3239,7 +3327,7 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_SRP_CLIENT_START>(voi
     SuccessOrExit(error = mDecoder.ReadUint16(serverAddr.mPort));
     SuccessOrExit(error = mDecoder.ReadBool(callbackEnabled));
 
-    SuccessOrExit(error = otSrpClientStart(mInstance, &serverAddr, HandleSrpClientCallback, this));
+    SuccessOrExit(error = otSrpClientStart(mInstance, &serverAddr));
     mSrpClientCallbackEnabled = callbackEnabled;
 
 exit:

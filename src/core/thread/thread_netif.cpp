@@ -65,6 +65,9 @@ ThreadNetif::ThreadNetif(Instance &aInstance)
 #if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
     , mSrpClient(aInstance)
 #endif
+#if OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE
+    , mDnssdServer(aInstance)
+#endif
 #if OPENTHREAD_CONFIG_SNTP_CLIENT_ENABLE
     , mSntpClient(aInstance)
 #endif
@@ -86,6 +89,7 @@ ThreadNetif::ThreadNetif(Instance &aInstance)
 #if OPENTHREAD_FTD || OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE || OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     , mNetworkDataNotifier(aInstance)
 #endif
+    , mNetworkDataServiceManager(aInstance)
 #if OPENTHREAD_FTD || OPENTHREAD_CONFIG_TMF_NETWORK_DIAG_MTD_ENABLE
     , mNetworkDiagnostic(aInstance)
 #endif
@@ -158,6 +162,9 @@ void ThreadNetif::Up(void)
     SubscribeAllNodesMulticast();
     IgnoreError(Get<Mle::MleRouter>().Enable());
     IgnoreError(Get<Tmf::TmfAgent>().Start());
+#if OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE
+    IgnoreError(Get<Dns::ServiceDiscovery::Server>().Start());
+#endif
 #if OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
     IgnoreError(Get<Dns::Client>().Start());
 #endif
@@ -175,10 +182,13 @@ void ThreadNetif::Down(void)
     VerifyOrExit(mIsUp);
 
 #if OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
-    IgnoreError(Get<Dns::Client>().Stop());
+    Get<Dns::Client>().Stop();
 #endif
 #if OPENTHREAD_CONFIG_SNTP_CLIENT_ENABLE
     IgnoreError(Get<Sntp::Client>().Stop());
+#endif
+#if OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE
+    Get<Dns::ServiceDiscovery::Server>().Stop();
 #endif
 #if OPENTHREAD_CONFIG_DTLS_ENABLE
     Get<Coap::CoapSecure>().Stop();

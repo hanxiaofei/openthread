@@ -158,6 +158,7 @@ EXTRA_DIST                                                         = \
     test_common.py                                                   \
     test_crypto.py                                                   \
     test_diag.py                                                     \
+    test_dnssd.py                                                    \
     test_ipv6.py                                                     \
     test_ipv6_fragmentation.py                                       \
     test_ipv6_source_selection.py                                    \
@@ -171,6 +172,7 @@ EXTRA_DIST                                                         = \
     test_route_table.py                                              \
     test_router_reattach.py                                          \
     test_service.py                                                  \
+    test_srp_auto_start_mode.py                                      \
     test_srp_lease.py                                                \
     test_srp_name_conflicts.py                                       \
     test_srp_register_single_service.py                              \
@@ -210,6 +212,7 @@ check_SCRIPTS                                                      = \
     test_common.py                                                   \
     test_crypto.py                                                   \
     test_diag.py                                                     \
+    test_dnssd.py                                                    \
     test_ipv6.py                                                     \
     test_ipv6_fragmentation.py                                       \
     test_ipv6_source_selection.py                                    \
@@ -223,6 +226,7 @@ check_SCRIPTS                                                      = \
     test_route_table.py                                              \
     test_router_reattach.py                                          \
     test_service.py                                                  \
+    test_srp_auto_start_mode.py                                      \
     test_srp_lease.py                                                \
     test_srp_name_conflicts.py                                       \
     test_srp_register_single_service.py                              \
