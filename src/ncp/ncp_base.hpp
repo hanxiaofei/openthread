@@ -570,7 +570,11 @@ protected:
 
     uint8_t mTxBuffer[kTxBufferSize];
 
-    spinel_tid_t mNextExpectedTid;  // This should be an array indexed by iid
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+    spinel_tid_t mNextExpectedTid[4];
+#else
+    spinel_tid_t mNextExpectedTid;
+#endif  
 
     uint8_t       mResponseQueueHead;
     uint8_t       mResponseQueueTail;
