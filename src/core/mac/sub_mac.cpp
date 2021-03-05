@@ -288,7 +288,11 @@ otError SubMac::Send(void)
 #endif
     case kStateTransmit:
     case kStateEnergyScan:
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+        ExitNow(error = OT_ERROR_BUSY);
+#else
         ExitNow(error = OT_ERROR_INVALID_STATE);
+#endif
         OT_UNREACHABLE_CODE(break);
 
     case kStateSleep:
@@ -477,7 +481,8 @@ void SubMac::HandleTransmitDone(TxFrame &aFrame, RxFrame *aAckFrame, otError aEr
         break;
 
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-    case OT_ERROR_INVALID_STATE:
+    // Treat a busy RCP like a channel access failure
+    case OT_ERROR_BUSY:
 #endif
     case OT_ERROR_CHANNEL_ACCESS_FAILURE:
         ccaSuccess = false;
@@ -714,14 +719,7 @@ bool SubMac::ShouldHandleCsmaBackOff(void) const
     bool swCsma = true;
 
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-
-    /** Radio does support retries but we would like to 
-    *   use CSMA Backoffs not only when OT_ERROR_CHANNEL_ACCESS_FAILURE
-    *   but also when OT_ERROR_INVALID_CHANNEL. The latter cannot 
-    *   happen on the radio so it needs to happen here. Therefore,
-    *   we don't check if the radio supports it.
-    */
-
+    // Use software csma to perform retries in case of a busy RCP
     goto exit;
 #else
     VerifyOrExit(!RadioSupportsCsmaBackoff(), swCsma = false);

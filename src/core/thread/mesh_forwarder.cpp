@@ -936,7 +936,7 @@ void MeshForwarder::HandleSentFrame(Mac::TxFrame &aFrame, otError aError)
 
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     OT_ASSERT((aError == OT_ERROR_NONE) || (aError == OT_ERROR_CHANNEL_ACCESS_FAILURE) || (aError == OT_ERROR_ABORT) ||
-              (aError == OT_ERROR_NO_ACK) || (aError == OT_ERROR_INVALID_STATE));
+              (aError == OT_ERROR_NO_ACK) || (aError == OT_ERROR_BUSY));
 #else
     OT_ASSERT((aError == OT_ERROR_NONE) || (aError == OT_ERROR_CHANNEL_ACCESS_FAILURE) || (aError == OT_ERROR_ABORT) ||
               (aError == OT_ERROR_NO_ACK));
