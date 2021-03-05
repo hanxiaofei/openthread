@@ -467,7 +467,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleReceivedFrame(void)
     spinel_iid_t iid = SPINEL_HEADER_GET_IID(header);
     if (iid != 0 && iid != mIid)
     {
-        otLogInfoPlat("Discarding SPINEL message with IID=%u", iid);
+        otLogDebgPlat("Discarding SPINEL message with IID=%u", iid);
         mRxFrameBuffer.DiscardFrame();
         ExitNow();
     }
@@ -475,7 +475,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleReceivedFrame(void)
                  error = OT_ERROR_PARSE);    
 #else
     VerifyOrExit(unpacked > 0 && (header & SPINEL_HEADER_FLAG) == SPINEL_HEADER_FLAG &&
-                 SPINEL_HEADER_GET_IID(header) == 0,
+                     SPINEL_HEADER_GET_IID(header) == 0,
                  error = OT_ERROR_PARSE);
 #endif
 
@@ -1198,7 +1198,7 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::GetIeeeEui64(uint8_t *aI
 template <typename InterfaceType, typename ProcessContextType>
 otError RadioSpinel<InterfaceType, ProcessContextType>::SetExtendedAddress(const otExtAddress &aExtAddress)
 {
-    otError error = OT_ERROR_NONE;
+    otError error;
 
     SuccessOrExit(error = Set(SPINEL_PROP_MAC_15_4_LADDR, SPINEL_DATATYPE_EUI64_S, aExtAddress.m8));
     mExtendedAddress = aExtAddress;
@@ -2191,7 +2191,7 @@ uint32_t RadioSpinel<InterfaceType, ProcessContextType>::GetBusSpeed(void) const
 template <typename InterfaceType, typename ProcessContextType>
 void RadioSpinel<InterfaceType, ProcessContextType>::HandleRcpUnexpectedReset(spinel_status_t aStatus)
 {
-  otLogCritPlat("Unexpected RCP reset: %s %d", spinel_status_to_cstr(aStatus), mRcpFailureCount);
+    otLogCritPlat("Unexpected RCP reset: %s", spinel_status_to_cstr(aStatus));
 
 #if OPENTHREAD_SPINEL_CONFIG_RCP_RESTORATION_MAX_COUNT > 0
     mRcpFailed = true;
@@ -2294,7 +2294,7 @@ exit:
 template <typename InterfaceType, typename ProcessContextType>
 void RadioSpinel<InterfaceType, ProcessContextType>::RestoreProperties(void)
 {
-    // Settings::NetworkInfo networkInfo;
+    Settings::NetworkInfo networkInfo;
 
     SuccessOrDie(Set(SPINEL_PROP_MAC_15_4_PANID, SPINEL_DATATYPE_UINT16_S, mPanId));
     SuccessOrDie(Set(SPINEL_PROP_MAC_15_4_SADDR, SPINEL_DATATYPE_UINT16_S, mShortAddress));
@@ -2310,10 +2310,8 @@ void RadioSpinel<InterfaceType, ProcessContextType>::RestoreProperties(void)
                          sizeof(otMacKey)));
     }
 
-    /*    
     SuccessOrDie(Instance::Get().template Get<Settings>().ReadNetworkInfo(networkInfo));
     SuccessOrDie(Set(SPINEL_PROP_RCP_MAC_FRAME_COUNTER, SPINEL_DATATYPE_UINT32_S, networkInfo.GetMacFrameCounter()));
-    */
 
     for (int i = 0; i < mSrcMatchShortEntryCount; ++i)
     {

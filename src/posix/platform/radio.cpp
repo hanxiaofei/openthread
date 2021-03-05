@@ -97,8 +97,8 @@ void platformRadioInit(otUrl *aRadioUrl)
     bool                 restoreDataset         = (radioUrl.GetValue("ncp-dataset") != nullptr);
     bool                 skipCompatibilityCheck = (radioUrl.GetValue("skip-rcp-compatibility-check") != nullptr);
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-    // TODO: check pointer and check range
-    spinel_iid_t         iid                    = (static_cast<spinel_iid_t>(atoi(radioUrl.GetValue("iid"))));
+    const char *         iidString              = radioUrl.GetValue("iid");
+    spinel_iid_t         iid                    = (iidString == nullptr ? 0 : (static_cast<spinel_iid_t>(atoi(iidString))));
 #endif
     const char *         parameterValue;
     const char *         region;
@@ -112,7 +112,7 @@ void platformRadioInit(otUrl *aRadioUrl)
 #else
     sRadioSpinel.Init(resetRadio, restoreDataset, skipCompatibilityCheck);
 #endif
-    
+
     parameterValue = radioUrl.GetValue("fem-lnagain");
     if (parameterValue != nullptr)
     {

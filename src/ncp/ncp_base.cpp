@@ -201,9 +201,6 @@ NcpBase::NcpBase(Instance *aInstance)
     , mTxFrameBuffer(mTxBuffer, sizeof(mTxBuffer))
     , mEncoder(mTxFrameBuffer)
     , mHostPowerStateInProgress(false)
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-    , mIid(0)
-#endif
     , mLastStatus(SPINEL_STATUS_OK)
     , mScanChannelMask(Radio::kSupportedChannels)
     , mScanPeriod(200)
@@ -219,7 +216,9 @@ NcpBase::NcpBase(Instance *aInstance)
     , mAllowPeekDelegate(nullptr)
     , mAllowPokeDelegate(nullptr)
 #endif
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE == 0
     , mNextExpectedTid(0)
+#endif      
     , mResponseQueueHead(0)
     , mResponseQueueTail(0)
     , mAllowLocalNetworkDataChange(false)
@@ -234,11 +233,11 @@ NcpBase::NcpBase(Instance *aInstance)
 #if OPENTHREAD_FTD
     , mPreferredRouteId(0)
 #endif
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+    , mCurCommandIID(0)
+#endif
 #if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
     , mCurTransmitTID(0)
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-    , mCurTransmitIID(0)
-#endif
     , mCurScanChannel(kInvalidScanChannel)
     , mSrcMatchEnabled(false)
 #endif // OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
@@ -305,6 +304,10 @@ NcpBase::NcpBase(Instance *aInstance)
 #if OPENTHREAD_ENABLE_VENDOR_EXTENSION
     aInstance->Get<Extension::ExtensionBase>().SignalNcpInit(*this);
 #endif
+
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+    memset(mNextExpectedTid, 0, sizeof(mNextExpectedTid));
+#endif    
 }
 
 NcpBase *NcpBase::GetNcpInstance(void)
@@ -315,7 +318,7 @@ NcpBase *NcpBase::GetNcpInstance(void)
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
 uint8_t NcpBase::GetIid(void)
 {
-    return mIid;
+    return mCurCommandIID;
 }
 #endif
 
@@ -366,7 +369,13 @@ void NcpBase::HandleReceive(const uint8_t *aBuf, uint16_t aBufLength)
     VerifyOrExit((SPINEL_HEADER_FLAG & header) == SPINEL_HEADER_FLAG);
 
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-    mIid = SPINEL_HEADER_GET_IID(header);
+    mCurCommandIID = SPINEL_HEADER_GET_IID(header);
+#else
+    if (SPINEL_HEADER_GET_IID(header) != 0)
+    {
+        IgnoreError(WriteLastStatusFrame(header, SPINEL_STATUS_INVALID_INTERFACE));
+        ExitNow();
+    }
 #endif
 
     mRxSpinelFrameCounter++;
@@ -394,12 +403,21 @@ void NcpBase::HandleReceive(const uint8_t *aBuf, uint16_t aBufLength)
 
     tid = SPINEL_HEADER_GET_TID(header);
 
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+    if ((mNextExpectedTid[mCurCommandIID] != 0) && (tid != mNextExpectedTid[mCurCommandIID]))
+    {
+        mRxSpinelOutOfOrderTidCounter++;
+    }
+
+    mNextExpectedTid[mCurCommandIID] = SPINEL_GET_NEXT_TID(tid);
+#else
     if ((mNextExpectedTid != 0) && (tid != mNextExpectedTid))
     {
         mRxSpinelOutOfOrderTidCounter++;
     }
 
     mNextExpectedTid = SPINEL_GET_NEXT_TID(tid);
+#endif    
 
 exit:
     mDisableStreamWrite = false;
@@ -751,7 +769,11 @@ otError NcpBase::EnqueueResponse(uint8_t aHeader, ResponseType aType, unsigned i
     // get an out of sequence TID, check if we already have a response
     // queued for this TID and if so mark the old entry as deleted.
 
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE    
+    if (tid != mNextExpectedTid[iid])
+#else
     if (tid != mNextExpectedTid)
+#endif
     {
         for (uint8_t cur = mResponseQueueHead; cur < mResponseQueueTail; cur++)
         {
@@ -779,7 +801,6 @@ otError NcpBase::EnqueueResponse(uint8_t aHeader, ResponseType aType, unsigned i
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     entry->mIid             = iid;
 #endif
-
     entry->mTid             = tid;
     entry->mIsInUse         = true;
     entry->mType            = aType;
@@ -801,13 +822,9 @@ otError NcpBase::SendQueuedResponses(void)
 
         if (entry.mIsInUse)
         {
-
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-            uint8_t header = SPINEL_HEADER_FLAG;
-
-            header |= static_cast<uint8_t>(entry.mIid << SPINEL_HEADER_IID_SHIFT);
-#else
             uint8_t header = SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0;
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+            header |= static_cast<uint8_t>(entry.mIid << SPINEL_HEADER_IID_SHIFT);
 #endif
             header |= static_cast<uint8_t>(entry.mTid << SPINEL_HEADER_TID_SHIFT);
 
