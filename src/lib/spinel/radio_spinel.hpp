@@ -940,7 +940,7 @@ private:
     va_list           mPropertyArgs;    ///< The arguments pack or unpack spinel property of current transaction.
     uint32_t          mExpectedCommand; ///< Expected response command of current transaction.
     otError           mError;           ///< The result of current transaction.
-    spinel_iid_t      mIid;             ///< The SPINEL iid used by this process.
+    spinel_iid_t      mIid;             ///< The spinel interface id used by this process.
 
     uint8_t       mRxPsdu[OT_RADIO_FRAME_MAX_SIZE];
     uint8_t       mTxPsdu[OT_RADIO_FRAME_MAX_SIZE];

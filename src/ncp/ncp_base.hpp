@@ -91,7 +91,7 @@ public:
     static NcpBase *GetNcpInstance(void);
 
     /**
-     * This method returns the IID of the current SPINEL command.
+     * This method returns the IID of the current spinel command.
      *
      * @returns IID.
      *
