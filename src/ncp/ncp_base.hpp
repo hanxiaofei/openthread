@@ -96,7 +96,7 @@ public:
      * @returns IID.
      *
      */
-    uint8_t GetIid(void);
+     spinel_iid_t GetIid(void);
 
     /**
      * This method sends data to host via specific stream.
@@ -208,9 +208,7 @@ protected:
      */
     struct ResponseEntry
     {
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
         uint8_t      mIid : 2;              ///< Spinel interface id.
-#endif
         uint8_t      mTid : 4;              ///< Spinel transaction id.
         bool         mIsInUse : 1;          ///< `true` if this entry is in use, `false` otherwise.
         ResponseType mType : 2;             ///< Response type.
@@ -597,9 +595,7 @@ protected:
     uint8_t mPreferredRouteId;
 #endif
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     uint8_t mCurCommandIID;
-#endif
 
 #if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
     uint8_t mCurTransmitTID;

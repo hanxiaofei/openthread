@@ -148,11 +148,8 @@ void NcpBase::LinkRawTransmitDone(otRadioFrame *aFrame, otRadioFrame *aAckFrame,
 
     if (mCurTransmitTID)
     {
-        uint8_t header       = SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0 | mCurTransmitTID;
-
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+        uint8_t header       = SPINEL_HEADER_FLAG | mCurTransmitTID;
         header |= static_cast<uint8_t>(mCurCommandIID << SPINEL_HEADER_IID_SHIFT);
-#endif
 
         bool    framePending = (aAckFrame != nullptr && static_cast<Mac::RxFrame *>(aAckFrame)->GetFramePending());
 

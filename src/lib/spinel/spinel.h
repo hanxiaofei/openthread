@@ -78,7 +78,13 @@
  *
  *   The Interface Identifier (IID) is a number between 0 and 3, which
  *   is associated by the OS with a specific NCP. This allows the protocol
- *   to support up to 4 NCPs under same connection.
+ *   to support up to 4 NCPs under same connection.  When a command is
+ *   sent from the host, any reply to that command sent by the NCP will
+ *   use the same value for the IID.  When the host receives a frame that
+ *   matches its IID, it knows the response is for a command it sent.
+ *   The IID value of zero (0) is used for for commands to which a 
+ *   correlated response is not expected or needed, such as unsolicited
+ *   update commands sent to the host from the NCP.
  *
  *   The least significant bits of the header represent the Transaction
  *   Identifier (TID). The TID is used for correlating responses to the
@@ -4376,6 +4382,7 @@ typedef uint32_t spinel_prop_key_t;
 
 #define SPINEL_HEADER_IID_SHIFT 4
 #define SPINEL_HEADER_IID_MASK (3 << SPINEL_HEADER_IID_SHIFT)
+#define SPINEL_HEADER_IID_MAX 3
 
 #define SPINEL_HEADER_IID_0 (0 << SPINEL_HEADER_IID_SHIFT)
 #define SPINEL_HEADER_IID_1 (1 << SPINEL_HEADER_IID_SHIFT)

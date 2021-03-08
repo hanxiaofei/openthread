@@ -184,6 +184,7 @@ RadioSpinel<InterfaceType, ProcessContextType>::RadioSpinel(void)
     , mPropertyFormat(nullptr)
     , mExpectedCommand(0)
     , mError(OT_ERROR_NONE)
+    , mIid(0)
     , mTransmitFrame(nullptr)
     , mShortAddress(0)
     , mPanId(0xffff)
@@ -220,16 +221,10 @@ RadioSpinel<InterfaceType, ProcessContextType>::RadioSpinel(void)
 }
 
 template <typename InterfaceType, typename ProcessContextType>
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
 void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio,
                                                           bool aRestoreDatasetFromNcp,
                                                           bool aSkipRcpCompatibilityCheck,
                                                           spinel_iid_t aIid)
-#else
-void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio,
-                                                          bool aRestoreDatasetFromNcp,
-                                                          bool aSkipRcpCompatibilityCheck)
-#endif
 {
     otError error = OT_ERROR_NONE;
     bool    supportsRcpApiVersion;
@@ -238,9 +233,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool aResetRadio,
     mResetRadioOnStartup = aResetRadio;
 #endif
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     mIid = aIid;
-#endif
 
     if (aResetRadio)
     {
@@ -462,8 +455,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleReceivedFrame(void)
 
     unpacked = spinel_datatype_unpack(mRxFrameBuffer.GetFrame(), mRxFrameBuffer.GetLength(), "C", &header);
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-    // Accept spinel messages with the correct IID or broadcast IID 0.
+    // Accept Spinel messages with the correct IID or broadcast IID 0.
     spinel_iid_t iid = SPINEL_HEADER_GET_IID(header);
     if (iid != 0 && iid != mIid)
     {
@@ -473,11 +465,6 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleReceivedFrame(void)
     }
     VerifyOrExit(unpacked > 0 && (header & SPINEL_HEADER_FLAG) == SPINEL_HEADER_FLAG,
                  error = OT_ERROR_PARSE);    
-#else
-    VerifyOrExit(unpacked > 0 && (header & SPINEL_HEADER_FLAG) == SPINEL_HEADER_FLAG &&
-                     SPINEL_HEADER_GET_IID(header) == 0,
-                 error = OT_ERROR_PARSE);
-#endif
 
     if (SPINEL_HEADER_GET_TID(header) == 0)
     {
@@ -587,9 +574,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleResponse(const uint8_
     VerifyOrExit(rval > 0 && cmd >= SPINEL_CMD_PROP_VALUE_IS && cmd <= SPINEL_CMD_PROP_VALUE_REMOVED,
                  error = OT_ERROR_PARSE);
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     otLogDebgPlat("Spinel resp: cmd:%s, prop:%s, iid:%02x, tid:%02x\n", spinel_command_to_cstr(cmd), spinel_prop_key_to_cstr(key), SPINEL_HEADER_GET_IID(header), SPINEL_HEADER_GET_TID(header));
-#endif
 
     if (mWaitingTid == SPINEL_HEADER_GET_TID(header))
     {
@@ -1731,18 +1716,11 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::SendCommand(uint32_t    
     spinel_ssize_t packed;
     uint16_t       offset;
 
-    // Pack the header, command and key
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     otLogDebgPlat("Spinel send: cmd:%s: prop:%s, iid:%02x, tid:%02x\n", spinel_command_to_cstr(aCommand), spinel_prop_key_to_cstr(aKey), mIid, tid);
 
+    // Pack the header, command and key
     packed = spinel_datatype_pack(buffer, sizeof(buffer), "Cii", SPINEL_HEADER_FLAG | (mIid << SPINEL_HEADER_IID_SHIFT) | tid,
                                   aCommand, aKey);
-#else
-    otLogDebgPlat("Spinel send: cmd:%s: prop:%s, tid:%02x\n", spinel_command_to_cstr(aCommand), spinel_prop_key_to_cstr(aKey), tid);
-
-    packed = spinel_datatype_pack(buffer, sizeof(buffer), "Cii", SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0 | tid,
-                                  aCommand, aKey);
-#endif
 
     VerifyOrExit(packed > 0 && static_cast<size_t>(packed) <= sizeof(buffer), error = OT_ERROR_NO_BUFS);
 

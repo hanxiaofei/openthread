@@ -110,7 +110,6 @@ public:
      */
     RadioSpinel(void);
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     /**
      * Initialize this radio transceiver.
      *
@@ -123,19 +122,6 @@ public:
      *
      */
     void Init(bool aResetRadio, bool aRestoreDataSetFromNcp, bool aSkipRcpCompatibilityCheck, spinel_iid_t aIid);
-#else
-    /**
-     * Initialize this radio transceiver.
-     *
-     * @param[in]  aResetRadio                 TRUE to reset on init, FALSE to not reset on init.
-     * @param[in]  aRestoreDatasetFromNcp      TRUE to restore dataset to host from non-volatile memory
-     *                                         (only used when attempts to upgrade from NCP to RCP mode),
-     *                                         FALSE otherwise.
-     * @param[in]  aSkipRcpCompatibilityCheck  TRUE to skip RCP compatibility check, FALSE to perform the check.
-     *
-     */
-    void Init(bool aResetRadio, bool aRestoreDataSetFromNcp, bool aSkipRcpCompatibilityCheck);
-#endif // OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
 
     /**
      * Deinitialize this radio transceiver.
@@ -954,9 +940,7 @@ private:
     va_list           mPropertyArgs;    ///< The arguments pack or unpack spinel property of current transaction.
     uint32_t          mExpectedCommand; ///< Expected response command of current transaction.
     otError           mError;           ///< The result of current transaction.
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     spinel_iid_t      mIid;             ///< The SPINEL iid used by this process.
-#endif
 
     uint8_t       mRxPsdu[OT_RADIO_FRAME_MAX_SIZE];
     uint8_t       mTxPsdu[OT_RADIO_FRAME_MAX_SIZE];
