@@ -313,7 +313,7 @@ NcpBase *NcpBase::GetNcpInstance(void)
     return sNcpInstance;
 }
 
-spinel_iid_t NcpBase::GetIid(void)
+spinel_iid_t NcpBase::GetCurCommandIid(void)
 {
     return mCurCommandIID;
 }
@@ -851,6 +851,144 @@ otError NcpBase::SendQueuedResponses(void)
 exit:
     return error;
 }
+
+// ----------------------------------------------------------------------------
+// MARK: Spinel Pending Command Queue
+// ----------------------------------------------------------------------------
+
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+#if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
+
+uint8_t NcpBase::GetWrappedPendingCommandQueueIndex(uint8_t aPosition)
+{
+    while (aPosition >= kPendingCommandQueueSize)
+    {
+        aPosition -= kPendingCommandQueueSize;
+    }
+
+    return aPosition;
+}
+
+otError NcpBase::EnqueuePendingCommand(PendingCommandType aType, uint8_t aHeader, uint8_t aScanChannel)
+{
+    otError      error = OT_ERROR_NONE;
+    PendingCommandEntry *entry;
+
+    if ((mPendingCommandQueueTail - mPendingCommandQueueHead) >= kPendingCommandQueueSize)
+    {
+        // If there is no room a for a response, emit an unsolicited
+        // `DROPPED` error status to indicate a spinel response was
+        // dropped.
+        mChangedPropsSet.AddLastStatus(SPINEL_STATUS_DROPPED);
+        ExitNow(error = OT_ERROR_NO_BUFS);
+    }
+
+    // Add the new entry in the queue at tail.
+    entry = &mPendingCommandQueue[GetWrappedPendingCommandQueueIndex(mPendingCommandQueueTail)];
+
+    entry->mType = aType;
+    switch(aType)
+    {
+    case kPendingCommandTypeTransmit:
+        entry->mIid = SPINEL_HEADER_GET_IID(aHeader);
+        entry->mTid = SPINEL_HEADER_GET_TID(aHeader);
+        entry->mTransmitFrame.mPsdu = entry->mTransmitPsdu;
+        SuccessOrExit(error = DecodeStreamRawTxRequest(entry->mTransmitFrame));
+        break;
+
+    case kPendingCommandTypeEnergyScan:
+        entry->mScanChannel = aScanChannel;
+        break;
+
+    default:
+        ExitNow(error = OT_ERROR_NOT_FOUND);
+    }
+
+    mPendingCommandQueueTail++;
+
+exit:
+    return error;
+}
+
+otError NcpBase::HandlePendingTransmit(PendingCommandEntry *entry)
+{
+    otError error = OT_ERROR_NONE;
+    otRadioFrame *frame;
+
+    mCurTransmitTID = entry->mTid;
+    mCurTransmitIID = entry->mIid;
+    VerifyOrExit(otLinkRawIsEnabled(mInstance), error = OT_ERROR_INVALID_STATE);
+    frame = otLinkRawGetTransmitBuffer(mInstance);
+    VerifyOrExit(frame != nullptr, error = OT_ERROR_NO_BUFS);
+    memcpy(frame, (void *)&entry->mTransmitFrame, sizeof(frame));
+    SuccessOrExit(error = otLinkRawTransmit(mInstance, &NcpBase::LinkRawTransmitDone));
+
+exit:
+    if (error != OT_ERROR_NONE)
+    {
+        LinkRawTransmitDone(&entry->mTransmitFrame, nullptr, error);
+    }
+    return error;
+}
+
+otError NcpBase::HandlePendingEnergyScan(PendingCommandEntry *entry)
+{
+    otError error = OT_ERROR_NONE;
+
+    VerifyOrExit(mCurScanChannel == kInvalidScanChannel, error = OT_ERROR_INVALID_STATE);
+    SuccessOrExit(error = otLinkRawEnergyScan(mInstance, entry->mScanChannel, mScanPeriod, LinkRawEnergyScanDone));
+
+    mCurScanChannel = static_cast<int8_t>(entry->mScanChannel);
+    mCurTransmitIID = entry->mIid;
+
+exit:
+    if (error != OT_ERROR_NONE)
+    {
+      if (mEncoder.BeginFrame(SPINEL_HEADER_FLAG | (entry->mIid << SPINEL_HEADER_IID_SHIFT), SPINEL_CMD_PROP_VALUE_IS,
+                              SPINEL_PROP_MAC_SCAN_STATE) == OT_ERROR_NONE)
+      {
+          if (mEncoder.WriteUint8(SPINEL_SCAN_STATE_IDLE) == OT_ERROR_NONE)
+          {
+              mEncoder.EndFrame();
+          }
+      }
+    }
+    return error;
+}
+
+void NcpBase::HandlePendingCommands(void)
+{
+    bool submitted = false;
+
+    // Process the queue until a command is successfully submitted
+    while (mPendingCommandQueueHead != mPendingCommandQueueTail && !submitted)
+    {
+        PendingCommandEntry *entry = &mPendingCommandQueue[mPendingCommandQueueHead];
+
+        // Dequeue even in the event of an error
+        mPendingCommandQueueHead++;
+
+        if (mPendingCommandQueueHead == kPendingCommandQueueSize)
+        {
+            mPendingCommandQueueHead = 0;
+            mPendingCommandQueueTail = GetWrappedPendingCommandQueueIndex(mPendingCommandQueueTail);
+        }
+        
+        switch(entry->mType)
+        {
+        case kPendingCommandTypeTransmit:
+            submitted = (HandlePendingTransmit(entry) == OT_ERROR_NONE);
+            break;
+
+        case kPendingCommandTypeEnergyScan:
+            submitted = (HandlePendingEnergyScan(entry) == OT_ERROR_NONE);
+            break;
+        }
+    }
+}
+
+#endif // OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
+#endif // OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
 
 // ----------------------------------------------------------------------------
 // MARK: Property/Status Changed
@@ -1684,10 +1822,21 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_MAC_SCAN_STATE>(void)
             VerifyOrExit(mCurScanChannel == kInvalidScanChannel, error = OT_ERROR_INVALID_STATE);
             VerifyOrExit(HasOnly1BitSet(mScanChannelMask), error = OT_ERROR_INVALID_ARGS);
 
-            scanChannel     = IndexOfMSB(mScanChannelMask);
-            mCurScanChannel = static_cast<int8_t>(scanChannel);
+            scanChannel = IndexOfMSB(mScanChannelMask);
 
             error = otLinkRawEnergyScan(mInstance, scanChannel, mScanPeriod, LinkRawEnergyScanDone);
+
+            if (error != OT_ERROR_NONE)
+            {
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+                ExitNow(error = EnqueuePendingCommand(kPendingCommandTypeEnergyScan, 0, scanChannel));
+#else
+                ExitNow();
+#endif // OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+            }
+
+            mCurScanChannel = static_cast<int8_t>(scanChannel);
+            mCurTransmitIID = mCurCommandIID;
         }
         else
 #endif // OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
@@ -2575,9 +2724,9 @@ otError otNcpStreamWrite(int aStreamId, const uint8_t *aDataPtr, int aDataLen)
     return error;
 }
 
-extern "C" spinel_iid_t otNcpPlatGetIid()
+extern "C" spinel_iid_t otNcpPlatGetCurCommandIid()
 {
-    return ot::Ncp::NcpBase::GetNcpInstance()->GetIid();
+    return ot::Ncp::NcpBase::GetNcpInstance()->GetCurCommandIid();
 }
 
 #if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_APP)

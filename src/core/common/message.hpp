@@ -1118,7 +1118,7 @@ public:
      */
     MessageQueue *GetMessageQueue(void) const
     {
-        return (!GetMetadata().mInPriorityQ) ? GetMetadata().mQueue.mMessage : nullptr;
+      return (!GetMetadata().mInPriorityQ) ? GetMetadata().mQueue.mMessage : nullptr;
     }
 
     /**
