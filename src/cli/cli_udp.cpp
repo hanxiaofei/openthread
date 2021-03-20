@@ -197,7 +197,6 @@ otError UdpExample::ProcessSend(uint8_t aArgsLength, char *aArgs[])
     }
 
     error = otUdpSend(mInterpreter.mInstance, &mSocket, message, &messageInfo);
-    error = otUdpSend(mInterpreter.mInstance, &mSocket, message, &messageInfo);
 
 exit:
 
