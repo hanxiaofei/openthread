@@ -181,6 +181,10 @@ void NcpBase::LinkRawTransmitDone(otRadioFrame *aFrame, otRadioFrame *aAckFrame,
         SuccessOrExit(mEncoder.EndFrame());
     }
 
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+    HandlePendingCommands();
+#endif
+
 exit:
     return;
 }
@@ -215,6 +219,10 @@ void NcpBase::LinkRawEnergyScanDone(int8_t aEnergyScanMaxRssi)
 
     SuccessOrExit(mEncoder.WriteUint8(SPINEL_SCAN_STATE_IDLE));
     SuccessOrExit(mEncoder.EndFrame());
+
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+    HandlePendingCommands();
+#endif
 
 exit:
     return;
