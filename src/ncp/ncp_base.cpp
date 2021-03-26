@@ -216,9 +216,6 @@ NcpBase::NcpBase(Instance *aInstance)
     , mAllowPeekDelegate(nullptr)
     , mAllowPokeDelegate(nullptr)
 #endif
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE == 0
-    , mNextExpectedTid(0)
-#endif      
     , mResponseQueueHead(0)
     , mResponseQueueTail(0)
     , mAllowLocalNetworkDataChange(false)
@@ -269,6 +266,8 @@ NcpBase::NcpBase(Instance *aInstance)
 
     memset(&mResponseQueue, 0, sizeof(mResponseQueue));
 
+    memset(mNextExpectedTid, 0, sizeof(mNextExpectedTid));
+
 #if OPENTHREAD_MTD || OPENTHREAD_FTD
     otMessageQueueInit(&mMessageQueue);
     IgnoreError(otSetStateChangedCallback(mInstance, &NcpBase::HandleStateChanged, this));
@@ -302,10 +301,6 @@ NcpBase::NcpBase(Instance *aInstance)
 #if OPENTHREAD_ENABLE_VENDOR_EXTENSION
     aInstance->Get<Extension::ExtensionBase>().SignalNcpInit(*this);
 #endif
-
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-    memset(mNextExpectedTid, 0, sizeof(mNextExpectedTid));
-#endif    
 }
 
 NcpBase *NcpBase::GetNcpInstance(void)
@@ -397,25 +392,16 @@ void NcpBase::HandleReceive(const uint8_t *aBuf, uint16_t aBufLength)
         IgnoreError(SendQueuedResponses());
     }
 
-    // Check for out of sequence TIDs and update `mNextExpectedTid`,
+    // Check for out of sequence TIDs and update `mNextExpectedTid[]`,
 
     tid = SPINEL_HEADER_GET_TID(header);
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     if ((mNextExpectedTid[mCurCommandIID] != 0) && (tid != mNextExpectedTid[mCurCommandIID]))
     {
         mRxSpinelOutOfOrderTidCounter++;
     }
 
     mNextExpectedTid[mCurCommandIID] = SPINEL_GET_NEXT_TID(tid);
-#else
-    if ((mNextExpectedTid != 0) && (tid != mNextExpectedTid))
-    {
-        mRxSpinelOutOfOrderTidCounter++;
-    }
-
-    mNextExpectedTid = SPINEL_GET_NEXT_TID(tid);
-#endif    
 
 exit:
     mDisableStreamWrite = false;
@@ -763,11 +749,7 @@ otError NcpBase::EnqueueResponse(uint8_t aHeader, ResponseType aType, unsigned i
     // get an out of sequence TID, check if we already have a response
     // queued for this TID and if so mark the old entry as deleted.
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE    
     if (tid != mNextExpectedTid[iid])
-#else
-    if (tid != mNextExpectedTid)
-#endif
     {
         for (uint8_t cur = mResponseQueueHead; cur < mResponseQueueTail; cur++)
         {

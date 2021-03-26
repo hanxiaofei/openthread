@@ -568,11 +568,7 @@ protected:
 
     uint8_t mTxBuffer[kTxBufferSize];
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     spinel_tid_t mNextExpectedTid[4];
-#else
-    spinel_tid_t mNextExpectedTid;
-#endif
 
     uint8_t       mResponseQueueHead;
     uint8_t       mResponseQueueTail;
@@ -605,6 +601,7 @@ protected:
 #endif // OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
 
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+#if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE  
     #define kPendingCommandQueueSize SPINEL_HEADER_IID_MAX
 
   enum PendingCommandType
@@ -632,7 +629,8 @@ protected:
     otError HandlePendingTransmit(PendingCommandEntry *entry);
     otError HandlePendingEnergyScan(PendingCommandEntry *entry);
     void HandlePendingCommands(void);
-#endif
+#endif // OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE  
+#endif // OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
 
 #if OPENTHREAD_MTD || OPENTHREAD_FTD
     otMessageQueue mMessageQueue;
