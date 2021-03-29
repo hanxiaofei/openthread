@@ -46,13 +46,23 @@
 #endif
 
 /**
- * @def OPENTHREAD_CONFIG_SRP_SERVER_SERVICE_TYPE
+ * @def OPENTHREAD_CONFIG_SRP_SERVER_UDP_PORT
  *
- * Specifies the Service Type for SRP Server.
+ * Specifies the SRP Server UDP port.
  *
  */
-#ifndef OPENTHREAD_CONFIG_SRP_SERVER_SERVICE_TYPE
-#define OPENTHREAD_CONFIG_SRP_SERVER_SERVICE_TYPE 0x5du
+#ifndef OPENTHREAD_CONFIG_SRP_SERVER_UDP_PORT
+#define OPENTHREAD_CONFIG_SRP_SERVER_UDP_PORT 0
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_SRP_SERVER_SERVICE_NUMBER
+ *
+ * Specifies the Thread Network Data Service number for SRP Server.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_SRP_SERVER_SERVICE_NUMBER
+#define OPENTHREAD_CONFIG_SRP_SERVER_SERVICE_NUMBER 0x5du
 #endif
 
 /**

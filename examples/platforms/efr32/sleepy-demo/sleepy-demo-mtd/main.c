@@ -76,6 +76,14 @@ void initUdp(void);
 void applicationTick(void);
 void mtdReceiveCallback(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);
 
+/**
+ * This function initializes the CLI app.
+ *
+ * @param[in]  aInstance  The OpenThread instance structure.
+ *
+ */
+extern void otAppCliInit(otInstance *aInstance);
+
 // Variables
 static otInstance *        instance;
 static otUdpSocket         sMtdSocket;
@@ -97,7 +105,7 @@ int main(int argc, char *argv[])
     instance = otInstanceInitSingle();
     assert(instance);
 
-    otCliUartInit(instance);
+    otAppCliInit(instance);
 
     otLinkSetPollPeriod(instance, SLEEPY_POLL_PERIOD_MS);
     setNetworkConfiguration(instance);
@@ -211,7 +219,7 @@ void handleNetifStateChanged(uint32_t aFlags, void *aContext)
             config.mDeviceType   = 0;
             config.mNetworkData  = 0;
             otThreadSetLinkMode(instance, config);
-            sAllowDeepSleep = true;
+            sAllowDeepSleep = false;
             break;
 
         case OT_DEVICE_ROLE_DETACHED:

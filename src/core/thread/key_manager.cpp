@@ -66,14 +66,14 @@ KeyManager::KeyManager(Instance &aInstance)
     , mKeyRotationTime(kDefaultKeyRotationTime)
     , mKeySwitchGuardTime(kDefaultKeySwitchGuardTime)
     , mKeySwitchGuardEnabled(false)
-    , mKeyRotationTimer(aInstance, KeyManager::HandleKeyRotationTimer, this)
+    , mKeyRotationTimer(aInstance, KeyManager::HandleKeyRotationTimer)
     , mKekFrameCounter(0)
     , mSecurityPolicyFlags(kDefaultSecurityPolicyFlags)
     , mIsPskcSet(false)
 {
-    otError error = mMasterKey.GenerateRandom();
+    Error error = mMasterKey.GenerateRandom();
 
-    OT_ASSERT(error == OT_ERROR_NONE);
+    OT_ASSERT(error == kErrorNone);
     OT_UNUSED_VARIABLE(error);
 
     mMacFrameCounters.Reset();
@@ -99,9 +99,9 @@ void KeyManager::SetPskc(const Pskc &aPskc)
 }
 #endif // OPENTHREAD_MTD || OPENTHREAD_FTD
 
-otError KeyManager::SetMasterKey(const MasterKey &aKey)
+Error KeyManager::SetMasterKey(const MasterKey &aKey)
 {
-    otError error = OT_ERROR_NONE;
+    Error   error = kErrorNone;
     Router *parent;
 
     SuccessOrExit(Get<Notifier>().Update(mMasterKey, aKey, kEventMasterKeyChanged));
@@ -298,11 +298,11 @@ void KeyManager::SetKek(const uint8_t *aKek)
     mKekFrameCounter = 0;
 }
 
-otError KeyManager::SetKeyRotation(uint32_t aKeyRotation)
+Error KeyManager::SetKeyRotation(uint32_t aKeyRotation)
 {
-    otError result = OT_ERROR_NONE;
+    Error result = kErrorNone;
 
-    VerifyOrExit(aKeyRotation >= static_cast<uint32_t>(kMinKeyRotationTime), result = OT_ERROR_INVALID_ARGS);
+    VerifyOrExit(aKeyRotation >= static_cast<uint32_t>(kMinKeyRotationTime), result = kErrorInvalidArgs);
 
     mKeyRotationTime = aKeyRotation;
 
@@ -323,7 +323,7 @@ void KeyManager::StartKeyRotationTimer(void)
 
 void KeyManager::HandleKeyRotationTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<KeyManager>().HandleKeyRotationTimer();
+    aTimer.Get<KeyManager>().HandleKeyRotationTimer();
 }
 
 void KeyManager::HandleKeyRotationTimer(void)

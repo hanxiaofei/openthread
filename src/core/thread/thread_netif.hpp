@@ -80,6 +80,7 @@
 #include "net/dhcp6_client.hpp"
 #include "net/dhcp6_server.hpp"
 #include "net/dns_client.hpp"
+#include "net/dnssd_server.hpp"
 #include "net/ip6_filter.hpp"
 #include "net/netif.hpp"
 #include "net/sntp_client.hpp"
@@ -95,6 +96,7 @@
 #include "thread/mle_router.hpp"
 #include "thread/network_data_local.hpp"
 #include "thread/network_data_notifier.hpp"
+#include "thread/network_data_service.hpp"
 #include "thread/network_diagnostic.hpp"
 #include "thread/panid_query_server.hpp"
 #include "thread/radio_selector.hpp"
@@ -159,10 +161,10 @@ public:
      *
      * @param[in]  aMessage  A reference to the message.
      *
-     * @retval OT_ERROR_NONE  Successfully submitted the message to the interface.
+     * @retval kErrorNone  Successfully submitted the message to the interface.
      *
      */
-    otError SendMessage(Message &aMessage) { return mMeshForwarder.SendMessage(aMessage); }
+    Error SendMessage(Message &aMessage) { return mMeshForwarder.SendMessage(aMessage); }
 
     /**
      * This method performs a route lookup.
@@ -171,11 +173,11 @@ public:
      * @param[in]   aDestination  A reference to the IPv6 destination address.
      * @param[out]  aPrefixMatch  A pointer where the number of prefix match bits for the chosen route is stored.
      *
-     * @retval OT_ERROR_NONE      Successfully found a route.
-     * @retval OT_ERROR_NO_ROUTE  Could not find a valid route.
+     * @retval kErrorNone      Successfully found a route.
+     * @retval kErrorNoRoute   Could not find a valid route.
      *
      */
-    otError RouteLookup(const Ip6::Address &aSource, const Ip6::Address &aDestination, uint8_t *aPrefixMatch);
+    Error RouteLookup(const Ip6::Address &aSource, const Ip6::Address &aDestination, uint8_t *aPrefixMatch);
 
     /**
      * This method indicates whether @p aAddress matches an on-mesh prefix.
@@ -205,6 +207,9 @@ private:
 #if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
     Srp::Client mSrpClient;
 #endif
+#if OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE
+    Dns::ServiceDiscovery::Server mDnssdServer;
+#endif
 #if OPENTHREAD_CONFIG_SNTP_CLIENT_ENABLE
     Sntp::Client mSntpClient;
 #endif
@@ -227,6 +232,7 @@ private:
 #if OPENTHREAD_FTD || OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE || OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     NetworkData::Notifier mNetworkDataNotifier;
 #endif
+    NetworkData::Service::Manager mNetworkDataServiceManager;
 #if OPENTHREAD_FTD || OPENTHREAD_CONFIG_TMF_NETWORK_DIAG_MTD_ENABLE
     NetworkDiagnostic::NetworkDiagnostic mNetworkDiagnostic;
 #endif // OPENTHREAD_FTD || OPENTHREAD_CONFIG_TMF_NETWORK_DIAG_MTD_ENABLE

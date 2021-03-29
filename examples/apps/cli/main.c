@@ -38,6 +38,14 @@
 #include "openthread-system.h"
 #include "cli/cli_config.h"
 
+/**
+ * This function initializes the CLI app.
+ *
+ * @param[in]  aInstance  The OpenThread instance structure.
+ *
+ */
+extern void otAppCliInit(otInstance *aInstance);
+
 #if OPENTHREAD_EXAMPLES_SIMULATION
 #include <setjmp.h>
 #include <unistd.h>
@@ -51,7 +59,7 @@ void __gcov_flush();
 #define OPENTHREAD_ENABLE_COVERAGE 0
 #endif
 
-#if OPENTHREAD_CONFIG_MULTIPLE_INSTANCE_ENABLE
+#if OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE
 void *otPlatCAlloc(size_t aNum, size_t aSize)
 {
     return calloc(aNum, aSize);
@@ -107,9 +115,7 @@ pseudo_reset:
 #endif
     assert(instance);
 
-#if OPENTHREAD_CONFIG_CLI_TRANSPORT == OT_CLI_TRANSPORT_UART
-    otCliUartInit(instance);
-#endif
+    otAppCliInit(instance);
 
     while (!otSysPseudoResetWasRequested())
     {

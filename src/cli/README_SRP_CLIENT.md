@@ -5,12 +5,15 @@
 Usage : `srp client [command] ...`
 
 - [help](#help)
+- [autostart](#autostart)
 - [callback](#callback)
 - [host](#host)
 - [keyleaseinterval](#keyleaseinterval)
 - [leaseinterval](#leaseinterval)
+- [server](#server)
 - [service](#service)
 - [start](#start)
+- [state](#state)
 - [stop](#stop)
 
 ## Command Details
@@ -23,6 +26,7 @@ Print SRP client help menu.
 
 ```bash
 > srp client help
+autostart
 callback
 help
 host
@@ -30,7 +34,33 @@ keyleaseinterval
 leaseinterval
 service
 start
+state
 stop
+Done
+```
+
+### autostart
+
+Usage `srp client autostart [enable|disable]`
+
+Enable/Disable auto start mode in SRP client. This command requires `OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_API_ENABLE` feature to be enabled.
+
+Get the current autostart mode.
+
+```bash
+> srp client autostart
+Disabled
+Done
+```
+
+Set the autostart mode.
+
+```bash
+> srp client autostart enable
+Done
+
+> srp client autostart
+Enabled
 Done
 ```
 
@@ -231,6 +261,38 @@ Set the lease interval.
 Done
 ```
 
+### server
+
+Usage: `srp client server`
+
+Print the server socket address (IPv6 address and port number).
+
+```bash
+> srp client server
+[fd00:0:0:0:d88a:618b:384d:e760]:4724
+Done
+```
+
+### server address
+
+Print the server IPv6 address.
+
+```bash
+> srp client server address
+fd00:0:0:0:d88a:618b:384d:e760
+Done
+```
+
+### server port
+
+Print the server port number
+
+```bash
+> srp client server port
+4724
+Done
+```
+
 ### service
 
 Usage: `srp client service`
@@ -270,10 +332,22 @@ Done
 
 Usage: `srp client start <serveraddr> <serverport>`
 
-Start the SRP client with a given server IPv6 address and port number
+Start the SRP client with a given server IPv6 address and port number.
 
 ```bash
 > srp client start fd00::d88a:618b:384d:e760 4724
+Done
+```
+
+### state
+
+Usage: `srp client state`
+
+Indicates the state of SRP client, i.e., whether it is enabled or disabled.
+
+```bash
+> srp client state
+Enabled
 Done
 ```
 

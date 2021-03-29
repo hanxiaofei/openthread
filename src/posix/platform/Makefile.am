@@ -46,10 +46,12 @@ libopenthread_posix_a_CPPFLAGS                                = \
 libopenthread_posix_a_SOURCES             = \
     alarm.cpp                               \
     backbone.cpp                            \
+    daemon.cpp                              \
     entropy.cpp                             \
     hdlc_interface.cpp                      \
     infra_if.cpp                            \
     logging.cpp                             \
+    memory.cpp                              \
     misc.cpp                                \
     multicast_routing.cpp                   \
     netif.cpp                               \
@@ -59,7 +61,6 @@ libopenthread_posix_a_SOURCES             = \
     spi_interface.cpp                       \
     system.cpp                              \
     trel_udp6.cpp                           \
-    uart.cpp                                \
     udp.cpp                                 \
     virtual_time.cpp                        \
     $(NULL)

@@ -50,6 +50,7 @@ DHCP6_CLIENT                   ?= 1
 DHCP6_SERVER                   ?= 1
 DIAGNOSTIC                     ?= 1
 DNS_CLIENT                     ?= 1
+DNSSD_SERVER                   ?= 1
 ECDSA                          ?= 1
 IP6_FRAGM                      ?= 1
 JAM_DETECTION                  ?= 1
@@ -58,6 +59,7 @@ LEGACY                         ?= 1
 LINK_RAW                       ?= 1
 MAC_FILTER                     ?= 1
 MTD_NETDIAG                    ?= 1
+PING_SENDER                    ?= 1
 REFERENCE_DEVICE               ?= 1
 SERVICE                        ?= 1
 SNTP_CLIENT                    ?= 1
@@ -92,7 +94,7 @@ endif
 ifeq ($(NCP_SPI),1)
 COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_NCP_SPI_ENABLE=1
 else
-COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_NCP_UART_ENABLE=1
+COMMONCFLAGS                   += -DOPENTHREAD_CONFIG_NCP_HDLC_ENABLE=1
 endif # NCP_SPI == 1
 
 ifeq ($(OTNS),1)

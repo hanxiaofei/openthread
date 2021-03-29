@@ -41,7 +41,7 @@
 #include "common/notifier.hpp"
 #include "common/timer.hpp"
 #include "crypto/ecdsa.hpp"
-#include "net/dns_headers.hpp"
+#include "net/dns_types.hpp"
 #include "net/ip6.hpp"
 #include "net/udp6.hpp"
 
@@ -168,11 +168,11 @@ public:
         /**
          * This method initializes and validates the `Service` object and its fields.
          *
-         * @retval OT_ERROR_NONE          Successfully initialized and validated the `Service` object.
-         * @retval OT_ERROR_INVALID_ARGS  The info in `Service` object is not valid (e.g. null name or bad `TxtEntry`).
+         * @retval kErrorNone         Successfully initialized and validated the `Service` object.
+         * @retval kErrorInvalidArgs  The info in `Service` object is not valid (e.g. null name or bad `TxtEntry`).
          *
          */
-        otError Init(void);
+        Error Init(void);
 
         /**
          * This method gets the service name labels string.
@@ -269,16 +269,14 @@ public:
      * single SRP Update is sent containing all the info).
      *
      * @param[in] aServerSockAddr  The socket address (IPv6 address and port number) of the SRP server.
-     * @param[in] aCallback        The callback to notify of events and changes. Can be nullptr if not needed.
-     * @param[in] aContext         An arbitrary context used with @p aCallback.
      *
-     * @retval OT_ERROR_NONE     SRP client operation started successfully or it is already running with same server
-     *                           socket address and callback.
-     * @retval OT_ERROR_BUSY     SRP client is busy running with a different socket address and/or callback.
-     * @retval OT_ERROR_FAILED   Failed to open/connect the client's UDP socket.
+     * @retval kErrorNone     SRP client operation started successfully or it is already running with same server
+     *                        socket address and callback.
+     * @retval kErrorBusy     SRP client is busy running with a different socket address.
+     * @retval kErrorFailed   Failed to open/connect the client's UDP socket.
      *
      */
-    otError Start(const Ip6::SockAddr &aServerSockAddr, Callback aCallback, void *aContext);
+    Error Start(const Ip6::SockAddr &aServerSockAddr) { return Start(aServerSockAddr, kRequesterUser); }
 
     /**
      * This method stops the SRP client operation.
@@ -286,8 +284,94 @@ public:
      * This method stops any further interactions with the SRP server. Note that it does not remove or clear host info
      * and/or list of services. It marks all services to be added/removed again once the client is started again.
      *
+     * If `OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_API_ENABLE` (auto-start feature) is enabled, a call to this method
+     * also disables the auto-start mode.
+     *
      */
-    void Stop(void);
+    void Stop(void) { Stop(kRequesterUser); }
+
+#if OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_API_ENABLE
+    /**
+     * This function pointer type defines the callback used by SRP client to notify user when it is auto-started or
+     * stopped.
+     *
+     */
+    typedef otSrpClientAutoStartCallback AutoStartCallback;
+
+    /**
+     * This method enables the auto-start mode.
+     *
+     * Config option `OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_DEFAULT_MODE` specifies the default auto-start mode
+     * (whether it is enabled or disabled at the start of OT stack).
+     *
+     * When auto-start is enabled, the SRP client will monitor the Thread Network Data for SRP Server Service entries
+     * and automatically start and stop the client when an SRP server is detected.
+     *
+     * If multiple SRP servers are found, a random one will be selected. If the selected SRP server is no longer
+     * detected (not longer present in the Thread Network Data), the SRP client will be stopped and then it may switch
+     * to another SRP server (if available).
+     *
+     * When the SRP client is explicitly started through a successful call to `Start()`, the given SRP server address
+     * in `Start()` will continue to be used regardless of the state of auto-start mode and whether the same SRP
+     * server address is discovered or not in the Thread Network Data. In this case, only an explicit `Stop()` call
+     * will stop the client.
+     *
+     * @param[in] aCallback   A callback to notify when client is auto-started/stopped. Can be `nullptr` if not needed.
+     * @param[in] aContext    A context to be passed when invoking @p aCallback.
+     *
+     */
+    void EnableAutoStartMode(AutoStartCallback aCallback, void *aContext);
+
+    /**
+     * This method disables the auto-start mode.
+     *
+     * Disabling the auto-start mode will not stop the client if it is already running but the client stops monitoring
+     * the Thread Network Data to verify that the selected SRP server is still present in it.
+     *
+     * Note that a call to `Stop()` will also disable the auto-start mode.
+     *
+     */
+    void DisableAutoStartMode(void) { mAutoStartModeEnabled = false; }
+
+    /**
+     * This method indicates the current state of auto-start mode (enabled or disabled).
+     *
+     * @returns TRUE if the auto-start mode is enabled, FALSE otherwise.
+     *
+     */
+    bool IsAutoStartModeEnabled(void) const { return mAutoStartModeEnabled; }
+#endif // OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_API_ENABLE
+
+    /**
+     * This method indicates whether the SRP client is running or not.
+     *
+     * @returns TRUE if the SRP client is running, FALSE otherwise.
+     *
+     */
+    bool IsRunning(void) const { return (mState != kStateStopped); }
+
+    /**
+     * This method gets the socket address (IPv6 address and port number) of the SRP server which is being used by SRP
+     * client.
+     *
+     * If the client is not running, the address is unspecified (all zero) with zero port number.
+     *
+     * @returns The SRP server's socket address.
+     *
+     */
+    const Ip6::SockAddr &GetServerAddress(void) const { return mSocket.GetPeerName(); }
+
+    /**
+     * This method sets the callback used to notify caller of events/changes.
+     *
+     * The SRP client allows a single callback to be registered. So consecutive calls to this method will overwrite any
+     * previously set callback functions.
+     *
+     * @param[in] aCallback        The callback to notify of events and changes. Can be nullptr if not needed.
+     * @param[in] aContext         An arbitrary context used with @p aCallback.
+     *
+     */
+    void SetCallback(Callback aCallback, void *aContext);
 
     /**
      * This method gets the lease interval used in SRP update requests.
@@ -353,12 +437,12 @@ public:
      * @param[in] aName       A pointer to host name label string (MUST NOT be NULL). Pointer the string buffer MUST
      *                        persist and remain valid and constant after return from this function.
      *
-     * @retval OT_ERROR_NONE            The host name label was set successfully.
-     * @retval OT_ERROR_INVALID_ARGS    The @p aName is NULL.
-     * @retval OT_ERROR_INVALID_STATE   The host name is already set and registered with the server.
+     * @retval kErrorNone           The host name label was set successfully.
+     * @retval kErrorInvalidArgs    The @p aName is NULL.
+     * @retval kErrorInvalidState   The host name is already set and registered with the server.
      *
      */
-    otError SetHostName(const char *aName);
+    Error SetHostName(const char *aName);
 
     /**
      * This method sets/updates the list of host IPv6 address.
@@ -374,13 +458,13 @@ public:
      * @param[in] aAddresses          A pointer to the an array containing the host IPv6 addresses.
      * @param[in] aNumAddresses       The number of addresses in the @p aAddresses array.
      *
-     * @retval OT_ERROR_NONE            The host IPv6 address list change started successfully. The `Callback`
-     *                                  will be called to report the status of registering addresses with server.
-     * @retval OT_ERROR_INVALID_ARGS    The address list is invalid (e.g., must contain at least one address).
-     * @retval OT_ERROR_INVALID_STATE   Host is being removed and therefore cannot change host address.
+     * @retval kErrorNone           The host IPv6 address list change started successfully. The `Callback` will be
+     *                              called to report the status of registering addresses with server.
+     * @retval kErrorInvalidArgs    The address list is invalid (e.g., must contain at least one address).
+     * @retval kErrorInvalidState   Host is being removed and therefore cannot change host address.
      *
      */
-    otError SetHostAddresses(const Ip6::Address *aAddresses, uint8_t aNumAddresses);
+    Error SetHostAddresses(const Ip6::Address *aAddresses, uint8_t aNumAddresses);
 
     /**
      * This method adds a service to be registered with server.
@@ -391,13 +475,13 @@ public:
      * @param[in] aService         A `Service` to add (the instance must persist and remain unchanged after
      *                             successful return from this method).
      *
-     * @retval OT_ERROR_NONE          The addition of service started successfully. The `Callback` will be
-     *                                called to report the status.
-     * @retval OT_ERROR_ALREADY       The same service is already in the list.
-     * @retval OT_ERROR_INVALID_ARGS  The service structure is invalid (e.g., bad service name or `TxEntry`).
+     * @retval kErrorNone          The addition of service started successfully. The `Callback` will be called to
+     *                             report the status.
+     * @retval kErrorAlready       The same service is already in the list.
+     * @retval kErrorInvalidArgs   The service structure is invalid (e.g., bad service name or `TxEntry`).
      *
      */
-    otError AddService(Service &aService);
+    Error AddService(Service &aService);
 
     /**
      * This method removes a service to be unregistered with server.
@@ -405,13 +489,13 @@ public:
      * @param[in] aService         A `Service` to remove (the instance must persist and remain unchanged after
      *                             successful return from this method).
      *
-     * @retval OT_ERROR_NONE       The removal of service started successfully. The `Callback` will be called to
-     *                             report the status.
-     * @retval OT_ERROR_NOT_FOUND  The service could not be found in the list.
+     * @retval kErrorNone      The removal of service started successfully. The `Callback` will be called to report
+     *                         the status.
+     * @retval kErrorNotFound  The service could not be found in the list.
      *
      */
 
-    otError RemoveService(Service &aService);
+    Error RemoveService(Service &aService);
 
     /**
      * This method gets the list of services being managed by client.
@@ -434,12 +518,12 @@ public:
      *
      * @param[in] aRemoveKeyLease  A boolean indicating whether or not the host key lease should also be removed.
      *
-     * @retval OT_ERROR_NONE      The removal of host and services started successfully. The `Callback` will be called
-     *                            to report the status.
-     * @retval OT_ERROR_ALREADY   The host is already removed.
+     * @retval kErrorNone      The removal of host and services started successfully. The `Callback` will be called
+     *                         to report the status.
+     * @retval kErrorAlready   The host is already removed.
      *
      */
-    otError RemoveHostAndServices(bool aShouldRemoveKeyLease);
+    Error RemoveHostAndServices(bool aShouldRemoveKeyLease);
 
     /**
      * This method clears all host info and all the services.
@@ -471,11 +555,11 @@ public:
      *
      * @param[in] aName      A pointer to the domain name string. If NULL sets it to default "default.service.arpa".
      *
-     * @retval OT_ERROR_NONE            The domain name label was set successfully.
-     * @retval OT_ERROR_INVALID_STATE   The host info is already registered with server.
+     * @retval kErrorNone           The domain name label was set successfully.
+     * @retval kErrorInvalidState   The host info is already registered with server.
      *
      */
-    otError SetDomainName(const char *aName);
+    Error SetDomainName(const char *aName);
 #endif // OPENTHREAD_CONFIG_SRP_CLIENT_DOMAIN_NAME_API_ENABLE
 
     /**
@@ -594,6 +678,22 @@ private:
         kStateToRetry,  // SRP update tx failed, waiting to retry.
     };
 
+    enum : bool
+    {
+        kAutoStartDefaultMode = OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_DEFAULT_MODE,
+    };
+
+    // This enumeration type is used by the private `Start()` and
+    // `Stop()` methods to indicate whether it is being requested by the
+    // user or by the auto-start feature.
+    enum Requester
+    {
+        kRequesterUser,
+#if OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_API_ENABLE
+        kRequesterAuto,
+#endif
+    };
+
     struct Info : public Clearable<Info>
     {
         enum : uint16_t
@@ -607,41 +707,47 @@ private:
         Crypto::Ecdsa::P256::KeyPair mKeyPair;          // The ECDSA key pair.
     };
 
-    void           Resume(void);
-    void           Pause(void);
-    void           HandleNotifierEvents(Events aEvents);
-    void           UpdateServiceStateToRemove(Service &aService);
-    State          GetState(void) const { return mState; }
-    void           SetState(State aState);
-    void           ChangeHostAndServiceStates(const ItemState *aNewStates);
-    void           InvokeCallback(otError aError) const;
-    void           InvokeCallback(otError aError, const HostInfo &aHostInfo, const Service *aRemovedServices) const;
-    void           ClearHostInfoAndServices(void);
-    void           HandleHostInfoOrServiceChange(void);
-    void           SendUpdate(void);
-    otError        PrepareUpdateMessage(Message &aMessage);
-    otError        ReadOrGenerateKey(Crypto::Ecdsa::P256::KeyPair &aKeyPair);
-    otError        AppendServiceInstructions(Service &aService, Message &aMessage, Info &aInfo);
-    otError        AppendHostDescriptionInstruction(Message &aMessage, Info &aInfo) const;
-    otError        AppendDeleteAllRrsets(Message &aMessage) const;
-    otError        AppendHostName(Message &aMessage, Info &aInfo, bool aDoNotCompress = false) const;
-    otError        AppendUpdateLeaseOptRecord(Message &aMessage) const;
-    otError        AppendSignature(Message &aMessage, Info &aInfo);
-    void           UpdateRecordLengthInMessage(Dns::ResourceRecord &aRecord, uint16_t aOffset, Message &aMessage) const;
-    static void    HandleUdpReceive(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);
-    void           ProcessResponse(Message &aMessage);
-    void           HandleUpdateDone(void);
-    void           GetRemovedServices(LinkedList<Service> &aRemovedServices);
-    static otError ReadResourceRecord(const Message &aMessage, uint16_t &aOffset, Dns::ResourceRecord &aRecord);
-    otError        ProcessOptRecord(const Message &aMessage, uint16_t aOffset, const Dns::OptRecord &aOptRecord);
-    void           UpdateState(void);
-    uint32_t       GetRetryWaitInterval(void) const { return mRetryWaitInterval; }
-    void           ResetRetryWaitInterval(void) { mRetryWaitInterval = kMinRetryWaitInterval; }
-    void           GrowRetryWaitInterval(void);
-    uint32_t       GetBoundedLeaseInterval(uint32_t aInterval, uint32_t aDefaultInterval) const;
-    bool           ShouldRenewEarly(const Service &aService) const;
-    static void    HandleTimer(Timer &aTimer);
-    void           HandleTimer(void);
+    Error        Start(const Ip6::SockAddr &aServerSockAddr, Requester aRequester);
+    void         Stop(Requester aRequester);
+    void         Resume(void);
+    void         Pause(void);
+    void         HandleNotifierEvents(Events aEvents);
+    void         HandleRoleChanged(void);
+    void         UpdateServiceStateToRemove(Service &aService);
+    State        GetState(void) const { return mState; }
+    void         SetState(State aState);
+    void         ChangeHostAndServiceStates(const ItemState *aNewStates);
+    void         InvokeCallback(Error aError) const;
+    void         InvokeCallback(Error aError, const HostInfo &aHostInfo, const Service *aRemovedServices) const;
+    void         ClearHostInfoAndServices(void);
+    void         HandleHostInfoOrServiceChange(void);
+    void         SendUpdate(void);
+    Error        PrepareUpdateMessage(Message &aMessage);
+    Error        ReadOrGenerateKey(Crypto::Ecdsa::P256::KeyPair &aKeyPair);
+    Error        AppendServiceInstructions(Service &aService, Message &aMessage, Info &aInfo);
+    Error        AppendHostDescriptionInstruction(Message &aMessage, Info &aInfo) const;
+    Error        AppendDeleteAllRrsets(Message &aMessage) const;
+    Error        AppendHostName(Message &aMessage, Info &aInfo, bool aDoNotCompress = false) const;
+    Error        AppendUpdateLeaseOptRecord(Message &aMessage) const;
+    Error        AppendSignature(Message &aMessage, Info &aInfo);
+    void         UpdateRecordLengthInMessage(Dns::ResourceRecord &aRecord, uint16_t aOffset, Message &aMessage) const;
+    static void  HandleUdpReceive(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);
+    void         ProcessResponse(Message &aMessage);
+    void         HandleUpdateDone(void);
+    void         GetRemovedServices(LinkedList<Service> &aRemovedServices);
+    static Error ReadResourceRecord(const Message &aMessage, uint16_t &aOffset, Dns::ResourceRecord &aRecord);
+    Error        ProcessOptRecord(const Message &aMessage, uint16_t aOffset, const Dns::OptRecord &aOptRecord);
+    void         UpdateState(void);
+    uint32_t     GetRetryWaitInterval(void) const { return mRetryWaitInterval; }
+    void         ResetRetryWaitInterval(void) { mRetryWaitInterval = kMinRetryWaitInterval; }
+    void         GrowRetryWaitInterval(void);
+    uint32_t     GetBoundedLeaseInterval(uint32_t aInterval, uint32_t aDefaultInterval) const;
+    bool         ShouldRenewEarly(const Service &aService) const;
+    static void  HandleTimer(Timer &aTimer);
+    void         HandleTimer(void);
+#if OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_API_ENABLE
+    void ProcessAutoStart(void);
+#endif
 
 #if (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_INFO) && (OPENTHREAD_CONFIG_LOG_SRP == 1)
     static const char *StateToString(State aState);
@@ -652,11 +758,15 @@ private:
 
     static const char kDefaultDomainName[];
 
-    static_assert(kMaxTxFailureRetries < 128, "kMaxTxFailureRetries exceed the range of mTxFailureRetryCount (7-bit)");
+    static_assert(kMaxTxFailureRetries < 16, "kMaxTxFailureRetries exceed the range of mTxFailureRetryCount (4-bit)");
 
     State   mState;
-    uint8_t mTxFailureRetryCount : 7;
+    uint8_t mTxFailureRetryCount : 4;
     bool    mShouldRemoveKeyLease : 1;
+#if OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_API_ENABLE
+    bool mAutoStartModeEnabled : 1;
+    bool mAutoStartDidSelectServer : 1;
+#endif
 
     uint16_t mUpdateMessageId;
     uint32_t mRetryWaitInterval;
@@ -668,8 +778,14 @@ private:
 
     Ip6::Udp::Socket mSocket;
 
-    Callback            mCallback;
-    void *              mCallbackContext;
+    Callback mCallback;
+    void *   mCallbackContext;
+
+#if OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_API_ENABLE
+    AutoStartCallback mAutoStartCallback;
+    void *            mAutoStartContext;
+#endif
+
     const char *        mDomainName;
     HostInfo            mHostInfo;
     LinkedList<Service> mServices;

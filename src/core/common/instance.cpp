@@ -37,6 +37,7 @@
 
 #include "common/logging.hpp"
 #include "common/new.hpp"
+#include "utils/heap.hpp"
 
 namespace ot {
 
@@ -48,15 +49,10 @@ OT_DEFINE_ALIGNED_VAR(gInstanceRaw, sizeof(Instance), uint64_t);
 #endif
 
 #if OPENTHREAD_MTD || OPENTHREAD_FTD
-
-#if OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE
-
-otHeapFreeFn   ot::Instance::mFree   = nullptr;
-otHeapCAllocFn ot::Instance::mCAlloc = nullptr;
-
-#endif // OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE
-
-#endif // OPENTHREAD_MTD || OPENTHREAD_FTD
+#if !OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE
+Utils::Heap Instance::sHeap;
+#endif
+#endif
 
 Instance::Instance(void)
     : mTimerMilliScheduler(*this)
@@ -77,6 +73,9 @@ Instance::Instance(void)
 #endif
 #if OPENTHREAD_CONFIG_COAP_SECURE_API_ENABLE
     , mApplicationCoapSecure(*this, /* aLayerTwoSecurity */ true)
+#endif
+#if OPENTHREAD_CONFIG_PING_SENDER_ENABLE
+    , mPingSender(*this)
 #endif
 #if OPENTHREAD_CONFIG_CHANNEL_MONITOR_ENABLE
     , mChannelMonitor(*this)
@@ -218,11 +217,11 @@ void Instance::FactoryReset(void)
     otPlatReset(this);
 }
 
-otError Instance::ErasePersistentInfo(void)
+Error Instance::ErasePersistentInfo(void)
 {
-    otError error = OT_ERROR_NONE;
+    Error error = kErrorNone;
 
-    VerifyOrExit(Get<Mle::MleRouter>().IsDisabled(), error = OT_ERROR_INVALID_STATE);
+    VerifyOrExit(Get<Mle::MleRouter>().IsDisabled(), error = kErrorInvalidState);
     Get<Settings>().Wipe();
 
 exit:
