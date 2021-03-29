@@ -150,6 +150,17 @@ otError otLinkRawReceive(otInstance *aInstance);
 bool otLinkRawIsTransmittingOrScanning(otInstance *aInstance);
   
 /**
+ * This function indicates whether or not the raw link-layer is busy transmitting or scanning.
+ *
+ * @param[in] aInstance     A pointer to an OpenThread instance.
+ *
+ * @retval true     The raw link-layer is busy transmitting or scanning.
+ * @retval false    The raw link-layer is not busy transmitting or scanning.
+ *
+ */
+bool otLinkRawIsTransmittingOrScanning(otInstance *aInstance);
+
+/**
  * The radio transitions from Transmit to Receive.
  * This method returns a pointer to the transmit buffer.
  *
