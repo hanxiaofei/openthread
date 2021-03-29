@@ -95,7 +95,7 @@ const char *otSysGetRadioUrlHelpString(void)
            "    no-reset                      Do not send Spinel reset command to RCP on initialization.\n"
            "    skip-rcp-compatibility-check  Skip checking RCP API version and capabilities during initialization.\n"
            "    iid                           Set the Spinel Interface ID for this process. Valid values are 1-3.\n";
-      ;
+    ;
 }
 
 namespace ot {

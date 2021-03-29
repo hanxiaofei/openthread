@@ -109,9 +109,9 @@ void platformRadioInit(otUrl *aRadioUrl)
     iid = static_cast<spinel_iid_t>(atoi(iidString));
     VerifyOrDie(iid != 0 && iid <= SPINEL_HEADER_IID_MAX, OT_EXIT_INVALID_ARGUMENTS);
 #else
-    VerifyOrDie(iidString == nullptr, OT_EXIT_INVALID_ARGUMENTS);    
+    VerifyOrDie(iidString == nullptr, OT_EXIT_INVALID_ARGUMENTS);
 #endif
-      
+
     SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(radioUrl));
     sRadioSpinel.Init(resetRadio, restoreDataset, skipCompatibilityCheck, iid);
 

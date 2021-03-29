@@ -316,7 +316,7 @@ static otInstance *InitInstance(PosixConfig *aConfig)
     instance = otSysInit(&aConfig->mPlatformConfig);
 
     IgnoreError(otLoggingSetLevel(aConfig->mLogLevel));
-    
+
     atexit(otSysDeinit);
 
     if (aConfig->mPrintRadioVersion)

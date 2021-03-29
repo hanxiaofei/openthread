@@ -148,7 +148,7 @@ otError otLinkRawSleep(otInstance *aInstance);
 otError otLinkRawReceive(otInstance *aInstance);
 
 bool otLinkRawIsTransmittingOrScanning(otInstance *aInstance);
-  
+
 /**
  * This function indicates whether or not the raw link-layer is busy transmitting or scanning.
  *
