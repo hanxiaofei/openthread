@@ -237,13 +237,10 @@ void RadioSpinel<InterfaceType, ProcessContextType>::Init(bool         aResetRad
     if (aResetRadio)
     {
         SuccessOrExit(error = SendReset());
-        SuccessOrExit(error = WaitResponse());
-        VerifyOrExit(mIsReady, error = OT_ERROR_FAILED);
     }
-    else
-    {
-        mIsReady = true;
-    }
+
+    SuccessOrExit(error = WaitResponse());
+    VerifyOrExit(mIsReady, error = OT_ERROR_FAILED);
 
     SuccessOrExit(error = CheckSpinelVersion());
     SuccessOrExit(error = Get(SPINEL_PROP_NCP_VERSION, SPINEL_DATATYPE_UTF8_S, mVersion, sizeof(mVersion)));
@@ -1698,8 +1695,9 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::SendReset(void)
     spinel_ssize_t packed;
 
     // Pack the header, command and key
-    packed =
-        spinel_datatype_pack(buffer, sizeof(buffer), "Ci", SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0, SPINEL_CMD_RESET);
+    packed = spinel_datatype_pack(buffer, sizeof(buffer), "Ci",
+                                  SPINEL_HEADER_FLAG | static_cast<uint8_t>(mIid << SPINEL_HEADER_IID_SHIFT),
+                                  SPINEL_CMD_RESET);
 
     VerifyOrExit(packed > 0 && static_cast<size_t>(packed) <= sizeof(buffer), error = OT_ERROR_NO_BUFS);
 
@@ -1726,7 +1724,8 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::SendCommand(uint32_t    
 
     // Pack the header, command and key
     packed = spinel_datatype_pack(buffer, sizeof(buffer), "Cii",
-                                  SPINEL_HEADER_FLAG | (mIid << SPINEL_HEADER_IID_SHIFT) | tid, aCommand, aKey);
+                                  SPINEL_HEADER_FLAG | static_cast<uint8_t>(mIid << SPINEL_HEADER_IID_SHIFT) | tid,
+                                  aCommand, aKey);
 
     VerifyOrExit(packed > 0 && static_cast<size_t>(packed) <= sizeof(buffer), error = OT_ERROR_NO_BUFS);
 
@@ -2233,15 +2232,16 @@ void RadioSpinel<InterfaceType, ProcessContextType>::RecoverFromRcpFailure(void)
     mIsReady      = false;
     mIsTimeSynced = false;
 
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+    mIsReady = true;
+#else
     if (mResetRadioOnStartup)
     {
         SuccessOrDie(SendReset());
-        SuccessOrDie(WaitResponse());
     }
-    else
-    {
-        mIsReady = true;
-    }
+
+    SuccessOrDie(WaitResponse());
+#endif // OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
 
     SuccessOrDie(Set(SPINEL_PROP_PHY_ENABLED, SPINEL_DATATYPE_BOOL_S, true));
     mState = kStateSleep;
