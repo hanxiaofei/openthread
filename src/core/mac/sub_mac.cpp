@@ -76,9 +76,15 @@ SubMac::SubMac(Instance &aInstance)
 #endif
 {
     mExtAddress.Clear();
+#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
+    mPrevKeyRef = 0;
+    mCurrKeyRef = 0;
+    mNextKeyRef = 0;
+#else
     mPrevKey.Clear();
     mCurrKey.Clear();
     mNextKey.Clear();
+#endif
 }
 
 otRadioCaps SubMac::GetCaps(void) const
