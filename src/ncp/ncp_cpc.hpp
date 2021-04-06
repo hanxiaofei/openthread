@@ -67,6 +67,13 @@ private:
                                             Spinel::Buffer::FrameTag aTag,
                                             Spinel::Buffer::Priority aPriority,
                                             Spinel::Buffer *         aBuffer);
+    
+    void SendToCPC(void);
+
+    static void SendToCPC(Tasklet &aTasklet);
+    Tasklet mCpcSendTask;
+
+
 };
 
 } // namespace Ncp

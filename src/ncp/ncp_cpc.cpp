@@ -75,10 +75,11 @@ static sl_cpc_endpoint_handle_t user_ep = { .ep = NULL };
 
 NcpCPC::NcpCPC(Instance *aInstance)
     : NcpBase(aInstance)
+    , mCpcSendTask(*aInstance, SendToCPC, this)
 {
     sl_status_t status;
     
-    status = sl_cpc_open_user_endpoint(&user_ep, SL_CPC_ENDPOINT_USER_ID_1, 0, 1);
+    status = sl_cpc_open_user_endpoint(&user_ep, SL_CPC_ENDPOINT_USER_ID_0, 0, 1);
     if (status != SL_STATUS_ALREADY_EXISTS && status != SL_STATUS_OK) {
       OT_ASSERT(false);
     }
@@ -102,6 +103,17 @@ void NcpCPC::HandleFrameAddedToNcpBuffer(void *                   aContext,
 
 void NcpCPC::HandleFrameAddedToNcpBuffer(void)
 {
+    mCpcSendTask.Post();
+}
+
+void NcpCPC::SendToCPC(Tasklet &aTasklet)
+{
+    OT_UNUSED_VARIABLE(aTasklet);
+    static_cast<NcpCPC *>(GetNcpInstance())->SendToCPC();
+}
+
+void NcpCPC::SendToCPC(void)
+{
     Spinel::Buffer &txFrameBuffer = mTxFrameBuffer;
     uint8_t buffer[255];
     sl_status_t status;
@@ -110,10 +122,17 @@ void NcpCPC::HandleFrameAddedToNcpBuffer(void)
     uint8_t bufferLen = txFrameBuffer.OutFrameGetLength();
 
     txFrameBuffer.OutFrameRead(bufferLen,buffer);
+    
+    // Just catch reset reason for now, need a better solution
+    if(*buffer == 0x80 && *(buffer+1) == 0x06 && *(buffer+2) == 0x00 && *(buffer+3) == 0x72)
+    {
+        IgnoreError(txFrameBuffer.OutFrameRemove());
+        return;
+    }
 
     sl_cpc_write(&user_ep, buffer, bufferLen, 0, NULL);
 
-    //IgnoreError(txFrameBuffer.OutFrameRemove());
+    IgnoreError(txFrameBuffer.OutFrameRemove());
 }
 
 extern "C" void otPlatCPCReceived(void)
