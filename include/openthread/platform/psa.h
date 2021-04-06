@@ -173,7 +173,7 @@ otError otPlatPsaExportPublicKey(psa_key_id_t   aKeyId,
 /**
  * Sign a message hash using a key stored.
  *
- * @param[out]  aKeyId            Reference to the key to be used for Signing.
+ * @param[in]   aKeyId            Reference to the key to be used for Signing.
  * @param[in]   aKeyAlgorithm     Key algorithm compatible with the key stored.
  * @param[in]   aHash             Hash of the message to be signed.
  * @param[in]   aHashSize         Size of the hash.
@@ -196,7 +196,7 @@ otError otPlatPsaSignHash(psa_key_id_t    aKeyId,
 /**
  * Verify a signature using a key stored.
  *
- * @param[out]  aKeyId            Reference to the key to be used for Verifying the signature.
+ * @param[in]   aKeyId            Reference to the key to be used for Verifying the signature.
  * @param[in]   aKeyAlgorithm     Key algorithm compatible with the key stored.
  * @param[in]   aHash             Hash of the message to be verified.
  * @param[in]   aHashSize         Size of the hash.
@@ -213,6 +213,20 @@ otError otPlatPsaVerifyHash(psa_key_id_t    aKeyId,
                             size_t          aHashSize,
                             uint8_t         *aSignature,
                             size_t          aSignatureSize);
+
+
+/**
+ * Get Attributes for a key stored in PSA ITS.
+ *
+ * @param[in]  aKeyId            Reference to the key to be used for Verifying the signature.
+ * @param[out] aKeyAttributes    Key attributes for the key.
+ *
+ * @retval OT_ERROR_NONE          Successfully signed  @p aHash.
+ * @retval OT_ERROR_FAILED        Failed to sign @p aHash.
+ *
+ */
+otError otPlatPsaGetKeyAttributes(psa_key_id_t          aKeyId,
+                                  psa_key_attributes_t  *aKeyAttributes);
 
 
 /**

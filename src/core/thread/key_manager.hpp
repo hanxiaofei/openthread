@@ -67,6 +67,22 @@ namespace ot {
  *
  */
 OT_TOOL_PACKED_BEGIN
+#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
+class MasterKey : public otMasterKey, public Equatable<MasterKey>, public Clearable<MasterKey>
+{
+public:
+#if !OPENTHREAD_RADIO
+    /**
+     * This method generates a cryptographically secure random sequence to populate the Thread Master Key.
+     *
+     * @retval kErrorNone     Successfully generated a random Thread Master Key.
+     * @retval kErrorFailed   Failed to generate random sequence.
+     *
+     */
+    Error GenerateRandom(void) { return Random::Crypto::FillBuffer(m8, sizeof(m8)); }
+#endif
+} OT_TOOL_PACKED_END;
+#else
 class MasterKey : public otMasterKey, public Equatable<MasterKey>
 {
 public:
@@ -81,6 +97,7 @@ public:
     Error GenerateRandom(void) { return Random::Crypto::FillBuffer(m8, sizeof(m8)); }
 #endif
 } OT_TOOL_PACKED_END;
+#endif
 
 /**
  * This class represents a Thread Pre-Shared Key for the Commissioner (PSKc).
@@ -155,6 +172,15 @@ public:
      */
     void Stop(void);
 
+#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
+    /**
+     * This method returns the Thread Master Key.
+     *
+     * @returns The Thread Master Key.
+     *
+     */
+    MasterKey &GetMasterKey(void);
+#else
     /**
      * This method returns the Thread Master Key.
      *
@@ -162,6 +188,7 @@ public:
      *
      */
     const MasterKey &GetMasterKey(void) const { return mMasterKey; }
+#endif
 
     /**
      * This method sets the Thread Master Key.
@@ -587,6 +614,7 @@ private:
     void        StartKeyRotationTimer(void);
     static void HandleKeyRotationTimer(Timer &aTimer);
     void        HandleKeyRotationTimer(void);
+    Error       StoreMasterKey(bool aOverWriteExisting);
 
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
     otError ImportKek(const uint8_t *aKey, uint8_t aKeyLen);

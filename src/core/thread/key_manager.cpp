@@ -81,6 +81,7 @@ KeyManager::KeyManager(Instance &aInstance)
 
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
     otPlatPsaInit();
+    StoreMasterKey(false);
     mMasterKeyRef = 0;
 #endif
 }
@@ -104,17 +105,25 @@ void KeyManager::SetPskc(const Pskc &aPskc)
 }
 #endif // OPENTHREAD_MTD || OPENTHREAD_FTD
 
-Error KeyManager::SetMasterKey(const MasterKey &aKey)
+#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
+Error KeyManager::StoreMasterKey(bool aOverWriteExisting)
 {
     Error   error = kErrorNone;
-    Router *parent;
-
-#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
-
+    psa_key_usage_t mKeyUsage = PSA_KEY_USAGE_SIGN_HASH;
+    
     mMasterKeyRef = kMasterKeyPsaItsOffset;
 
+    if(!aOverWriteExisting) {
+        psa_key_attributes_t mKeyAttributes;
+
+        error = otPlatPsaGetKeyAttributes(mMasterKeyRef, &mKeyAttributes);
+        //We will be able to retrieve the key_attributes only if there is 
+        //already a master key stored in ITS. If stored, and we are not 
+        //overwriting the existing key, return without doing anything.
+        SuccessOrExit(error != OT_ERROR_NONE);
+    }
+
     CheckAndDestroyStoredKey(mMasterKeyRef);
-    psa_key_usage_t mKeyUsage = PSA_KEY_USAGE_SIGN_HASH;
 
 #if OPENTHREAD_FTD
     mKeyUsage |= PSA_KEY_USAGE_EXPORT;
@@ -125,12 +134,26 @@ Error KeyManager::SetMasterKey(const MasterKey &aKey)
                                PSA_ALG_HMAC(PSA_ALG_SHA_256),
                                mKeyUsage,
                                true,
-                               aKey.m8,
+                               mMasterKey.m8,
                                OT_MASTER_KEY_SIZE);
+
+    mMasterKey.Clear();
+
+exit:
+    return error;
+}
 #endif
+
+Error KeyManager::SetMasterKey(const MasterKey &aKey)
+{
+    Error   error = kErrorNone;
+    Router *parent;
 
     SuccessOrExit(Get<Notifier>().Update(mMasterKey, aKey, kEventMasterKeyChanged));
     Get<Notifier>().Signal(kEventThreadKeySeqCounterChanged);
+#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE    
+    StoreMasterKey(true);
+#endif    
     mKeySequence = 0;
     UpdateKeyMaterial();
 
@@ -164,7 +187,18 @@ Error KeyManager::SetMasterKey(const MasterKey &aKey)
 exit:
     return error;
 }
+
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
+MasterKey & KeyManager::GetMasterKey(void)
+{
+  size_t aKeySize = 0;
+
+  otError status = otPlatPsaExportKey(mMasterKeyRef, mMasterKey.m8, mKek.kSize, &aKeySize);
+  (void)status;
+
+  return mMasterKey;
+}
+
 void KeyManager::ComputeKeys(uint32_t aKeySequence, HashKeys &aHashKeys)
 {
     Crypto::HmacSha256 hmac;
