@@ -38,12 +38,14 @@
 #include "lib/spinel/radio_spinel.hpp"
 
 #if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_UART
-#include "hdlc_interface.hpp"
+//#include "hdlc_interface.hpp"
+#include "cpc_interface.hpp"
 
 #if OPENTHREAD_POSIX_VIRTUAL_TIME
 static ot::Spinel::RadioSpinel<ot::Posix::HdlcInterface, VirtualTimeEvent> sRadioSpinel;
 #else
-static ot::Spinel::RadioSpinel<ot::Posix::HdlcInterface, RadioProcessContext> sRadioSpinel;
+//static ot::Spinel::RadioSpinel<ot::Posix::HdlcInterface, RadioProcessContext> sRadioSpinel;
+static ot::Spinel::RadioSpinel<ot::Posix::CpcInterface, RadioProcessContext> sRadioSpinel;
 #endif // OPENTHREAD_POSIX_VIRTUAL_TIME
 #elif OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_SPI
 #include "spi_interface.hpp"
@@ -105,8 +107,9 @@ void platformRadioInit(otUrl *aRadioUrl)
 #if OPENTHREAD_POSIX_CONFIG_MAX_POWER_TABLE_ENABLE
     const char *maxPowerTable;
 #endif
-
-    SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(radioUrl));
+    uint8_t id = 90;
+    SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(id));
+    //SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(radioUrl));
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     sRadioSpinel.Init(resetRadio, restoreDataset, skipCompatibilityCheck, iid);
 #else
