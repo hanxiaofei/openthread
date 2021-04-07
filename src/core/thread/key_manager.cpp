@@ -97,6 +97,44 @@ void KeyManager::Stop(void)
     mKeyRotationTimer.Stop();
 }
 
+#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
+
+#if OPENTHREAD_MTD || OPENTHREAD_FTD
+void KeyManager::SetPskc(const Pskc &aPskc)
+{
+    Error   error = kErrorNone;
+
+    mPskcRef = kPkscPsaItsOffset;
+
+    CheckAndDestroyStoredKey(mPskcRef);
+    IgnoreError(Get<Notifier>().Update(mPskc, aPskc, kEventPskcChanged));
+
+    error = otPlatPsaImportKey(&mPskcRef,
+                               PSA_KEY_TYPE_RAW_DATA,
+                               PSA_ALG_VENDOR_FLAG,
+                               PSA_KEY_USAGE_EXPORT,
+                               true,
+                               mPskc.m8,
+                               OT_PSKC_MAX_SIZE);
+    (void)error;
+
+    mPskc.Clear();
+    mIsPskcSet = true;
+}
+#endif // OPENTHREAD_MTD || OPENTHREAD_FTD
+
+Pskc & KeyManager::GetPskc(void)
+{
+  size_t aKeySize = 0;
+
+  otError error = otPlatPsaExportKey(mPskcRef, mPskc.m8, OT_PSKC_MAX_SIZE, &aKeySize);
+  (void)error;
+
+  return mPskc;
+}
+
+#else
+
 #if OPENTHREAD_MTD || OPENTHREAD_FTD
 void KeyManager::SetPskc(const Pskc &aPskc)
 {
@@ -104,6 +142,7 @@ void KeyManager::SetPskc(const Pskc &aPskc)
     mIsPskcSet = true;
 }
 #endif // OPENTHREAD_MTD || OPENTHREAD_FTD
+#endif
 
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
 Error KeyManager::StoreMasterKey(bool aOverWriteExisting)

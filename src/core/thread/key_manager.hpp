@@ -213,6 +213,15 @@ public:
      */
     bool IsPskcSet(void) const { return mIsPskcSet; }
 
+#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
+    /**
+     * This method returns a pointer to the PSKc.
+     *
+     * @returns A reference to the PSKc.
+     *
+     */
+    Pskc &GetPskc(void);
+#else
     /**
      * This method returns a pointer to the PSKc.
      *
@@ -220,7 +229,7 @@ public:
      *
      */
     const Pskc &GetPskc(void) const { return mPskc; }
-
+#endif
     /**
      * This method sets the PSKc.
      *
