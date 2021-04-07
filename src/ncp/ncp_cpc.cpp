@@ -161,6 +161,10 @@ extern "C" void otPlatCPCReceived(void)
     {
         ncpCPC->HandleCPCReceiveDone((uint8_t *)data, data_length);
     }
+    
+    status = sl_cpc_free_rx_buffer(data);
+
+    OT_ASSERT(status == SL_STATUS_OK);
 }
 
 void NcpCPC::HandleCPCReceiveDone(uint8_t *aBuf, uint16_t aBufLength)
