@@ -60,6 +60,16 @@
 #endif
 
 /**
+ * @def OPENTHREAD_CONFIG_NCP_CPC_ENABLE
+ *
+ * Define to 1 to enable NCP CPC support.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_NCP_CPC_ENABLE
+#define OPENTHREAD_CONFIG_NCP_CPC_ENABLE 0
+#endif
+
+/**
  * @def OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE
  *
  * The size of NCP message buffer in bytes.
