@@ -53,12 +53,16 @@ public:
     explicit NcpCPC(Instance *aInstance);
 
     /**
-     * This method is called when CPC has received a data buffer.
+     * This method is called to transmit and receive data.
      *
      */
-    void HandleCPCReceiveDone(void);
+    void ProcessCpc(void);
 
 private:
+    enum{
+        kCpcTxBufferSize = OPENTHREAD_CONFIG_NCP_CPC_TX_CHUNK_SIZE
+    };
+
     void HandleFrameAddedToNcpBuffer(void);
 
     static void HandleFrameAddedToNcpBuffer(void *                   aContext,
@@ -72,7 +76,11 @@ private:
                                   void *                    buffer,
                                   void *                    arg,
                                   sl_status_t               status);
+    void HandleSendDone(void);
 
+    uint8_t mCpcTxBuffer[kCpcTxBufferSize];
+    bool mIsReady;
+    bool mIsWriting;
     sl_cpc_endpoint_handle_t mUserEp;
     Tasklet mCpcSendTask;
 };

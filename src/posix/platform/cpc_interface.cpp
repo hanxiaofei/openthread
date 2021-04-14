@@ -60,7 +60,7 @@
 #include "common/code_utils.hpp"
 #include "common/logging.hpp"
 
-#if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_UART
+#if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC
 
 using ot::Spinel::SpinelInterface;
 
@@ -89,10 +89,8 @@ otError CpcInterface::Init(uint8_t id)
     VerifyOrDie(cpc_error == 0, OT_EXIT_FAILURE);
 
     cpc_error = cpc_open_endpoint(mHandle, &mEndpoint, id, 1);
-    otLogCritPlat("Init status:%u", cpc_error);
 
     return ((0 == cpc_error) ? OT_ERROR_NONE : OT_ERROR_FAILED);
-return OT_ERROR_NONE;
 }
 
 CpcInterface::~CpcInterface(void)
@@ -287,4 +285,4 @@ void CpcInterface::HandleHdlcFrame(otError aError)
 */
 } // namespace Posix
 } // namespace ot
-#endif // OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_UART
+#endif // OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC

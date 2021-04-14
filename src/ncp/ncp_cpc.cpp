@@ -68,6 +68,8 @@ extern "C" void otNcpInit(otInstance *aInstance)
 
 NcpCPC::NcpCPC(Instance *aInstance)
     : NcpBase(aInstance)
+    , mIsReady(false)
+    , mIsWriting(false)
     , mCpcSendTask(*aInstance, SendToCPC, this)
 {
     sl_status_t status = sl_cpc_open_user_endpoint(&mUserEp, 
@@ -100,7 +102,8 @@ void NcpCPC::HandleFrameAddedToNcpBuffer(void *                   aContext,
 
 void NcpCPC::HandleFrameAddedToNcpBuffer(void)
 {
-    mCpcSendTask.Post();
+    if(mIsReady && !mIsWriting)
+        mCpcSendTask.Post();
 }
 
 void NcpCPC::SendToCPC(Tasklet &aTasklet)
@@ -113,24 +116,28 @@ void NcpCPC::SendToCPC(Tasklet &aTasklet)
 void NcpCPC::SendToCPC(void)
 {
     Spinel::Buffer &txFrameBuffer = mTxFrameBuffer;
+    uint8_t bufferLen;
     uint8_t *buffer;
+
+    VerifyOrExit(mIsReady && !mIsWriting && !txFrameBuffer.IsEmpty());
     
+    mIsWriting = true;
     IgnoreError(txFrameBuffer.OutFrameBegin());
-    uint8_t bufferLen = txFrameBuffer.OutFrameGetLength();
-    buffer = (uint8_t *)malloc(bufferLen*sizeof(uint8_t));
+    bufferLen = txFrameBuffer.OutFrameGetLength();
+    buffer = (uint8_t *)(malloc(bufferLen*sizeof(uint8_t)));
 
     txFrameBuffer.OutFrameRead(bufferLen,buffer);
     
-    // Just catch reset reason for now, need a better solution
-    if(*buffer == 0x80 && *(buffer+1) == 0x06 && *(buffer+2) == 0x00 && *(buffer+3) == 0x72)
-    {
-        IgnoreError(txFrameBuffer.OutFrameRemove());
-        return;
-    }
-    
     sl_cpc_write(&mUserEp, buffer, bufferLen, 0, NULL);
-
     IgnoreError(txFrameBuffer.OutFrameRemove());
+
+exit:
+    // If the CPCd link isn't ready yet, just remove the frame from 
+    // the queue so that it doesn't fill up unncessarily
+    if(!mIsReady)
+        IgnoreError(txFrameBuffer.OutFrameRemove());
+
+    return;
 }
 
 void NcpCPC::HandleCPCSendDone(sl_cpc_user_endpoint_id_t endpoint_id,
@@ -141,8 +148,16 @@ void NcpCPC::HandleCPCSendDone(sl_cpc_user_endpoint_id_t endpoint_id,
     OT_UNUSED_VARIABLE(endpoint_id);
     OT_UNUSED_VARIABLE(arg);
     OT_UNUSED_VARIABLE(status);
-
     free(buffer);
+    static_cast<NcpCPC *>(GetNcpInstance())->HandleSendDone();
+}
+
+void NcpCPC::HandleSendDone(void)
+{
+    mIsWriting = false;
+
+    if(!mTxFrameBuffer.IsEmpty())
+        mCpcSendTask.Post();
 }
 
 extern "C" void efr32CpcProcess(void)
@@ -151,11 +166,11 @@ extern "C" void efr32CpcProcess(void)
 
     if (ncpCPC != nullptr)
     {
-        ncpCPC->HandleCPCReceiveDone();
+        ncpCPC->ProcessCpc();
     }
 }
 
-void NcpCPC::HandleCPCReceiveDone(void)
+void NcpCPC::ProcessCpc(void)
 {
     sl_status_t status;
     void *data;
@@ -171,24 +186,22 @@ void NcpCPC::HandleCPCReceiveDone(void)
                                                 // in the cpc task, it must not
                                                 // block.
 
-    if (status != SL_STATUS_OK) {
-        return;
+    SuccessOrExit(status);
+
+    if(!mIsReady)
+    {
+        mIsReady = true;
     }
 
     super_t::HandleReceive(static_cast<uint8_t *>(data), dataLength);
 
     status = sl_cpc_free_rx_buffer(data);
     OT_ASSERT(status == SL_STATUS_OK);
-}
 
-extern "C" void otPlatUartReceived(const uint8_t *aBuf, uint16_t aBufLength)
-{
-    OT_UNUSED_VARIABLE(aBuf);
-    OT_UNUSED_VARIABLE(aBufLength);
-}
+exit:
+    if(mIsReady && !mTxFrameBuffer.IsEmpty())
+        mCpcSendTask.Post();
 
-extern "C" void otPlatUartSendDone(void)
-{
 }
 
 } // namespace Ncp

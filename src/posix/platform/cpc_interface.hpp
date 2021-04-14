@@ -36,12 +36,11 @@
 
 #include "openthread-posix-config.h"
 #include "platform-posix.h"
-//#include "lib/hdlc/hdlc.hpp"
 #include "sl_cpc.h"
 #include "lib/spinel/spinel_interface.hpp"
 #include <errno.h>
 
-#if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_UART
+#if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC
 
 namespace ot {
 namespace Posix {
@@ -62,8 +61,8 @@ public:
      *
      */
     CpcInterface(Spinel::SpinelInterface::ReceiveFrameCallback aCallback,
-                  void *                                        aCallbackContext,
-                  Spinel::SpinelInterface::RxFrameBuffer &      aFrameBuffer);
+                 void *                                        aCallbackContext,
+                 Spinel::SpinelInterface::RxFrameBuffer &      aFrameBuffer);
 
     /**
      * This destructor deinitializes the object.
@@ -79,9 +78,8 @@ public:
      * @param[in] id    The endpoint ID to connect to.
      *
      * @retval OT_ERROR_NONE          The interface is initialized successfully
-     * @retval OT_ERROR_ALREADY       The interface is already initialized.
-     * @retval OT_ERROR_INVALID_ARGS  The UART device or executable cannot be found or failed to open/run.
-     *
+     * @retval OT_ERROR_FAILED        The interface initialization was unsuccessful
+     * 
      */
     otError Init(uint8_t id);
 
@@ -92,18 +90,13 @@ public:
     void Deinit(void);
 
     /**
-     * This method encodes and sends a spinel frame to Radio Co-processor (RCP) over the socket.
+     * This method sends a spinel frame to Radio Co-processor (RCP) over the socket.
      *
-     * This is blocking call, i.e., if the socket is not writable, this method waits for it to become writable for
-     * up to `kMaxWaitTime` interval.
      *
      * @param[in] aFrame     A pointer to buffer containing the spinel frame to send.
      * @param[in] aLength    The length (number of bytes) in the frame.
      *
-     * @retval OT_ERROR_NONE     Successfully encoded and sent the spinel frame.
-     * @retval OT_ERROR_NO_BUFS  Insufficient buffer space available to encode the frame.
-     * @retval OT_ERROR_FAILED   Failed to send due to socket not becoming writable within `kMaxWaitTime`.
-     *
+     * @retval OT_ERROR_NONE     Successfully sent the spinel frame.
      */
     otError SendFrame(const uint8_t *aFrame, uint16_t aLength);
 
@@ -113,13 +106,11 @@ public:
      * @param[in]  aTimeout  The timeout value in microseconds.
      *
      * @retval OT_ERROR_NONE             Part or all of spinel frame is received.
-     * @retval OT_ERROR_RESPONSE_TIMEOUT No spinel frame is received within @p aTimeout.
-     *
      */
     otError WaitForFrame(uint64_t aTimeoutUs);
 
     /**
-     * This method updates the file descriptor sets with file descriptors used by the radio driver.
+     * This is a stub, cpc does not use file descriptors.
      *
      * @param[inout]  aReadFdSet   A reference to the read file descriptors.
      * @param[inout]  aWriteFdSet  A reference to the write file descriptors.
@@ -200,8 +191,9 @@ private:
     cpc_read_flags_t    mReadFlags;
     cpc_write_flags_t   mWriteFlags;
 
-    uint8_t         mId;
-    typedef uint8_t cpcError;
+    uint8_t             mId;
+    typedef uint8_t     cpcError;
+
     // Non-copyable, intentionally not implemented.
     CpcInterface(const CpcInterface &);
     CpcInterface &operator=(const CpcInterface &);
@@ -210,5 +202,5 @@ private:
 } // namespace Posix
 } // namespace ot
 
-#endif // OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_UART
+#endif // OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC
 #endif // POSIX_APP_CPC_INTERFACE_HPP_

@@ -38,21 +38,26 @@
 #include "lib/spinel/radio_spinel.hpp"
 
 #if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_UART
-//#include "hdlc_interface.hpp"
-#include "cpc_interface.hpp"
+
+#include "hdlc_interface.hpp"
 
 #if OPENTHREAD_POSIX_VIRTUAL_TIME
 static ot::Spinel::RadioSpinel<ot::Posix::HdlcInterface, VirtualTimeEvent> sRadioSpinel;
 #else
-//static ot::Spinel::RadioSpinel<ot::Posix::HdlcInterface, RadioProcessContext> sRadioSpinel;
-static ot::Spinel::RadioSpinel<ot::Posix::CpcInterface, RadioProcessContext> sRadioSpinel;
+static ot::Spinel::RadioSpinel<ot::Posix::HdlcInterface, RadioProcessContext> sRadioSpinel;
 #endif // OPENTHREAD_POSIX_VIRTUAL_TIME
+
+#elif OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC
+#include "cpc_interface.hpp"
+
+static ot::Spinel::RadioSpinel<ot::Posix::CpcInterface, RadioProcessContext> sRadioSpinel;
+
 #elif OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_SPI
 #include "spi_interface.hpp"
 
 static ot::Spinel::RadioSpinel<ot::Posix::SpiInterface, RadioProcessContext> sRadioSpinel;
 #else
-#error "OPENTHREAD_POSIX_CONFIG_RCP_BUS only allows OT_POSIX_RCP_BUS_UART and OT_POSIX_RCP_BUS_SPI!"
+#error "OPENTHREAD_POSIX_CONFIG_RCP_BUS only allows OT_POSIX_RCP_BUS_UART, OT_POSIX_RCP_BUS_SPI and OT_POSIX_RCP_CPC!"
 #endif
 
 void otPlatRadioGetIeeeEui64(otInstance *aInstance, uint8_t *aIeeeEui64)
@@ -107,9 +112,14 @@ void platformRadioInit(otUrl *aRadioUrl)
 #if OPENTHREAD_POSIX_CONFIG_MAX_POWER_TABLE_ENABLE
     const char *maxPowerTable;
 #endif
+
+#if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC
     uint8_t id = 90;
     SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(id));
-    //SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(radioUrl));
+#else
+    SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(radioUrl));
+#endif
+
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     sRadioSpinel.Init(resetRadio, restoreDataset, skipCompatibilityCheck, iid);
 #else

@@ -111,13 +111,21 @@
 #define OT_POSIX_RCP_BUS_SPI 2
 
 /**
+ * RCP bus UART.
+ *
+ * @note This value is also for simulated UART bus.
+ *
+ */
+#define OT_POSIX_RCP_BUS_CPC 3
+
+/**
  * @def OPENTHREAD_POSIX_CONFIG_RCP_BUS
  *
  * This setting configures what type of RCP bus to use.
  *
  */
 #ifndef OPENTHREAD_POSIX_CONFIG_RCP_BUS
-#define OPENTHREAD_POSIX_CONFIG_RCP_BUS OT_POSIX_RCP_BUS_UART
+#define OPENTHREAD_POSIX_CONFIG_RCP_BUS OT_POSIX_RCP_BUS_CPC
 #endif
 
 /**

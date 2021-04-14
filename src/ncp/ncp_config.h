@@ -90,6 +90,16 @@
 #endif
 
 /**
+ * @def OPENTHREAD_CONFIG_NCP_CPC_TX_CHUNK_SIZE
+ *
+ * The size of NCP UART TX chunk in bytes.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_NCP_CPC_TX_CHUNK_SIZE
+#define OPENTHREAD_CONFIG_NCP_CPC_TX_CHUNK_SIZE 2048
+#endif
+
+/**
  * @def OPENTHREAD_CONFIG_NCP_UART_RX_BUFFER_SIZE
  *
  * The size of NCP UART RX buffer in bytes.
