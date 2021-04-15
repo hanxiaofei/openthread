@@ -626,8 +626,8 @@ private:
     Error       StoreMasterKey(bool aOverWriteExisting);
 
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
-    otError ImportKek(const uint8_t *aKey, uint8_t aKeyLen);
-    void    CheckAndDestroyStoredKey(psa_key_id_t aKeyRef);
+    Error ImportKek(const uint8_t *aKey, uint8_t aKeyLen);
+    void  CheckAndDestroyStoredKey(psa_key_id_t aKeyRef);
 #endif
 
     static const uint8_t kThreadString[];

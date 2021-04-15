@@ -149,13 +149,14 @@ Mac::Mac(Instance &aInstance)
     SetShortAddress(GetShortAddress());
 
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
-    otPlatPsaImportKey(&sMode2KeyRef,
-                       PSA_KEY_TYPE_AES,
-                       PSA_ALG_ECB_NO_PADDING,
-                       (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT),
-                       false,
-                       sMode2Key.m8,
-                       sizeof(sMode2Key.m8));
+    Error error = otPlatPsaImportKey(&sMode2KeyRef,
+                                    PSA_KEY_TYPE_AES,
+                                    PSA_ALG_ECB_NO_PADDING,
+                                    (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT),
+                                    false,
+                                    sMode2Key.m8,
+                                    sizeof(sMode2Key.m8));
+    OT_ASSERT(error == kErrorNone);
 #endif
 }
 
