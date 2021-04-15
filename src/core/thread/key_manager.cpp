@@ -113,7 +113,7 @@ void KeyManager::SetPskc(const Pskc &aPskc)
                                PSA_KEY_TYPE_RAW_DATA,
                                PSA_ALG_VENDOR_FLAG,
                                PSA_KEY_USAGE_EXPORT,
-                               true,
+                               PSA_KEY_LIFETIME_PERSISTENT,
                                mPskc.m8,
                                OT_PSKC_MAX_SIZE);
 
@@ -173,7 +173,7 @@ Error KeyManager::StoreMasterKey(bool aOverWriteExisting)
                                PSA_KEY_TYPE_HMAC,
                                PSA_ALG_HMAC(PSA_ALG_SHA_256),
                                mKeyUsage,
-                               true,
+                               PSA_KEY_LIFETIME_PERSISTENT,
                                mMasterKey.m8,
                                OT_MASTER_KEY_SIZE);
 
@@ -303,7 +303,7 @@ void KeyManager::UpdateKeyMaterial(void)
                                 PSA_KEY_TYPE_AES,
                                 PSA_ALG_ECB_NO_PADDING,
                                 (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT),
-                                false,
+                                PSA_KEY_LIFETIME_VOLATILE,
                                 cur.mKeys.mMacKey.GetKey(),
                                 cur.mKeys.mMacKey.kSize);
     OT_ASSERT(error == kErrorNone);
@@ -314,7 +314,7 @@ void KeyManager::UpdateKeyMaterial(void)
                                 PSA_KEY_TYPE_AES,
                                 PSA_ALG_ECB_NO_PADDING,
                                 (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT),
-                                false,
+                                PSA_KEY_LIFETIME_VOLATILE,
                                 cur.mKeys.mMleKey.m8,
                                 cur.mKeys.mMleKey.kSize);
     OT_ASSERT(error == kErrorNone);
@@ -327,7 +327,7 @@ void KeyManager::UpdateKeyMaterial(void)
                                 PSA_KEY_TYPE_AES,
                                 PSA_ALG_ECB_NO_PADDING,
                                 (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT),
-                                false,
+                                PSA_KEY_LIFETIME_VOLATILE,
                                 prev.mKeys.mMacKey.m8,
                                 prev.mKeys.mMleKey.kSize);
     OT_ASSERT(error == kErrorNone);
@@ -336,7 +336,7 @@ void KeyManager::UpdateKeyMaterial(void)
                                 PSA_KEY_TYPE_AES,
                                 PSA_ALG_ECB_NO_PADDING,
                                 (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT),
-                                false,
+                                PSA_KEY_LIFETIME_VOLATILE,
                                 next.mKeys.mMleKey.m8,
                                 next.mKeys.mMleKey.kSize);
     OT_ASSERT(error == kErrorNone);
@@ -425,7 +425,7 @@ KeyRef KeyManager::GetTemporaryMleKeyRef(uint32_t aKeySequence)
                                     PSA_KEY_TYPE_AES,
                                     PSA_ALG_ECB_NO_PADDING,
                                     (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT),
-                                    false,
+                                    PSA_KEY_LIFETIME_VOLATILE,
                                     hashKeys.mKeys.mMleKey.m8,
                                     hashKeys.mKeys.mMleKey.kSize);
     OT_ASSERT(error == kErrorNone);
@@ -520,7 +520,7 @@ Error KeyManager::ImportKek(const uint8_t *aKey, uint8_t aKeyLen)
                                PSA_KEY_TYPE_AES,
                                PSA_ALG_ECB_NO_PADDING,
                                mKeyUsage,
-                               false,
+                               PSA_KEY_LIFETIME_VOLATILE,
                                aKey,
                                aKeyLen);
 

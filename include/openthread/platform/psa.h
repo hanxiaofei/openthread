@@ -84,7 +84,7 @@ otError otPlatPsaEcbEncrypt(psa_key_id_t aKeyId, const uint8_t *aInput, uint8_t 
  * @param[in]   aKeyType          Key Type encoding for the key.
  * @param[in]   aKeyAlgorithm     Key algorithm encoding for the key.
  * @param[in]   aKeyUsage         Key Usage encoding for the key.
- * @param[in]   aPersistence      Is the generated key a persistent key?
+ * @param[in]   aKeyPersistence   Key Persistence for this key
  * @param[in]   aKeyLen           Length of the key to be generated.
  *
  * @retval OT_ERROR_NONE          Successfully encrypted  @p aInput.
@@ -92,12 +92,12 @@ otError otPlatPsaEcbEncrypt(psa_key_id_t aKeyId, const uint8_t *aInput, uint8_t 
  * @retval OT_ERROR_INVALID_ARGS  @p aInput or @p aOutput was set to NULL.
  *
  */
-otError otPlatPsaGenerateKey(psa_key_id_t     *aKeyId,
-                             psa_key_type_t   aKeyType,
-                             psa_algorithm_t  aKeyAlgorithm,
-                             psa_key_usage_t  aKeyUsage,
-                             bool             aPersistence,
-                             size_t           aKeyLen);
+otError otPlatPsaGenerateKey(psa_key_id_t           *aKeyId,
+                             psa_key_type_t         aKeyType,
+                             psa_algorithm_t        aKeyAlgorithm,
+                             psa_key_usage_t        aKeyUsage,
+                             psa_key_persistence_t  aKeyPersistence,
+                             size_t                 aKeyLen);
 
 /**
  * Import a key into PSA ITS.
@@ -106,7 +106,7 @@ otError otPlatPsaGenerateKey(psa_key_id_t     *aKeyId,
  * @param[in]   aKeyType          Key Type encoding for the key.
  * @param[in]   aKeyAlgorithm     Key algorithm encoding for the key.
  * @param[in]   aKeyUsage         Key Usage encoding for the key.
- * @param[in]   aPersistence      Is the generated key a persistent key?
+ * @param[in]   aKeyPersistence   Key Persistence for this key
  * @param[in]   aKey              Actual key to be imported.
  * @param[in]   aKeyLen           Length of the key to be imported.
  *
@@ -115,13 +115,13 @@ otError otPlatPsaGenerateKey(psa_key_id_t     *aKeyId,
  * @retval OT_ERROR_INVALID_ARGS  @p aInput or @p aOutput was set to NULL.
  *
  */
-otError otPlatPsaImportKey(psa_key_id_t     *aKeyId,
-                           psa_key_type_t   aKeyType,
-                           psa_algorithm_t  aKeyAlgorithm,
-                           psa_key_usage_t  aKeyUsage,
-                           bool             aPersistence,
-                           const uint8_t    *aKey,
-                           size_t           aKeyLen);
+otError otPlatPsaImportKey(psa_key_id_t             *aKeyId,
+                           psa_key_type_t           aKeyType,
+                           psa_algorithm_t          aKeyAlgorithm,
+                           psa_key_usage_t          aKeyUsage,
+                           psa_key_persistence_t    aKeyPersistence,
+                           const uint8_t            *aKey,
+                           size_t                   aKeyLen);
 
 /**
  * Export a key stored in PSA ITS.

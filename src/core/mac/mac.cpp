@@ -153,7 +153,7 @@ Mac::Mac(Instance &aInstance)
                                     PSA_KEY_TYPE_AES,
                                     PSA_ALG_ECB_NO_PADDING,
                                     (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT),
-                                    false,
+                                    PSA_KEY_LIFETIME_VOLATILE,
                                     sMode2Key.m8,
                                     sizeof(sMode2Key.m8));
     OT_ASSERT(error == kErrorNone);
