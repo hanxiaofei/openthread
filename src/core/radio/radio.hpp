@@ -682,7 +682,12 @@ inline void Radio::SetMacKey(uint8_t     aKeyIdMode,
                              otMacKeyRef aCurrKeyRef,
                              otMacKeyRef aNextKeyRef)
 {
-    otPlatRadioSetMacKey(GetInstancePtr(), aKeyIdMode, aKeyId, aPrevKeyRef, aCurrKeyRef, aNextKeyRef);
+    otPlatRadioSetMacKeyRef(GetInstancePtr(), 
+                            aKeyIdMode, 
+                            aKeyId, 
+                            aPrevKeyRef, 
+                            aCurrKeyRef, 
+                            aNextKeyRef);
 }
 #else
 inline void Radio::SetMacKey(uint8_t         aKeyIdMode,

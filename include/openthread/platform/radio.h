@@ -551,12 +551,12 @@ void otPlatRadioSetPromiscuous(otInstance *aInstance, bool aEnable);
  * @param[in]   aNextKeyRef  A Reference to the next MAC key.
  *
  */
-void otPlatRadioSetMacKey(otInstance *aInstance,
-                          uint8_t     aKeyIdMode,
-                          uint8_t     aKeyId,
-                          otMacKeyRef aPrevKeyRef,
-                          otMacKeyRef aCurrKeyRef,
-                          otMacKeyRef aNextKeyRef);
+void otPlatRadioSetMacKeyRef(otInstance *aInstance,
+                            uint8_t     aKeyIdMode,
+                            uint8_t     aKeyId,
+                            otMacKeyRef aPrevKeyRef,
+                            otMacKeyRef aCurrKeyRef,
+                            otMacKeyRef aNextKeyRef);
 #else
 /**
  * Update MAC keys and key index

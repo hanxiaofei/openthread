@@ -828,6 +828,9 @@ void SubMac::SetMacKey(uint8_t      aKeyIdMode,
         break;
     case Frame::kKeyIdMode1:
         mKeyId   = aKeyId;
+        otPlatPsaDestroyKey(mPrevKeyRef);
+        otPlatPsaDestroyKey(mCurrKeyRef);
+        otPlatPsaDestroyKey(mNextKeyRef);
         mPrevKeyRef = aPrevKeyRef;
         mCurrKeyRef = aCurrKeyRef;
         mNextKeyRef = aNextKeyRef;
