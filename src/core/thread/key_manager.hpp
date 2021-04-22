@@ -675,7 +675,9 @@ private:
     KeyRef mMleKeyRef;
     KeyRef mTemporaryMleKeyRef;
     KeyRef mKekRef;
+#if OPENTHREAD_MTD || OPENTHREAD_FTD    
     KeyRef mPskcRef;
+#endif    
 #endif
 
 };
