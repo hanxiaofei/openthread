@@ -47,6 +47,7 @@ set(COMMON_SOURCES
     api/dataset_updater_api.cpp
     api/diags_api.cpp
     api/dns_api.cpp
+    api/dns_server_api.cpp
     api/entropy_api.cpp
     api/error_api.cpp
     api/heap_api.cpp
@@ -70,6 +71,7 @@ set(COMMON_SOURCES
     api/server_api.cpp
     api/sntp_api.cpp
     api/srp_client_api.cpp
+    api/srp_client_buffers_api.cpp
     api/srp_server_api.cpp
     api/tasklet_api.cpp
     api/thread_api.cpp
@@ -145,11 +147,13 @@ set(COMMON_SOURCES
     net/dns_types.cpp
     net/dnssd_server.cpp
     net/icmp6.cpp
+    net/ip4_address.cpp
     net/ip6.cpp
     net/ip6_address.cpp
     net/ip6_filter.cpp
     net/ip6_headers.cpp
     net/ip6_mpl.cpp
+    net/nd_agent.cpp
     net/netif.cpp
     net/sntp_client.cpp
     net/socket.cpp
@@ -210,6 +214,7 @@ set(COMMON_SOURCES
     utils/parse_cmdline.cpp
     utils/ping_sender.cpp
     utils/slaac_address.cpp
+    utils/srp_client_buffers.cpp
 )
 
 set(OT_VENDOR_EXTENSION "" CACHE STRING "specify a C++ source file built as part of OpenThread core library")

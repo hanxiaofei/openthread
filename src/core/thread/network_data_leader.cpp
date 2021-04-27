@@ -38,7 +38,7 @@
 #include "common/debug.hpp"
 #include "common/encoding.hpp"
 #include "common/instance.hpp"
-#include "common/locator-getters.hpp"
+#include "common/locator_getters.hpp"
 #include "common/logging.hpp"
 #include "common/message.hpp"
 #include "common/random.hpp"
@@ -171,30 +171,6 @@ Error LeaderBase::GetContext(uint8_t aContextId, Lowpan::Context &aContext) cons
         aContext.mContextId    = contextTlv->GetContextId();
         aContext.mCompressFlag = contextTlv->IsCompress();
         ExitNow(error = kErrorNone);
-    }
-
-exit:
-    return error;
-}
-
-Error LeaderBase::GetRlocByContextId(uint8_t aContextId, uint16_t &aRloc16) const
-{
-    Error           error = kErrorNotFound;
-    Lowpan::Context lowpanContext;
-
-    if ((GetContext(aContextId, lowpanContext)) == kErrorNone)
-    {
-        Iterator           iterator = kIteratorInit;
-        OnMeshPrefixConfig config;
-
-        while (GetNextOnMeshPrefix(iterator, config) == kErrorNone)
-        {
-            if (lowpanContext.mPrefix.ContainsPrefix(config.GetPrefix()))
-            {
-                aRloc16 = config.mRloc16;
-                ExitNow(error = kErrorNone);
-            }
-        }
     }
 
 exit:

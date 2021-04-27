@@ -39,6 +39,7 @@ OPENTHREAD_PROJECT_CFLAGS                                                 ?= \
     $(NULL)
 
 OPENTHREAD_PUBLIC_CFLAGS                                         := \
+    -DOPENTHREAD_CONFIG_PING_SENDER_ENABLE=1                        \
     -DOPENTHREAD_CONFIG_COMMISSIONER_ENABLE=1                       \
     -DOPENTHREAD_CONFIG_IP6_SLAAC_ENABLE=1                          \
     -DOPENTHREAD_CONFIG_LOG_LEVEL_DYNAMIC_ENABLE=1                  \
@@ -171,6 +172,7 @@ LOCAL_SRC_FILES                                          := \
     src/core/api/dataset_updater_api.cpp                    \
     src/core/api/diags_api.cpp                              \
     src/core/api/dns_api.cpp                                \
+    src/core/api/dns_server_api.cpp                         \
     src/core/api/entropy_api.cpp                            \
     src/core/api/error_api.cpp                              \
     src/core/api/heap_api.cpp                               \
@@ -194,6 +196,7 @@ LOCAL_SRC_FILES                                          := \
     src/core/api/server_api.cpp                             \
     src/core/api/sntp_api.cpp                               \
     src/core/api/srp_client_api.cpp                         \
+    src/core/api/srp_client_buffers_api.cpp                 \
     src/core/api/srp_server_api.cpp                         \
     src/core/api/tasklet_api.cpp                            \
     src/core/api/thread_api.cpp                             \
@@ -269,11 +272,13 @@ LOCAL_SRC_FILES                                          := \
     src/core/net/dns_types.cpp                              \
     src/core/net/dnssd_server.cpp                           \
     src/core/net/icmp6.cpp                                  \
+    src/core/net/ip4_address.cpp                            \
     src/core/net/ip6.cpp                                    \
     src/core/net/ip6_address.cpp                            \
     src/core/net/ip6_filter.cpp                             \
     src/core/net/ip6_headers.cpp                            \
     src/core/net/ip6_mpl.cpp                                \
+    src/core/net/nd_agent.cpp                               \
     src/core/net/netif.cpp                                  \
     src/core/net/sntp_client.cpp                            \
     src/core/net/socket.cpp                                 \
@@ -334,6 +339,7 @@ LOCAL_SRC_FILES                                          := \
     src/core/utils/parse_cmdline.cpp                        \
     src/core/utils/ping_sender.cpp                          \
     src/core/utils/slaac_address.cpp                        \
+    src/core/utils/srp_client_buffers.cpp                   \
     src/lib/hdlc/hdlc.cpp                                   \
     src/lib/platform/exit_code.c                            \
     src/lib/spinel/spinel.c                                 \
@@ -469,7 +475,6 @@ LOCAL_C_INCLUDES                                         := \
 LOCAL_CFLAGS                                                                := \
     $(OPENTHREAD_PUBLIC_CFLAGS)                                                \
     $(OPENTHREAD_PRIVATE_CFLAGS)                                               \
-    -DOPENTHREAD_POSIX_APP_TYPE=OT_POSIX_APP_TYPE_CLI                          \
     $(OPENTHREAD_PROJECT_CFLAGS)                                               \
     $(NULL)
 

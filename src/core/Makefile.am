@@ -124,6 +124,7 @@ SOURCES_COMMON                                  = \
     api/dataset_updater_api.cpp                   \
     api/diags_api.cpp                             \
     api/dns_api.cpp                               \
+    api/dns_server_api.cpp                        \
     api/entropy_api.cpp                           \
     api/error_api.cpp                             \
     api/heap_api.cpp                              \
@@ -147,6 +148,7 @@ SOURCES_COMMON                                  = \
     api/server_api.cpp                            \
     api/sntp_api.cpp                              \
     api/srp_client_api.cpp                        \
+    api/srp_client_buffers_api.cpp                \
     api/srp_server_api.cpp                        \
     api/tasklet_api.cpp                           \
     api/thread_api.cpp                            \
@@ -222,11 +224,13 @@ SOURCES_COMMON                                  = \
     net/dns_types.cpp                             \
     net/dnssd_server.cpp                          \
     net/icmp6.cpp                                 \
+    net/ip4_address.cpp                           \
     net/ip6.cpp                                   \
     net/ip6_address.cpp                           \
     net/ip6_filter.cpp                            \
     net/ip6_headers.cpp                           \
     net/ip6_mpl.cpp                               \
+    net/nd_agent.cpp                              \
     net/netif.cpp                                 \
     net/sntp_client.cpp                           \
     net/socket.cpp                                \
@@ -287,6 +291,7 @@ SOURCES_COMMON                                  = \
     utils/parse_cmdline.cpp                       \
     utils/ping_sender.cpp                         \
     utils/slaac_address.cpp                       \
+    utils/srp_client_buffers.cpp                  \
     $(NULL)
 
 EXTRA_DIST                                 = \
@@ -380,8 +385,8 @@ HEADERS_COMMON                                  = \
     common/instance.hpp                           \
     common/iterator_utils.hpp                     \
     common/linked_list.hpp                        \
-    common/locator-getters.hpp                    \
     common/locator.hpp                            \
+    common/locator_getters.hpp                    \
     common/logging.hpp                            \
     common/message.hpp                            \
     common/new.hpp                                \
@@ -476,11 +481,13 @@ HEADERS_COMMON                                  = \
     net/dns_types.hpp                             \
     net/dnssd_server.hpp                          \
     net/icmp6.hpp                                 \
+    net/ip4_address.hpp                           \
     net/ip6.hpp                                   \
     net/ip6_address.hpp                           \
     net/ip6_filter.hpp                            \
     net/ip6_headers.hpp                           \
     net/ip6_mpl.hpp                               \
+    net/nd_agent.hpp                              \
     net/netif.hpp                                 \
     net/sntp_client.hpp                           \
     net/socket.hpp                                \
@@ -548,6 +555,7 @@ HEADERS_COMMON                                  = \
     utils/parse_cmdline.hpp                       \
     utils/ping_sender.hpp                         \
     utils/slaac_address.hpp                       \
+    utils/srp_client_buffers.hpp                  \
     $(NULL)
 
 noinst_HEADERS                             = \

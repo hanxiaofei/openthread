@@ -72,7 +72,7 @@ static int OutputFormatV(void *aContext, const char *aFormat, va_list aArguments
     // Don't die on SIGPIPE
     rval = send(sSessionSocket, buf, static_cast<size_t>(rval), MSG_NOSIGNAL);
 #else
-    rval = write(sSessionSocket, buf, static_cast<size_t>(rval));
+    rval = static_cast<int>(write(sSessionSocket, buf, static_cast<size_t>(rval)));
 #endif
 
     if (rval < 0)
@@ -205,7 +205,7 @@ void platformDaemonDisable(void)
 
     if (gPlatResetReason != OT_PLAT_RESET_REASON_SOFTWARE)
     {
-        otLogCritPlat("Removing daemon socket: %s", OPENTHREAD_POSIX_DAEMON_SOCKET_NAME);
+        otLogDebgPlat("Removing daemon socket: %s", OPENTHREAD_POSIX_DAEMON_SOCKET_NAME);
         (void)unlink(OPENTHREAD_POSIX_DAEMON_SOCKET_NAME);
     }
 

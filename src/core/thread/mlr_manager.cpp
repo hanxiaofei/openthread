@@ -37,7 +37,7 @@
 
 #include "common/code_utils.hpp"
 #include "common/instance.hpp"
-#include "common/locator-getters.hpp"
+#include "common/locator_getters.hpp"
 #include "common/logging.hpp"
 #include "net/ip6_address.hpp"
 #include "thread/thread_netif.hpp"
@@ -325,7 +325,14 @@ Error MlrManager::RegisterMulticastListeners(const otIp6Address *               
     VerifyOrExit(aAddresses != nullptr, error = kErrorInvalidArgs);
     VerifyOrExit(aAddressNum > 0 && aAddressNum <= kIp6AddressesNumMax, error = kErrorInvalidArgs);
     VerifyOrExit(aContext == nullptr || aCallback != nullptr, error = kErrorInvalidArgs);
+#if !OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
     VerifyOrExit(Get<MeshCoP::Commissioner>().IsActive(), error = kErrorInvalidState);
+#else
+    if (!Get<MeshCoP::Commissioner>().IsActive())
+    {
+        otLogWarnMlr("MLR.req sent without active commissioner session.");
+    }
+#endif
 
     // Only allow one outstanding registration if callback is specified.
     VerifyOrExit(!mRegisterMulticastListenersPending, error = kErrorBusy);
@@ -394,7 +401,7 @@ Error MlrManager::SendMulticastListenerRegistrationMessage(const otIp6Address * 
 
     VerifyOrExit(Get<BackboneRouter::Leader>().HasPrimary(), error = kErrorInvalidState);
 
-    VerifyOrExit((message = Get<Tmf::TmfAgent>().NewMessage()) != nullptr, error = kErrorNoBufs);
+    VerifyOrExit((message = Get<Tmf::Agent>().NewMessage()) != nullptr, error = kErrorNoBufs);
 
     message->InitAsConfirmablePost();
     SuccessOrExit(message->GenerateRandomToken(Coap::Message::kDefaultTokenLength));
@@ -437,7 +444,7 @@ Error MlrManager::SendMulticastListenerRegistrationMessage(const otIp6Address * 
     messageInfo.SetPeerPort(Tmf::kUdpPort);
     messageInfo.SetSockAddr(mle.GetMeshLocal16());
 
-    error = Get<Tmf::TmfAgent>().SendMessage(*message, messageInfo, aResponseHandler, aResponseContext);
+    error = Get<Tmf::Agent>().SendMessage(*message, messageInfo, aResponseHandler, aResponseContext);
 
 exit:
     otLogInfoMlr("Send MLR.req: %s, addressNum=%d", ErrorToString(error), aAddressNum);
