@@ -212,6 +212,10 @@ RadioSpinel<InterfaceType, ProcessContextType>::RadioSpinel(void)
     , mDiagOutput(nullptr)
     , mDiagOutputMaxLen(0)
 #endif
+#if OPENTHREAD_CONFIG_RCP_PROCEDURE_CALL_ENABLE
+    , mRCPPC(nullptr)
+    , mRCPPCMaxLen(0)
+#endif
     , mTxRadioEndUs(UINT64_MAX)
     , mRadioTimeRecalcStart(UINT64_MAX)
     , mRadioTimeOffset(0)
@@ -777,6 +781,17 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleWaitingResponse(uint3
         VerifyOrExit(mDiagOutput != nullptr);
         unpacked =
             spinel_datatype_unpack_in_place(aBuffer, aLength, SPINEL_DATATYPE_UTF8_S, mDiagOutput, &mDiagOutputMaxLen);
+        VerifyOrExit(unpacked > 0, mError = OT_ERROR_PARSE);
+    }
+#endif
+#if OPENTHREAD_CONFIG_RCP_PROCEDURE_CALL_ENABLE
+    else if (aKey == SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL)
+    {
+        spinel_ssize_t unpacked;
+
+        VerifyOrExit(mRCPPC != nullptr);
+        unpacked =
+            spinel_datatype_unpack_in_place(aBuffer, aLength, SPINEL_DATATYPE_UTF8_S, mRCPPC, &mRCPPCMaxLen);
         VerifyOrExit(unpacked > 0, mError = OT_ERROR_PARSE);
     }
 #endif
@@ -2041,6 +2056,26 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::PlatDiagProcess(const ch
 
     mDiagOutput       = nullptr;
     mDiagOutputMaxLen = 0;
+
+    return error;
+}
+#endif
+
+#if OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
+template <typename InterfaceType, typename ProcessContextType>
+otError RadioSpinel<InterfaceType, ProcessContextType>::PlatRCPPCProcess(const char *aString,
+                                                                       char *      aOutput,
+                                                                       size_t      aOutputMaxLen)
+{
+    otError error;
+
+    mRCPPC       = aOutput;
+    mRCPPCMaxLen = aOutputMaxLen;
+
+    error = Set(SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL, SPINEL_DATATYPE_UTF8_S, aString);
+
+    mRCPPC       = nullptr;
+    mRCPPCMaxLen = 0;
 
     return error;
 }

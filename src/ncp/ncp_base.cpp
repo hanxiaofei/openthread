@@ -980,6 +980,11 @@ bool NcpBase::HandlePropertySetForSpecialProperties(uint8_t aHeader, spinel_prop
         ExitNow(aError = HandlePropertySet_SPINEL_PROP_NEST_STREAM_MFG(aHeader));
 #endif
 
+#if OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
+    case SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL:
+        ExitNow(aError = HandlePropertySet_SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL(aHeader));
+#endif
+
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_COMMISSIONER_ENABLE
     case SPINEL_PROP_MESHCOP_COMMISSIONER_GENERATE_PSKC:
         ExitNow(aError = HandlePropertySet_SPINEL_PROP_MESHCOP_COMMISSIONER_GENERATE_PSKC(aHeader));
@@ -1363,6 +1368,33 @@ exit:
 }
 
 #endif // OPENTHREAD_CONFIG_DIAG_ENABLE
+
+#if OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
+
+otError NcpBase::HandlePropertySet_SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL(uint8_t aHeader)
+{
+    const char *string = nullptr;
+    char        output[OPENTHREAD_CONFIG_RCP_PROCEDURE_CALL_OUTPUT_BUFFER_SIZE];
+    otError     error = OT_ERROR_NONE;
+
+    error = mDecoder.ReadUtf8(string);
+
+    VerifyOrExit(error == OT_ERROR_NONE, error = WriteLastStatusFrame(aHeader, ThreadErrorToSpinelStatus(error)));
+
+    output[sizeof(output) - 1] = '\0';
+
+    otDiagProcessCmdLine(mInstance, string, output, sizeof(output) - 1);
+
+    // Prepare the response
+    SuccessOrExit(error = mEncoder.BeginFrame(aHeader, SPINEL_CMD_PROP_VALUE_IS, SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL));
+    SuccessOrExit(error = mEncoder.WriteUtf8(output));
+    SuccessOrExit(error = mEncoder.EndFrame());
+
+exit:
+    return error;
+}
+
+#endif // OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
 
 template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_PHY_ENABLED>(void)
 {

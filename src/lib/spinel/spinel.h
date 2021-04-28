@@ -4689,6 +4689,16 @@ enum
      */
     SPINEL_PROP_RCP_TIMESTAMP = SPINEL_PROP_RCP_EXT__BEGIN + 2,
 
+    /// Remote Procedure Call (Host -> RCP)
+    /** Format: `D`.
+     *
+     *  `D`: command string
+     *
+     * The Spinel property is used to allow a Host to execute a CLI command on a RCP.
+     *
+     */
+    SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL = SPINEL_PROP_RCP_EXT__BEGIN + 3,
+
     SPINEL_PROP_RCP_EXT__END = 0x900,
 
     SPINEL_PROP_NEST__BEGIN = 0x3BC0,

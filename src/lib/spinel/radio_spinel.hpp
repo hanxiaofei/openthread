@@ -1002,6 +1002,11 @@ private:
     size_t mDiagOutputMaxLen;
 #endif
 
+#if OPENTHREAD_CONFIG_RCP_PROCEDURE_CALL_ENABLE
+    char * mRCPPC;
+    size_t mRCPPCMaxLen;
+#endif
+
     uint64_t mTxRadioEndUs;
     uint64_t mRadioTimeRecalcStart; ///< When to recalculate RCP time offset.
     int64_t  mRadioTimeOffset;      ///< Time difference with estimated RCP time minus host time.
