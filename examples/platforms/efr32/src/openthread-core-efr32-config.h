@@ -33,6 +33,9 @@
  */
 
 #include "board_config.h"
+
+// IMPORTANT: Do not remove this include. Apps will build without error, but
+// they will not boot up properly
 #include "em_msc.h"
 
 #ifndef OPENTHREAD_CORE_EFR32_CONFIG_H_
@@ -101,7 +104,17 @@
  * Define to 1 if you want to enable software transmission security logic.
  *
  */
-#define OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_SECURITY_ENABLE 0
+#define OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_SECURITY_ENABLE \
+    (OPENTHREAD_RADIO && (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2))
+
+/**
+ * @def OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_TIMING_ENABLE
+ *
+ * Define to 1 to enable software transmission target time logic.
+ *
+ */
+#define OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_TIMING_ENABLE \
+    (OPENTHREAD_RADIO && (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2))
 
 /**
  * @def OPENTHREAD_CONFIG_MAC_SOFTWARE_ENERGY_SCAN_ENABLE
@@ -110,6 +123,15 @@
  *
  */
 #define OPENTHREAD_CONFIG_MAC_SOFTWARE_ENERGY_SCAN_ENABLE 0
+
+/**
+ * @def OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
+ *
+ * Define to 1 if you want to support microsecond timer in platform.
+ *
+ */
+#define OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE \
+    (OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE && (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2))
 
 /**
  * @def OPENTHREAD_CONFIG_PLATFORM_FLASH_API_ENABLE
@@ -122,11 +144,40 @@
 #define OPENTHREAD_CONFIG_PLATFORM_FLASH_API_ENABLE 0
 
 /**
- * @def OPENTHREAD_CONFIG_NCP_UART_ENABLE
+ * @def OPENTHREAD_CONFIG_NCP_HDLC_ENABLE
  *
- * Define to 1 to enable NCP UART support.
+ * Define to 1 to enable NCP HDLC support.
  *
  */
-#define OPENTHREAD_CONFIG_NCP_UART_ENABLE 1
+#define OPENTHREAD_CONFIG_NCP_HDLC_ENABLE 1
+
+/**
+ * @def OPENTHREAD_CONFIG_MIN_SLEEP_DURATION_MS
+ *
+ * Minimum duration in ms below which the platform will not
+ * enter a deep sleep (EM2) mode.
+ *
+ */
+#define OPENTHREAD_CONFIG_MIN_SLEEP_DURATION_MS 5
+
+/**
+ * @def OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE
+ *
+ * Enable the external heap.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE
+#define OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE 0
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_EFR32_UART_TX_FLUSH_TIMEOUT_MS
+ *
+ * Maximum time to wait for a flush to complete in otPlatUartFlush().
+ *
+ * Value is in milliseconds
+ *
+ */
+#define OPENTHREAD_CONFIG_EFR32_UART_TX_FLUSH_TIMEOUT_MS 500
 
 #endif // OPENTHREAD_CORE_EFR32_CONFIG_H_

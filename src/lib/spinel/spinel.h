@@ -78,20 +78,20 @@
  *
  *   The Interface Identifier (IID) is a number between 0 and 3, which
  *   is associated by the OS with a specific NCP. This allows the protocol
- *   to support up to 4 NCPs under same connection.
+ *   to support multiple networks under same connection.
  *
  *   The least significant bits of the header represent the Transaction
  *   Identifier (TID). The TID is used for correlating responses to the
  *   commands which generated them.
  *
  *   When a command is sent from the host, any reply to that command sent
- *   by the NCP will use the same value for the TID.  When the host
- *   receives a frame that matches the TID of the command it sent, it can
- *   easily recognize that frame as the actual response to that command.
+ *   by the NCP will use the same value for the IID and TID.  When the host
+ *   receives a frame that matches the IID and TID of the command it sent, it
+ *   can easily recognize that frame as the actual response to that command.
  *
- *   The TID value of zero (0) is used for commands to which a correlated
- *   response is not expected or needed, such as for unsolicited update
- *   commands sent to the host from the NCP.
+ *   The IID and TID value of zero (0) is used for commands to which a
+ *   correlated response is not expected or needed, such as for unsolicited
+ *   update commands sent to the host from the NCP.
  *
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  *
@@ -466,6 +466,7 @@ enum
     SPINEL_STATUS_ALREADY                  = 19, ///< The operation is already in progress.
     SPINEL_STATUS_ITEM_NOT_FOUND           = 20, ///< The given item could not be found.
     SPINEL_STATUS_INVALID_COMMAND_FOR_PROP = 21, ///< The given command cannot be performed on this property.
+    SPINEL_STATUS_RESPONSE_TIMEOUT         = 24, ///< No response received from remote node
 
     SPINEL_STATUS_JOIN__BEGIN = 104,
 
@@ -618,6 +619,12 @@ enum
 
 enum
 {
+    SPINEL_NET_FLAG_EXT_DP  = (1 << 6),
+    SPINEL_NET_FLAG_EXT_DNS = (1 << 7),
+};
+
+enum
+{
     SPINEL_ROUTE_PREFERENCE_HIGH   = (1 << SPINEL_NET_FLAG_PREFERENCE_OFFSET),
     SPINEL_ROUTE_PREFERENCE_MEDIUM = (0 << SPINEL_NET_FLAG_PREFERENCE_OFFSET),
     SPINEL_ROUTE_PREFERENCE_LOW    = (3 << SPINEL_NET_FLAG_PREFERENCE_OFFSET),
@@ -716,6 +723,22 @@ enum
 {
     SPINEL_RADIO_LINK_IEEE_802_15_4 = 0,
     SPINEL_RADIO_LINK_TREL_UDP6     = 1,
+};
+
+// Parameter ids used for:
+// @ref SPINEL_PROP_THREAD_MLR_REQUEST
+enum
+{
+    SPINEL_THREAD_MLR_PARAMID_TIMEOUT = 0
+};
+
+// Backbone Router states used for:
+// @ref SPINEL_PROP_THREAD_BACKBONE_ROUTER_LOCAL_STATE
+enum
+{
+    SPINEL_THREAD_BACKBONE_ROUTER_STATE_DISABLED  = 0,
+    SPINEL_THREAD_BACKBONE_ROUTER_STATE_SECONDARY = 1,
+    SPINEL_THREAD_BACKBONE_ROUTER_STATE_PRIMARY   = 2,
 };
 
 typedef enum
@@ -1159,6 +1182,7 @@ enum
     SPINEL_CAP_NET__BEGIN     = 52,
     SPINEL_CAP_NET_THREAD_1_0 = (SPINEL_CAP_NET__BEGIN + 0),
     SPINEL_CAP_NET_THREAD_1_1 = (SPINEL_CAP_NET__BEGIN + 1),
+    SPINEL_CAP_NET_THREAD_1_2 = (SPINEL_CAP_NET__BEGIN + 2),
     SPINEL_CAP_NET__END       = 64,
 
     SPINEL_CAP_RCP__BEGIN      = 64,
@@ -1181,16 +1205,19 @@ enum
     SPINEL_CAP_MAC_RETRY_HISTOGRAM     = (SPINEL_CAP_OPENTHREAD__BEGIN + 12),
     SPINEL_CAP_MULTI_RADIO             = (SPINEL_CAP_OPENTHREAD__BEGIN + 13),
     SPINEL_CAP_SRP_CLIENT              = (SPINEL_CAP_OPENTHREAD__BEGIN + 14),
+    SPINEL_CAP_DUA                     = (SPINEL_CAP_OPENTHREAD__BEGIN + 15),
     SPINEL_CAP_OPENTHREAD__END         = 640,
 
-    SPINEL_CAP_THREAD__BEGIN        = 1024,
-    SPINEL_CAP_THREAD_COMMISSIONER  = (SPINEL_CAP_THREAD__BEGIN + 0),
-    SPINEL_CAP_THREAD_TMF_PROXY     = (SPINEL_CAP_THREAD__BEGIN + 1),
-    SPINEL_CAP_THREAD_UDP_FORWARD   = (SPINEL_CAP_THREAD__BEGIN + 2),
-    SPINEL_CAP_THREAD_JOINER        = (SPINEL_CAP_THREAD__BEGIN + 3),
-    SPINEL_CAP_THREAD_BORDER_ROUTER = (SPINEL_CAP_THREAD__BEGIN + 4),
-    SPINEL_CAP_THREAD_SERVICE       = (SPINEL_CAP_THREAD__BEGIN + 5),
-    SPINEL_CAP_THREAD__END          = 1152,
+    SPINEL_CAP_THREAD__BEGIN          = 1024,
+    SPINEL_CAP_THREAD_COMMISSIONER    = (SPINEL_CAP_THREAD__BEGIN + 0),
+    SPINEL_CAP_THREAD_TMF_PROXY       = (SPINEL_CAP_THREAD__BEGIN + 1),
+    SPINEL_CAP_THREAD_UDP_FORWARD     = (SPINEL_CAP_THREAD__BEGIN + 2),
+    SPINEL_CAP_THREAD_JOINER          = (SPINEL_CAP_THREAD__BEGIN + 3),
+    SPINEL_CAP_THREAD_BORDER_ROUTER   = (SPINEL_CAP_THREAD__BEGIN + 4),
+    SPINEL_CAP_THREAD_SERVICE         = (SPINEL_CAP_THREAD__BEGIN + 5),
+    SPINEL_CAP_THREAD_CSL_RECEIVER    = (SPINEL_CAP_THREAD__BEGIN + 6),
+    SPINEL_CAP_THREAD_BACKBONE_ROUTER = (SPINEL_CAP_THREAD__BEGIN + 8),
+    SPINEL_CAP_THREAD__END            = 1152,
 
     SPINEL_CAP_NEST__BEGIN           = 15296,
     SPINEL_CAP_NEST_LEGACY_INTERFACE = (SPINEL_CAP_NEST__BEGIN + 0),
@@ -2293,7 +2320,7 @@ enum
     SPINEL_PROP_THREAD_STABLE_NETWORK_DATA_VERSION = SPINEL_PROP_THREAD__BEGIN + 9,
 
     /// On-Mesh Prefixes
-    /** Format: `A(t(6CbCbS))`
+    /** Format: `A(t(6CbCbSC))`
      *
      * Data per item is:
      *
@@ -2304,8 +2331,11 @@ enum
      *  `b`: "Is defined locally" flag. Set if this network was locally
      *       defined. Assumed to be true for set, insert and replace. Clear if
      *       the on mesh network was defined by another node.
+     *       This field is ignored for INSERT and REMOVE commands.
      *  `S`: The RLOC16 of the device that registered this on-mesh prefix entry.
      *       This value is not used and ignored when adding an on-mesh prefix.
+     *       This field is ignored for INSERT and REMOVE commands.
+     *  `C`: TLV flags extended (additional field for Thread 1.2 features).
      *
      */
     SPINEL_PROP_THREAD_ON_MESH_NETS = SPINEL_PROP_THREAD__BEGIN + 10,
@@ -2897,6 +2927,154 @@ enum
      *
      */
     SPINEL_PROP_THREAD_NEW_DATASET = SPINEL_PROP_THREAD_EXT__BEGIN + 40,
+
+    /// MAC CSL Period
+    /** Format: `S`
+     * Required capability: `SPINEL_CAP_THREAD_CSL_RECEIVER`
+     *
+     * The CSL period in units of 10 symbols. Value of 0 indicates that CSL should be disabled.
+     */
+    SPINEL_PROP_THREAD_CSL_PERIOD = SPINEL_PROP_THREAD_EXT__BEGIN + 41,
+
+    /// MAC CSL Timeout
+    /** Format: `L`
+     * Required capability: `SPINEL_CAP_THREAD_CSL_RECEIVER`
+     *
+     * The CSL timeout in seconds.
+     */
+    SPINEL_PROP_THREAD_CSL_TIMEOUT = SPINEL_PROP_THREAD_EXT__BEGIN + 42,
+
+    /// MAC CSL Channel
+    /** Format: `C`
+     * Required capability: `SPINEL_CAP_THREAD_CSL_RECEIVER`
+     *
+     * The CSL channel as described in chapter 4.6.5.1.2 of the Thread v1.2.0 Specification.
+     * Value of 0 means that CSL reception (if enabled) occurs on the Thread Network channel.
+     * Value from range [11,26] is an alternative channel on which a CSL reception occurs.
+     */
+    SPINEL_PROP_THREAD_CSL_CHANNEL = SPINEL_PROP_THREAD_EXT__BEGIN + 43,
+
+    /// Thread Domain Name
+    /** Format `U` - Read-write
+     * Required capability: `SPINEL_CAP_NET_THREAD_1_2`
+     *
+     * This property is available since Thread 1.2.0.
+     * Write to this property succeeds only when Thread protocols are disabled.
+     *
+     */
+    SPINEL_PROP_THREAD_DOMAIN_NAME = SPINEL_PROP_THREAD_EXT__BEGIN + 44,
+
+    /// Multicast Listeners Register Request
+    /** Format `t(A(6))A(t(CD))` - Write-only
+     * Required capability: `SPINEL_CAP_NET_THREAD_1_2`
+     *
+     * `t(A(6))`: Array of IPv6 multicast addresses
+     * `A(t(CD))`: Array of structs holding optional parameters as follows
+     *   `C`: Parameter id
+     *   `D`: Parameter value
+     *
+     *   +----------------------------------------------------------------+
+     *   | Id:   SPINEL_THREAD_MLR_PARAMID_TIMEOUT                        |
+     *   | Type: `L`                                                      |
+     *   | Description: Timeout in seconds. If this optional parameter is |
+     *   |   omitted, the default value of the BBR will be used.          |
+     *   | Special values:                                                |
+     *   |   0 causes given addresses to be removed                       |
+     *   |   0xFFFFFFFF is permanent and persistent registration          |
+     *   +----------------------------------------------------------------+
+     *
+     * Write to this property initiates update of Multicast Listeners Table on the primary BBR.
+     * If the write succeeded, the result of network operation will be notified later by the
+     * SPINEL_PROP_THREAD_MLR_RESPONSE property. If the write fails, no MLR.req is issued and
+     * notifiaction through the SPINEL_PROP_THREAD_MLR_RESPONSE property will not occur.
+     *
+     */
+    SPINEL_PROP_THREAD_MLR_REQUEST = SPINEL_PROP_THREAD_EXT__BEGIN + 52,
+
+    /// Multicast Listeners Register Response
+    /** Format `CCt(A(6))` - Unsolicited notifications only
+     * Required capability: `SPINEL_CAP_NET_THREAD_1_2`
+     *
+     * `C`: Status
+     * `C`: MlrStatus (The Multicast Listener Registration Status)
+     * `A(6)`: Array of IPv6 addresses that failed to be updated on the primary BBR
+     *
+     * This property is notified asynchronously when the NCP receives MLR.rsp following
+     * previous write to the SPINEL_PROP_THREAD_MLR_REQUEST property.
+     */
+    SPINEL_PROP_THREAD_MLR_RESPONSE = SPINEL_PROP_THREAD_EXT__BEGIN + 53,
+
+    /// Interface Identifier specified for Thread Domain Unicast Address.
+    /** Format: `A(C)` - Read-write
+     *
+     *   `A(C)`: Interface Identifier (8 bytes).
+     *
+     * Required capability: SPINEL_CAP_DUA
+     *
+     * If write to this property is performed without specified parameter
+     * the Interface Identifier of the Thread Domain Unicast Address will be cleared.
+     * If the DUA Interface Identifier is cleared on the NCP device,
+     * the get spinel property command will be returned successfully without specified parameter.
+     *
+     */
+    SPINEL_PROP_THREAD_DUA_ID = SPINEL_PROP_THREAD_EXT__BEGIN + 54,
+
+    /// Thread 1.2 Primary Backbone Router information in the Thread Network.
+    /** Format: `SSLC` - Read-Only
+     *
+     * Required capability: `SPINEL_CAP_NET_THREAD_1_2`
+     *
+     * `S`: Server.
+     * `S`: Reregistration Delay (in seconds).
+     * `L`: Multicast Listener Registration Timeout (in seconds).
+     * `C`: Sequence Number.
+     *
+     */
+    SPINEL_PROP_THREAD_BACKBONE_ROUTER_PRIMARY = SPINEL_PROP_THREAD_EXT__BEGIN + 55,
+
+    /// Thread 1.2 Backbone Router local state.
+    /** Format: `C` - Read-Write
+     *
+     * Required capability: `SPINEL_CAP_THREAD_BACKBONE_ROUTER`
+     *
+     * The valid values are specified by SPINEL_THREAD_BACKBONE_ROUTER_STATE_<state> enumeration.
+     * Backbone functionality will be disabled if SPINEL_THREAD_BACKBONE_ROUTER_STATE_DISABLED
+     * is writted to this property, enabled otherwise.
+     *
+     */
+    SPINEL_PROP_THREAD_BACKBONE_ROUTER_LOCAL_STATE = SPINEL_PROP_THREAD_EXT__BEGIN + 56,
+
+    /// Local Thread 1.2 Backbone Router configuration.
+    /** Format: SLC - Read-Write
+     *
+     * Required capability: `SPINEL_CAP_THREAD_BACKBONE_ROUTER`
+     *
+     * `S`: Reregistration Delay (in seconds).
+     * `L`: Multicast Listener Registration Timeout (in seconds).
+     * `C`: Sequence Number.
+     *
+     */
+    SPINEL_PROP_THREAD_BACKBONE_ROUTER_LOCAL_CONFIG = SPINEL_PROP_THREAD_EXT__BEGIN + 57,
+
+    /// Register local Thread 1.2 Backbone Router configuration.
+    /** Format: Empty (Write only).
+     *
+     * Required capability: `SPINEL_CAP_THREAD_BACKBONE_ROUTER`
+     *
+     * Writing to this property (with any value) will register local Backbone Router configuration.
+     *
+     */
+    SPINEL_PROP_THREAD_BACKBONE_ROUTER_LOCAL_REGISTER = SPINEL_PROP_THREAD_EXT__BEGIN + 58,
+
+    /// Thread 1.2 Backbone Router registration jitter.
+    /** Format: `C` - Read-Write
+     *
+     * Required capability: `SPINEL_CAP_THREAD_BACKBONE_ROUTER`
+     *
+     * `C`: Backbone Router registration jitter.
+     *
+     */
+    SPINEL_PROP_THREAD_BACKBONE_ROUTER_LOCAL_REGISTRATION_JITTER = SPINEL_PROP_THREAD_EXT__BEGIN + 59,
 
     SPINEL_PROP_THREAD_EXT__END = 0x1600,
 
@@ -4376,6 +4554,7 @@ typedef uint32_t spinel_prop_key_t;
 
 #define SPINEL_HEADER_IID_SHIFT 4
 #define SPINEL_HEADER_IID_MASK (3 << SPINEL_HEADER_IID_SHIFT)
+#define SPINEL_HEADER_IID_MAX 3
 
 #define SPINEL_HEADER_IID_0 (0 << SPINEL_HEADER_IID_SHIFT)
 #define SPINEL_HEADER_IID_1 (1 << SPINEL_HEADER_IID_SHIFT)

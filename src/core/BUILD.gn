@@ -132,6 +132,10 @@ if (openthread_enable_core_config_args) {
       defines += [ "OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE=1" ]
     }
 
+    if (openthread_config_dnssd_server_enable) {
+      defines += [ "OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE=1" ]
+    }
+
     if (openthread_config_ecdsa_enable) {
       defines += [ "OPENTHREAD_CONFIG_ECDSA_ENABLE=1" ]
     }
@@ -224,8 +228,16 @@ if (openthread_enable_core_config_args) {
       defines += [ "OPENTHREAD_CONFIG_SNTP_CLIENT_ENABLE=1" ]
     }
 
+    if (openthread_config_srp_client_enable) {
+      defines += [ "OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE=1" ]
+    }
+
     if (openthread_config_srp_server_enable) {
       defines += [ "OPENTHREAD_CONFIG_SRP_SERVER_ENABLE=1" ]
+    }
+
+    if (openthread_config_ping_sender) {
+      defines += [ "OPENTHREAD_CONFIG_PING_SENDER_ENABLE=1" ]
     }
 
     if (openthread_config_time_sync_enable) {
@@ -296,6 +308,7 @@ openthread_core_files = [
   "api/diags_api.cpp",
   "api/dns_api.cpp",
   "api/entropy_api.cpp",
+  "api/error_api.cpp",
   "api/heap_api.cpp",
   "api/icmp6_api.cpp",
   "api/instance_api.cpp",
@@ -311,11 +324,13 @@ openthread_core_files = [
   "api/netdata_api.cpp",
   "api/netdiag_api.cpp",
   "api/network_time_api.cpp",
+  "api/ping_sender_api.cpp",
   "api/random_crypto_api.cpp",
   "api/random_noncrypto_api.cpp",
   "api/server_api.cpp",
   "api/sntp_api.cpp",
   "api/srp_client_api.cpp",
+  "api/srp_client_buffers_api.cpp",
   "api/srp_server_api.cpp",
   "api/tasklet_api.cpp",
   "api/thread_api.cpp",
@@ -353,6 +368,8 @@ openthread_core_files = [
   "common/debug.hpp",
   "common/encoding.hpp",
   "common/equatable.hpp",
+  "common/error.cpp",
+  "common/error.hpp",
   "common/extension.hpp",
   "common/instance.cpp",
   "common/instance.hpp",
@@ -402,7 +419,7 @@ openthread_core_files = [
   "crypto/mbedtls.cpp",
   "crypto/mbedtls.hpp",
   "crypto/pbkdf2_cmac.cpp",
-  "crypto/pbkdf2_cmac.h",
+  "crypto/pbkdf2_cmac.hpp",
   "crypto/sha256.cpp",
   "crypto/sha256.hpp",
   "diags/factory_diags.cpp",
@@ -441,6 +458,8 @@ openthread_core_files = [
   "meshcop/dataset_manager.cpp",
   "meshcop/dataset_manager.hpp",
   "meshcop/dataset_manager_ftd.cpp",
+  "meshcop/dataset_updater.cpp",
+  "meshcop/dataset_updater.hpp",
   "meshcop/dtls.cpp",
   "meshcop/dtls.hpp",
   "meshcop/energy_scan_client.cpp",
@@ -468,10 +487,14 @@ openthread_core_files = [
   "net/dhcp6_server.hpp",
   "net/dns_client.cpp",
   "net/dns_client.hpp",
-  "net/dns_headers.cpp",
-  "net/dns_headers.hpp",
+  "net/dns_types.cpp",
+  "net/dns_types.hpp",
+  "net/dnssd_server.cpp",
+  "net/dnssd_server.hpp",
   "net/icmp6.cpp",
   "net/icmp6.hpp",
+  "net/ip4_address.cpp",
+  "net/ip4_address.hpp",
   "net/ip6.cpp",
   "net/ip6.hpp",
   "net/ip6_address.cpp",
@@ -486,6 +509,7 @@ openthread_core_files = [
   "net/netif.hpp",
   "net/sntp_client.cpp",
   "net/sntp_client.hpp",
+  "net/socket.cpp",
   "net/socket.hpp",
   "net/srp_client.cpp",
   "net/srp_client.hpp",
@@ -494,6 +518,7 @@ openthread_core_files = [
   "net/tcp.hpp",
   "net/udp6.cpp",
   "net/udp6.hpp",
+  "radio/max_power_table.hpp",
   "radio/radio.cpp",
   "radio/radio.hpp",
   "radio/radio_callbacks.cpp",
@@ -559,6 +584,8 @@ openthread_core_files = [
   "thread/network_data_local.hpp",
   "thread/network_data_notifier.cpp",
   "thread/network_data_notifier.hpp",
+  "thread/network_data_service.cpp",
+  "thread/network_data_service.hpp",
   "thread/network_data_tlvs.hpp",
   "thread/network_diagnostic.cpp",
   "thread/network_diagnostic.hpp",
@@ -588,8 +615,6 @@ openthread_core_files = [
   "utils/channel_monitor.hpp",
   "utils/child_supervision.cpp",
   "utils/child_supervision.hpp",
-  "utils/dataset_updater.cpp",
-  "utils/dataset_updater.hpp",
   "utils/flash.cpp",
   "utils/flash.hpp",
   "utils/heap.cpp",
@@ -602,17 +627,23 @@ openthread_core_files = [
   "utils/otns.hpp",
   "utils/parse_cmdline.cpp",
   "utils/parse_cmdline.hpp",
+  "utils/ping_sender.cpp",
+  "utils/ping_sender.hpp",
   "utils/slaac_address.cpp",
   "utils/slaac_address.hpp",
+  "utils/srp_client_buffers.cpp",
+  "utils/srp_client_buffers.hpp",
 ]
 
 openthread_radio_sources = [
   "api/diags_api.cpp",
+  "api/error_api.cpp",
   "api/instance_api.cpp",
   "api/link_raw_api.cpp",
   "api/logging_api.cpp",
   "api/random_noncrypto_api.cpp",
   "api/tasklet_api.cpp",
+  "common/error.hpp",
   "common/instance.cpp",
   "common/logging.cpp",
   "common/random_manager.cpp",
@@ -658,6 +689,8 @@ source_set("libopenthread_core_config") {
     "config/dhcp6_server.h",
     "config/diag.h",
     "config/dns_client.h",
+    "config/dnssd_server.h",
+    "config/dtls.h",
     "config/ip6.h",
     "config/joiner.h",
     "config/link_quality.h",
@@ -668,6 +701,7 @@ source_set("libopenthread_core_config") {
     "config/openthread-core-config-check.h",
     "config/openthread-core-default-config.h",
     "config/parent_search.h",
+    "config/ping_sender.h",
     "config/platform.h",
     "config/radio_link.h",
     "config/sntp_client.h",

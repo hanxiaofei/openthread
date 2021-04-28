@@ -37,6 +37,7 @@
 #include "openthread-core-config.h"
 
 #include <openthread/srp_client.h>
+#include <openthread/srp_client_buffers.h>
 
 #include "cli/cli_config.h"
 #include "utils/lookup_table.hpp"
@@ -75,23 +76,8 @@ public:
 private:
     enum : uint8_t
     {
-        kMaxServices      = OPENTHREAD_CONFIG_CLI_SRP_CLIENT_MAX_SERVICES,
-        kMaxHostAddresses = OPENTHREAD_CONFIG_CLI_SRP_CLIENT_MAX_HOST_ADDRESSES,
-        kNameSize         = 64,
-        kTxtSize          = 255,
+        kMaxHostAddresses = OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_MAX_HOST_ADDRSSES,
         kIndentSize       = 4,
-    };
-
-    struct Service
-    {
-        void MarkAsNotInUse(void) { mService.mNext = &mService; }
-        bool IsInUse(void) const { return (mService.mNext != &mService); }
-
-        otSrpClientService mService;
-        otDnsTxtEntry      mTxtEntry;
-        char               mInstanceName[kNameSize];
-        char               mServiceName[kNameSize];
-        uint8_t            mTxtBuffer[kTxtSize];
     };
 
     struct Command
@@ -100,13 +86,17 @@ private:
         otError (SrpClient::*mHandler)(uint8_t aArgsLength, char *aArgs[]);
     };
 
+    otError ProcessAutoStart(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessCallback(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessHelp(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessHost(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessLeaseInterval(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessKeyLeaseInterval(uint8_t aArgsLength, char *aArgs[]);
+    otError ProcessServer(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessService(uint8_t aArgsLength, char *aArgs[]);
+    otError ProcessServiceAdd(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessStart(uint8_t aArgsLength, char *aArgs[]);
+    otError ProcessState(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessStop(uint8_t aArgsLength, char *aArgs[]);
 
     void OutputHostInfo(uint8_t aIndentSize, const otSrpClientHostInfo &aHostInfo);
@@ -124,13 +114,16 @@ private:
                                const otSrpClientService * aRemovedServices);
 
     static constexpr Command sCommands[] = {
+        {"autostart", &SrpClient::ProcessAutoStart},
         {"callback", &SrpClient::ProcessCallback},
         {"help", &SrpClient::ProcessHelp},
         {"host", &SrpClient::ProcessHost},
         {"keyleaseinterval", &SrpClient::ProcessKeyLeaseInterval},
         {"leaseinterval", &SrpClient::ProcessLeaseInterval},
+        {"server", &SrpClient::ProcessServer},
         {"service", &SrpClient::ProcessService},
         {"start", &SrpClient::ProcessStart},
+        {"state", &SrpClient::ProcessState},
         {"stop", &SrpClient::ProcessStop},
     };
 
@@ -138,9 +131,6 @@ private:
 
     Interpreter &mInterpreter;
     bool         mCallbackEnabled;
-    char         mHostName[kNameSize];
-    otIp6Address mHostAddresses[kMaxHostAddresses];
-    Service      mServicePool[kMaxServices];
 };
 
 } // namespace Cli

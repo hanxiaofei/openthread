@@ -46,6 +46,31 @@
 #endif
 
 /**
+ * @def OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_API_ENABLE
+ *
+ * Define to 1 to enable SRP Client auto-start feature and its APIs.
+ *
+ * When enabled, the SRP client can be configured to automatically start when it detects the presence of an SRP server
+ *  (by monitoring the Thread Network Data for SRP Server Service entries).
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_API_ENABLE
+#define OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_API_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_DEFAULT_MODE
+ *
+ * Define the default mode (enabled or disabled) of auto-start mode.
+ *
+ * This config is applicable only when `OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_API_ENABLE` is enabled.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_DEFAULT_MODE
+#define OPENTHREAD_CONFIG_SRP_CLIENT_AUTO_START_DEFAULT_MODE 0
+#endif
+
+/**
  * @def OPENTHREAD_CONFIG_SRP_CLIENT_DOMAIN_NAME_API_ENABLE
  *
  * Define to 1 for the SRP client implementation to provide APIs that get/set the domain name.
@@ -192,5 +217,74 @@
 #ifndef OPENTHREAD_CONFIG_SRP_CLIENT_RETRY_INTERVAL_GROWTH_FACTOR_DENOMINATOR
 #define OPENTHREAD_CONFIG_SRP_CLIENT_RETRY_INTERVAL_GROWTH_FACTOR_DENOMINATOR 10
 #endif
+
+/**
+ * @def OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_ENABLE
+ *
+ * Define to 1 to enable SRP Client buffers and service pool feature.
+ *
+ */
+#define OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_ENABLE OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+
+/**
+ * @def OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_MAX_SERVICES
+ *
+ * Specifies number of service entries in the SRP client service pool.
+ *
+ * This config is applicable only when `OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_ENABLE` is enabled.
+ *
+ */
+#define OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_MAX_SERVICES 2
+
+/**
+ * @def OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_MAX_HOST_ADDRSSES
+ *
+ * Specifies number of host IPv6 address entries in the SRP client buffers and service pool.
+ *
+ * This config is applicable only when `OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_ENABLE` is enabled.
+ *
+ */
+#define OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_MAX_HOST_ADDRSSES 2
+
+/**
+ * @def OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_HOST_NAME_SIZE
+ *
+ * Specifies the size (number of chars) of host name string buffer in the SRP client buffers and service pool.
+ *
+ * This config is applicable only when `OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_ENABLE` is enabled.
+ *
+ */
+#define OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_HOST_NAME_SIZE 64
+
+/**
+ * @def OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_SERVICE_NAME_SIZE
+ *
+ * Specifies the size (number of chars) of service name string buffer in the SRP client buffers and service pool.
+ *
+ * This config is applicable only when `OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_ENABLE` is enabled.
+ *
+ */
+#define OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_SERVICE_NAME_SIZE 64
+
+/**
+ * @def OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_SERVICE_INSTANCE_NAME_SIZE
+ *
+ * Specifies the size (number of chars) of service instance name string buffer in the SRP client buffers and service
+ * pool.
+ *
+ * This config is applicable only when `OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_ENABLE` is enabled.
+ *
+ */
+#define OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_SERVICE_INSTANCE_NAME_SIZE 64
+
+/**
+ * @def OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_TXT_BUFFER_SIZE
+ *
+ * Specifies the size (number of bytes) of TXT record value buffer in the SRP client buffers and service pool.
+ *
+ * This config is applicable only when `OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_ENABLE` is enabled.
+ *
+ */
+#define OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_TXT_BUFFER_SIZE 64
 
 #endif // CONFIG_SRP_CLIENT_H_

@@ -38,7 +38,6 @@
 #include "lib/spinel/radio_spinel.hpp"
 
 #if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_UART
-
 #include "hdlc_interface.hpp"
 
 #if OPENTHREAD_POSIX_VIRTUAL_TIME
@@ -103,10 +102,8 @@ void platformRadioInit(otUrl *aRadioUrl)
     bool                 resetRadio             = (radioUrl.GetValue("no-reset") == nullptr);
     bool                 restoreDataset         = (radioUrl.GetValue("ncp-dataset") != nullptr);
     bool                 skipCompatibilityCheck = (radioUrl.GetValue("skip-rcp-compatibility-check") != nullptr);
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+    spinel_iid_t         iid                    = 0;
     const char *         iidString              = radioUrl.GetValue("iid");
-    spinel_iid_t         iid                    = (iidString == nullptr ? 0 : (static_cast<spinel_iid_t>(atoi(iidString))));
-#endif
     const char *         parameterValue;
     const char *         region;
 #if OPENTHREAD_POSIX_CONFIG_MAX_POWER_TABLE_ENABLE
@@ -121,10 +118,14 @@ void platformRadioInit(otUrl *aRadioUrl)
 #endif
 
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
-    sRadioSpinel.Init(resetRadio, restoreDataset, skipCompatibilityCheck, iid);
+    VerifyOrDie(iidString != nullptr, OT_EXIT_INVALID_ARGUMENTS);
+    iid = static_cast<spinel_iid_t>(atoi(iidString));
+    VerifyOrDie(iid != 0 && iid <= SPINEL_HEADER_IID_MAX, OT_EXIT_INVALID_ARGUMENTS);
 #else
-    sRadioSpinel.Init(resetRadio, restoreDataset, skipCompatibilityCheck);
+    VerifyOrDie(iidString == nullptr, OT_EXIT_INVALID_ARGUMENTS);
 #endif
+
+    sRadioSpinel.Init(resetRadio, restoreDataset, skipCompatibilityCheck, iid);
 
     parameterValue = radioUrl.GetValue("fem-lnagain");
     if (parameterValue != nullptr)

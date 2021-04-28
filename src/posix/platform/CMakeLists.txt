@@ -53,8 +53,6 @@ if(NOT OT_CONFIG)
     set(OT_CONFIG ${OT_CONFIG} PARENT_SCOPE)
 endif()
 
-list(APPEND OT_PLATFORM_DEFINES "OPENTHREAD_POSIX=1")
-
 set(OT_PLATFORM_DEFINES ${OT_PLATFORM_DEFINES} PARENT_SCOPE)
 
 list(APPEND OT_PLATFORM_DEFINES "OPENTHREAD_PROJECT_CORE_CONFIG_FILE=\"${OT_CONFIG}\"")
@@ -62,10 +60,12 @@ list(APPEND OT_PLATFORM_DEFINES "OPENTHREAD_PROJECT_CORE_CONFIG_FILE=\"${OT_CONF
 add_library(openthread-posix
     alarm.cpp
     backbone.cpp
+    daemon.cpp
     entropy.cpp
     hdlc_interface.cpp
     infra_if.cpp
     logging.cpp
+    memory.cpp
     misc.cpp
     multicast_routing.cpp
     netif.cpp
@@ -75,7 +75,6 @@ add_library(openthread-posix
     spi_interface.cpp
     system.cpp
     trel_udp6.cpp
-    uart.cpp
     udp.cpp
     virtual_time.cpp
 )

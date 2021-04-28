@@ -91,12 +91,12 @@ public:
     static NcpBase *GetNcpInstance(void);
 
     /**
-     * This method returns the IID of the current SPINEL command.
+     * This method returns the IID of the current spinel command.
      *
      * @returns IID.
      *
      */
-    uint8_t GetIid(void);
+    spinel_iid_t GetCurCommandIid(void);
 
     /**
      * This method sends data to host via specific stream.
@@ -208,9 +208,7 @@ protected:
      */
     struct ResponseEntry
     {
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
         uint8_t      mIid : 2;              ///< Spinel interface id.
-#endif
         uint8_t      mTid : 4;              ///< Spinel transaction id.
         bool         mIsInUse : 1;          ///< `true` if this entry is in use, `false` otherwise.
         ResponseType mType : 2;             ///< Response type.
@@ -268,7 +266,7 @@ protected:
         return EnqueueResponse(aHeader, kResponseTypeLastStatus, aStatus);
     }
 
-    static uint8_t GetWrappedResponseQueueIndex(uint8_t aPosition);
+    static uint8_t GetWrappedQueueIndex(uint8_t aPosition, uint8_t aQueueSize);
 
     static void UpdateChangedProps(Tasklet &aTasklet);
     void        UpdateChangedProps(void);
@@ -347,6 +345,16 @@ protected:
     static void HandleJoinerCallback_Jump(otError aError, void *aContext);
     void        HandleJoinerCallback(otError aError);
 #endif
+
+    static void HandleMlrRegResult_Jump(void *              aContext,
+                                        otError             aError,
+                                        uint8_t             aMlrStatus,
+                                        const otIp6Address *aFailedAddresses,
+                                        uint8_t             aFailedAddressNum);
+    void        HandleMlrRegResult(otError             aError,
+                                   uint8_t             aMlrStatus,
+                                   const otIp6Address *aFailedAddresses,
+                                   uint8_t             aFailedAddressNum);
 
     otError EncodeOperationalDataset(const otOperationalDataset &aDataset);
 
@@ -437,7 +445,7 @@ protected:
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     static_assert(OPENTHREAD_CONFIG_DIAG_OUTPUT_BUFFER_SIZE <=
                       OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE - kSpinelCmdHeaderSize - kSpinelPropIdSize,
-                  "diag output buffer should be smaller than NCP UART tx buffer");
+                  "diag output buffer should be smaller than NCP HDLC tx buffer");
 
     otError HandlePropertySet_SPINEL_PROP_NEST_STREAM_MFG(uint8_t aHeader);
 #endif
@@ -570,11 +578,7 @@ protected:
 
     uint8_t mTxBuffer[kTxBufferSize];
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     spinel_tid_t mNextExpectedTid[4];
-#else
-    spinel_tid_t mNextExpectedTid;
-#endif  
 
     uint8_t       mResponseQueueHead;
     uint8_t       mResponseQueueTail;
@@ -597,15 +601,45 @@ protected:
     uint8_t mPreferredRouteId;
 #endif
 
-#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     uint8_t mCurCommandIID;
-#endif
 
 #if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
+    uint8_t mCurTransmitIID;
     uint8_t mCurTransmitTID;
     int8_t  mCurScanChannel;
     bool    mSrcMatchEnabled;
 #endif // OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
+
+#if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
+#if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
+#define kPendingCommandQueueSize SPINEL_HEADER_IID_MAX
+
+    enum PendingCommandType
+    {
+        kPendingCommandTypeTransmit,
+        kPendingCommandTypeEnergyScan,
+    };
+
+    struct PendingCommandEntry
+    {
+        uint8_t      mType : 2;
+        uint8_t      mIid : 2;
+        uint8_t      mTid : 4;
+        uint8_t      mScanChannel;
+        otRadioFrame mTransmitFrame;
+        uint8_t      mTransmitPsdu[127];
+    };
+
+    uint8_t             mPendingCommandQueueHead;
+    uint8_t             mPendingCommandQueueTail;
+    PendingCommandEntry mPendingCommandQueue[kPendingCommandQueueSize];
+
+    otError EnqueuePendingCommand(PendingCommandType aType, uint8_t aHeader, uint8_t aScanChannel);
+    otError HandlePendingTransmit(PendingCommandEntry *entry);
+    otError HandlePendingEnergyScan(PendingCommandEntry *entry);
+    void    HandlePendingCommands(void);
+#endif // OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
+#endif // OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
 
 #if OPENTHREAD_MTD || OPENTHREAD_FTD
     otMessageQueue mMessageQueue;
@@ -620,19 +654,7 @@ protected:
 #if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
     enum : uint8_t
     {
-        kSrpClientMaxServices      = OPENTHREAD_CONFIG_NCP_SRP_CLIENT_MAX_SERVICES,
-        kSrpClientMaxHostAddresses = OPENTHREAD_CONFIG_NCP_SRP_CLIENT_MAX_HOST_ADDRESSES,
-        kSrpClientNameSize         = 64,
-    };
-
-    struct SrpClientService
-    {
-        void MarkAsNotInUse(void) { mService.mNext = &mService; }
-        bool IsInUse(void) const { return (mService.mNext != &mService); }
-
-        otSrpClientService mService;
-        char               mInstanceName[kSrpClientNameSize];
-        char               mServiceName[kSrpClientNameSize];
+        kSrpClientMaxHostAddresses = OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_MAX_HOST_ADDRSSES,
     };
 
     otError EncodeSrpClientHostInfo(const otSrpClientHostInfo &aHostInfo);
@@ -648,11 +670,7 @@ protected:
                                         const otSrpClientService * aServices,
                                         const otSrpClientService * aRemovedServices);
 
-    char             mSrpClientHostName[kSrpClientNameSize];
-    SrpClientService mSrpClientServicePool[kSrpClientMaxServices];
-    otIp6Address     mSrpClientHostAddresses[kSrpClientMaxHostAddresses];
-    uint8_t          mSrpClientNumHostAddresses;
-    bool             mSrpClientCallbackEnabled;
+    bool mSrpClientCallbackEnabled;
 #endif // OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
 
 #if OPENTHREAD_CONFIG_LEGACY_ENABLE
