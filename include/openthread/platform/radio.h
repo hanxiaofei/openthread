@@ -38,8 +38,6 @@
 
 #include <stdint.h>
 
-#include "openthread-core-config.h"
-
 #include <openthread/error.h>
 #include <openthread/instance.h>
 #include <openthread/platform/psa.h>

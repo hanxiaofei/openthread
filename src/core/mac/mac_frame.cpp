@@ -1342,7 +1342,7 @@ Error RxFrame::ProcessReceiveAesCcm(const ExtAddress &aExtAddress, otMacKeyRef a
 {
 #if OPENTHREAD_RADIO
     OT_UNUSED_VARIABLE(aExtAddress);
-    OT_UNUSED_VARIABLE(aMacKey);
+    OT_UNUSED_VARIABLE(aMacKeyRef);
 
     return kErrorNone;
 #else
