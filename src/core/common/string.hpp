@@ -79,6 +79,18 @@ uint16_t StringLength(const char *aString, uint16_t aMaxLength);
 const char *StringFind(const char *aString, char aChar);
 
 /**
+ * This function checks whether a null-terminated string ends with a given character.
+ *
+ * @param[in] aString  A pointer to the string.
+ * @param[in] aChar    A char to check.
+ *
+ * @retval TRUE   If @p aString ends with character @p aChar.
+ * @retval FALSE  If @p aString does not end with character @p aChar.
+ *
+ */
+bool StringEndsWith(const char *aString, char aChar);
+
+/**
  * This class defines the base class for `String`.
  *
  */
@@ -264,11 +276,6 @@ private:
 };
 
 /**
- * @}
- *
- */
-
-/**
  * This function validates whether a given byte sequence (string) follows UTF-8 encoding.
  *
  * @param[in]  aString  A null-terminated byte sequence.
@@ -290,6 +297,11 @@ bool IsValidUtf8String(const char *aString);
  *
  */
 bool IsValidUtf8String(const char *aString, size_t aLength);
+
+/**
+ * @}
+ *
+ */
 
 } // namespace ot
 

@@ -283,6 +283,19 @@ public:
     void OutputEnabledDisabledStatus(bool aEnabled);
 
     /**
+     * This static method checks a given string against "enable" or "disable" commands.
+     *
+     * @param[in]  aString  The string to parse.
+     * @param[out] aEnable  Boolean variable to return outcome on success.
+     *                      Set to TRUE for "enable" command, and FALSE for "disable" command.
+     *
+     * @retval OT_ERROR_NONE             Successfully parsed the @p aString and updated @p aEnable.
+     * @retval OT_ERROR_INVALID_COMMAND  The @p aString is not "enable" or "disable" command.
+     *
+     */
+    static otError ParseEnableOrDisable(const char *aString, bool &aEnable);
+
+    /**
      * This method sets the user command table.
      *
      * @param[in]  aUserCommands  A pointer to an array with user commands.
@@ -319,6 +332,9 @@ private:
     otError ProcessCcaThreshold(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessBufferInfo(uint8_t aArgsLength, char *aArgs[]);
     otError ProcessChannel(uint8_t aArgsLength, char *aArgs[]);
+#if OPENTHREAD_CONFIG_BORDER_AGENT_ENABLE
+    otError ProcessBorderAgent(uint8_t aArgsLength, char *aArgs[]);
+#endif
 #if OPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE
     otError ProcessBorderRouting(uint8_t aArgsLength, char *aArgs[]);
 #endif
@@ -374,10 +390,9 @@ private:
     otError ProcessDiag(uint8_t aArgsLength, char *aArgs[]);
 #endif
     otError ProcessDiscover(uint8_t aArgsLength, char *aArgs[]);
-#if OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
     otError ProcessDns(uint8_t aArgsLength, char *aArgs[]);
-#endif
 #if OPENTHREAD_FTD
+    void    OutputEidCacheEntry(const otCacheEntryInfo &aEntry);
     otError ProcessEidCache(uint8_t aArgsLength, char *aArgs[]);
 #endif
     otError ProcessEui64(uint8_t aArgsLength, char *aArgs[]);
@@ -448,6 +463,7 @@ private:
     otError ProcessNetworkDataPrefix(void);
     otError ProcessNetworkDataRoute(void);
     otError ProcessNetworkDataService(void);
+    void    OutputPrefix(const otMeshLocalPrefix &aPrefix);
     void    OutputPrefix(const otBorderRouterConfig &aConfig);
     void    OutputRoute(const otExternalRouteConfig &aConfig);
     void    OutputService(const otServiceConfig &aConfig);
@@ -540,6 +556,7 @@ private:
 
 #if OPENTHREAD_CONFIG_PING_SENDER_ENABLE
     static void HandlePingReply(const otPingSenderReply *aReply, void *aContext);
+    static void HandlePingStatistics(const otPingSenderStatistics *aStatistics, void *aContext);
 #endif
     static void HandleActiveScanResult(otActiveScanResult *aResult, void *aContext);
     static void HandleEnergyScanResult(otEnergyScanResult *aResult, void *aContext);
@@ -582,6 +599,7 @@ private:
 
 #if OPENTHREAD_CONFIG_PING_SENDER_ENABLE
     void HandlePingReply(const otPingSenderReply *aReply);
+    void HandlePingStatistics(const otPingSenderStatistics *aStatistics);
 #endif
     void HandleActiveScanResult(otActiveScanResult *aResult);
     void HandleEnergyScanResult(otEnergyScanResult *aResult);
@@ -624,6 +642,9 @@ private:
     void HandleDiscoveryRequest(const otThreadDiscoveryRequestInfo &aInfo);
 
     static constexpr Command sCommands[] = {
+#if OPENTHREAD_CONFIG_BORDER_AGENT_ENABLE
+        {"ba", &Interpreter::ProcessBorderAgent},
+#endif
 #if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
         {"bbr", &Interpreter::ProcessBackboneRouter},
 #endif
@@ -669,9 +690,7 @@ private:
         {"diag", &Interpreter::ProcessDiag},
 #endif
         {"discover", &Interpreter::ProcessDiscover},
-#if OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
         {"dns", &Interpreter::ProcessDns},
-#endif
 #if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
         {"domainname", &Interpreter::ProcessDomainName},
 #endif

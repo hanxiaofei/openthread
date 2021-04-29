@@ -201,10 +201,10 @@ private:
     static void HandleDuaResponse(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo, Error aResult)
     {
         static_cast<DuaManager *>(aContext)->HandleDuaResponse(
-            *static_cast<Coap::Message *>(aMessage), *static_cast<const Ip6::MessageInfo *>(aMessageInfo), aResult);
+            static_cast<Coap::Message *>(aMessage), static_cast<const Ip6::MessageInfo *>(aMessageInfo), aResult);
     }
 
-    void HandleDuaResponse(Coap::Message &aMessage, const Ip6::MessageInfo &aMessageInfo, Error aResult);
+    void HandleDuaResponse(Coap::Message *aMessage, const Ip6::MessageInfo *aMessageInfo, Error aResult);
 
     static void HandleDuaNotification(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo)
     {
@@ -227,7 +227,7 @@ private:
 #if OPENTHREAD_CONFIG_DUA_ENABLE
     enum DuaState
     {
-        kNotExist,    ///< DUA is not avaiable.
+        kNotExist,    ///< DUA is not available.
         kToRegister,  ///< DUA is to be registered.
         kRegistering, ///< DUA is being registered.
         kRegistered,  ///< DUA is registered.

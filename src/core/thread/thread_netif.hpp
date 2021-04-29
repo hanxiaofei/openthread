@@ -82,6 +82,7 @@
 #include "net/dns_client.hpp"
 #include "net/dnssd_server.hpp"
 #include "net/ip6_filter.hpp"
+#include "net/nd_agent.hpp"
 #include "net/netif.hpp"
 #include "net/sntp_client.hpp"
 #include "net/srp_client.hpp"
@@ -102,6 +103,7 @@
 #include "thread/radio_selector.hpp"
 #include "thread/time_sync_service.hpp"
 #include "utils/child_supervision.hpp"
+#include "utils/srp_client_buffers.hpp"
 
 #if OPENTHREAD_CONFIG_IP6_SLAAC_ENABLE
 #include "utils/slaac_address.hpp"
@@ -191,13 +193,16 @@ public:
     bool IsOnMesh(const Ip6::Address &aAddress) const;
 
 private:
-    Tmf::TmfAgent mTmfAgent;
+    Tmf::Agent mTmfAgent;
 #if OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
     Dhcp6::Client mDhcp6Client;
-#endif // OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
+#endif
 #if OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
     Dhcp6::Server mDhcp6Server;
-#endif // OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
+#endif
+#if OPENTHREAD_CONFIG_NEIGHBOR_DISCOVERY_AGENT_ENABLE
+    NeighborDiscovery::Agent mNeighborDiscoveryAgent;
+#endif
 #if OPENTHREAD_CONFIG_IP6_SLAAC_ENABLE
     Utils::Slaac mSlaac;
 #endif
@@ -206,6 +211,9 @@ private:
 #endif
 #if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
     Srp::Client mSrpClient;
+#endif
+#if OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_ENABLE
+    Utils::SrpClientBuffers mSrpClientBuffers;
 #endif
 #if OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE
     Dns::ServiceDiscovery::Server mDnssdServer;

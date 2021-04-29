@@ -320,25 +320,6 @@ public:
      */
     Error Receive(uint8_t aChannel);
 
-#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
-    /**
-     * This method lets `SubMac` start CSL sample.
-     *
-     * `SubMac` would switch the radio state between `Receive` and `Sleep` according the CSL timer. When CslSample is
-     * started, `mState` will become `kStateCslSample`. But it could be doing `Sleep` or `Receive` at this moment
-     * (depending on `mCslState`).
-     *
-     * @param[in]  aPanChannel  The current phy channel used by the device. This param will only take effect when CSL
-     *                          channel hasn't been explicitly specified.
-     *
-     * @retval kErrorNone          Successfully entered CSL operation (sleep or receive according to CSL timer).
-     * @retval kErrorBusy          The radio was transmitting.
-     * @retval kErrorInvalidState  The radio was disabled.
-     *
-     */
-    Error CslSample(uint8_t aPanChannel);
-#endif
-
     /**
      * This method gets the radio transmit frame.
      *
@@ -400,6 +381,23 @@ public:
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
 
     /**
+     * This method lets `SubMac` start CSL sample.
+     *
+     * `SubMac` would switch the radio state between `Receive` and `Sleep` according the CSL timer. When CslSample is
+     * started, `mState` will become `kStateCslSample`. But it could be doing `Sleep` or `Receive` at this moment
+     * (depending on `mCslState`).
+     *
+     * @param[in]  aPanChannel  The current phy channel used by the device. This param will only take effect when CSL
+     *                          channel hasn't been explicitly specified.
+     *
+     * @retval kErrorNone          Successfully entered CSL operation (sleep or receive according to CSL timer).
+     * @retval kErrorBusy          The radio was transmitting.
+     * @retval kErrorInvalidState  The radio was disabled.
+     *
+     */
+    Error CslSample(uint8_t aPanChannel);
+
+    /**
      * This method gets the CSL channel.
      *
      * @returns CSL channel.
@@ -445,21 +443,6 @@ public:
      */
     void SetCslPeriod(uint16_t aPeriod);
 
-    /**
-     * This method gets the CSL timeout.
-     *
-     * @returns CSL timeout
-     *
-     */
-    uint32_t GetCslTimeout(void) const { return mCslTimeout; }
-
-    /**
-     * This method sets the CSL timeout.
-     *
-     * @param[in]  aTimeout  The CSL timeout in seconds.
-     *
-     */
-    void SetCslTimeout(uint32_t aTimeout);
 #endif // OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
 
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
@@ -557,6 +540,7 @@ private:
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
     static void HandleCslTimer(Timer &aTimer);
     void        HandleCslTimer(void);
+    void        GetCslWindowEdges(uint32_t &ahead, uint32_t &after);
 #endif
 
     enum
@@ -593,12 +577,18 @@ private:
 
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
     enum : uint32_t{
-        kCslSampleWindow = OPENTHREAD_CONFIG_CSL_SAMPLE_WINDOW *
-                           kUsPerTenSymbols, ///< The SSED sample window in units of microseconds.
+        kMinCslWindow = OPENTHREAD_CONFIG_CSL_MIN_RECEIVE_ON, ///< CSL receive window for the longest possible
+                                                              ///< frame and ack duration.
         kCslReceiveTimeAhead =
             OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD, ///< CSL receivers would wake up `kCslReceiveTimeAhead` earlier
-                                                      ///< than expected sample window. The time is in unit of 10
-                                                      ///< symbols.
+                                                      ///< than expected sample window. The time is in unit of
+                                                      ///< microseconds.
+    };
+
+    enum : uint8_t{
+        kCslWorstCrystalPpm  = 255, ///< Worst possible crystal accuracy, in units of ± ppm.
+        kCslWorstUncertainty = 255, ///< Worst possible scheduling uncertainty, in units of 100 us.
+        kUsPerUncertUnit     = 100, ///< Number of microseconds by uncertainty unit.
     };
 
     /**
@@ -622,6 +612,7 @@ private:
     bool RadioSupportsAckTimeout(void) const { return ((mRadioCaps & OT_RADIO_CAPS_ACK_TIMEOUT) != 0); }
     bool RadioSupportsEnergyScan(void) const { return ((mRadioCaps & OT_RADIO_CAPS_ENERGY_SCAN) != 0); }
     bool RadioSupportsTransmitTiming(void) const { return ((mRadioCaps & OT_RADIO_CAPS_TRANSMIT_TIMING) != 0); }
+    bool RadioSupportsReceiveTiming(void) const { return ((mRadioCaps & OT_RADIO_CAPS_RECEIVE_TIMING) != 0); }
 
     bool ShouldHandleTransmitSecurity(void) const;
     bool ShouldHandleCsmaBackOff(void) const;
@@ -682,13 +673,16 @@ private:
 #endif
 
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
-    uint32_t  mCslTimeout;     ///< The CSL synchronized timeout in seconds.
-    TimeMicro mCslSampleTime;  ///< The CSL sample time of the current period.
-    uint16_t  mCslPeriod;      ///< The CSL sample period, in units of 10 symbols (160 microseconds).
-    uint8_t   mCslChannel : 7; ///< The actually CSL sample channel. If `mIsCslChannelSpecified` is 0, this should be
-                               ///< equal to the Pan channel of `Mac`.
+    uint16_t mCslPeriod;      ///< The CSL sample period, in units of 10 symbols (160 microseconds).
+    uint8_t  mCslChannel : 7; ///< The actually CSL sample channel. If `mIsCslChannelSpecified` is 0, this should be
+                              ///< equal to the Pan channel of `Mac`.
     uint8_t mIsCslChannelSpecified : 1; ///< Indicates whether or not the CSL channel was explicitly specified by
                                         ///< the user.
+
+    TimeMicro mCslSampleTime;   ///< The CSL sample time of the current period.
+    TimeMicro mCslLastSync;     ///< The timestamp of the last successful CSL syncronization.
+    uint8_t   mCslParentDrift;  ///< Drift of timer used for scheduling CSL transmission by the parent, in ± ppm.
+    uint8_t   mCslParentUncert; ///< Uncertainty of the scheduling CSL of transmission by the parent, in ±100 us units.
 
     CslState mCslState;
 

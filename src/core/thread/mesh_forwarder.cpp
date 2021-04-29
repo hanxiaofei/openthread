@@ -37,7 +37,7 @@
 #include "common/debug.hpp"
 #include "common/encoding.hpp"
 #include "common/instance.hpp"
-#include "common/locator-getters.hpp"
+#include "common/locator_getters.hpp"
 #include "common/logging.hpp"
 #include "common/message.hpp"
 #include "common/random.hpp"
@@ -361,11 +361,11 @@ Error MeshForwarder::UpdateIp6Route(Message &aMessage)
 
     if (ip6Header.GetDestination().IsMulticast())
     {
-        // With the exception of MLE multicasts, an End Device
-        // transmits multicasts, as IEEE 802.15.4 unicasts to its
-        // parent.
+        // With the exception of MLE multicasts and any other message
+        // with link security disabled, an End Device transmits
+        // multicasts, as IEEE 802.15.4 unicasts to its parent.
 
-        if (mle.IsChild() && !aMessage.IsSubTypeMle())
+        if (mle.IsChild() && aMessage.IsLinkSecurityEnabled())
         {
             mMacDest.SetShort(mle.GetNextHop(Mac::kShortAddrBroadcast));
         }
@@ -1536,18 +1536,20 @@ bool MeshForwarder::CalcIePresent(const Message *aMessage)
 
     OT_UNUSED_VARIABLE(aMessage);
 
+#if OPENTHREAD_CONFIG_MAC_HEADER_IE_SUPPORT
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
     iePresent |= (aMessage != nullptr && aMessage->IsTimeSync());
 #endif
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
     iePresent |= Get<Mac::Mac>().IsCslEnabled();
 #endif
+#endif
 
     return iePresent;
 }
 
 #if OPENTHREAD_CONFIG_MAC_HEADER_IE_SUPPORT
-void MeshForwarder::AppendHeaderIe(const Message *aMessage, Mac::Frame &aFrame)
+void MeshForwarder::AppendHeaderIe(const Message *aMessage, Mac::TxFrame &aFrame)
 {
     uint8_t index     = 0;
     bool    iePresent = false;

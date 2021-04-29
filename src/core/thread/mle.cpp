@@ -40,7 +40,7 @@
 #include "common/debug.hpp"
 #include "common/encoding.hpp"
 #include "common/instance.hpp"
-#include "common/locator-getters.hpp"
+#include "common/locator_getters.hpp"
 #include "common/logging.hpp"
 #include "common/random.hpp"
 #include "common/settings.hpp"
@@ -93,6 +93,9 @@ Mle::Mle(Instance &aInstance)
     , mReceivedResponseFromParent(false)
     , mSocket(aInstance)
     , mTimeout(kMleEndDeviceTimeout)
+#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
+    , mCslTimeout(OPENTHREAD_CONFIG_CSL_TIMEOUT)
+#endif
 #if OPENTHREAD_CONFIG_MLE_INFORM_PREVIOUS_PARENT_ON_REATTACH
     , mPreviousParentRloc(Mac::kShortAddrInvalid)
 #endif
@@ -855,6 +858,10 @@ void Mle::ApplyMeshLocalPrefix(void)
     Get<Dhcp6::Server>().ApplyMeshLocalPrefix();
 #endif
 
+#if OPENTHREAD_CONFIG_NEIGHBOR_DISCOVERY_AGENT_ENABLE
+    Get<NeighborDiscovery::Agent>().ApplyMeshLocalPrefix();
+#endif
+
 #if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
 
     for (Ip6::NetifUnicastAddress &serviceAloc : mServiceAlocs)
@@ -894,7 +901,7 @@ void Mle::SetRloc16(uint16_t aRloc16)
         // Clear cached CoAP with old RLOC source
         if (oldRloc16 != Mac::kShortAddrInvalid)
         {
-            Get<Tmf::TmfAgent>().ClearRequests(mMeshLocal16.GetAddress());
+            Get<Tmf::Agent>().ClearRequests(mMeshLocal16.GetAddress());
         }
     }
 
@@ -1451,8 +1458,24 @@ exit:
 Error Mle::AppendCslTimeout(Message &aMessage)
 {
     OT_ASSERT(Get<Mac::Mac>().IsCslEnabled());
-    return Tlv::Append<CslTimeoutTlv>(aMessage, Get<Mac::Mac>().GetCslTimeout() == 0 ? mTimeout
-                                                                                     : Get<Mac::Mac>().GetCslTimeout());
+    return Tlv::Append<CslTimeoutTlv>(aMessage, mCslTimeout == 0 ? mTimeout : mCslTimeout);
+}
+
+void Mle::SetCslTimeout(uint32_t aTimeout)
+{
+    VerifyOrExit(mCslTimeout != aTimeout);
+
+    mCslTimeout = aTimeout;
+
+    Get<DataPollSender>().RecalculatePollPeriod();
+
+    if (Get<Mac::Mac>().IsCslEnabled())
+    {
+        ScheduleChildUpdateRequest();
+    }
+
+exit:
+    return;
 }
 #endif // OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
 
@@ -1537,11 +1560,15 @@ void Mle::HandleNotifierEvents(Events aEvents)
 
 #if OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
         IgnoreError(Get<Dhcp6::Server>().UpdateService());
-#endif // OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
+#endif
+
+#if OPENTHREAD_CONFIG_NEIGHBOR_DISCOVERY_AGENT_ENABLE
+        Get<NeighborDiscovery::Agent>().UpdateService();
+#endif
 
 #if OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
         Get<Dhcp6::Client>().UpdateAddresses();
-#endif // OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
+#endif
     }
 
     if (aEvents.ContainsAny(kEventThreadRoleChanged | kEventThreadKeySeqCounterChanged))
@@ -1557,7 +1584,7 @@ void Mle::HandleNotifierEvents(Events aEvents)
 
     if (aEvents.Contains(kEventSecurityPolicyChanged))
     {
-        Get<Ip6::Filter>().AllowNativeCommissioner(Get<KeyManager>().IsNativeCommissioningAllowed());
+        Get<Ip6::Filter>().AllowNativeCommissioner(Get<KeyManager>().GetSecurityPolicy().mNativeCommissioningEnabled);
     }
 
 exit:

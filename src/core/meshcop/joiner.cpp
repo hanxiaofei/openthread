@@ -33,13 +33,15 @@
 
 #include "joiner.hpp"
 
+#if OPENTHREAD_CONFIG_JOINER_ENABLE
+
 #include <stdio.h>
 
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
 #include "common/encoding.hpp"
 #include "common/instance.hpp"
-#include "common/locator-getters.hpp"
+#include "common/locator_getters.hpp"
 #include "common/logging.hpp"
 #include "common/string.hpp"
 #include "meshcop/meshcop.hpp"
@@ -47,8 +49,6 @@
 #include "thread/thread_netif.hpp"
 #include "thread/uri_paths.hpp"
 #include "utils/otns.hpp"
-
-#if OPENTHREAD_CONFIG_JOINER_ENABLE
 
 namespace ot {
 namespace MeshCoP {
@@ -68,7 +68,7 @@ Joiner::Joiner(Instance &aInstance)
     SetIdFromIeeeEui64();
     mDiscerner.Clear();
     memset(mJoinerRouters, 0, sizeof(mJoinerRouters));
-    Get<Tmf::TmfAgent>().AddResource(mJoinerEntrust);
+    Get<Tmf::Agent>().AddResource(mJoinerEntrust);
 }
 
 void Joiner::SetIdFromIeeeEui64(void)
@@ -595,12 +595,12 @@ void Joiner::SendJoinerEntrustResponse(const Coap::Message &aRequest, const Ip6:
     Coap::Message *  message;
     Ip6::MessageInfo responseInfo(aRequestInfo);
 
-    VerifyOrExit((message = NewMeshCoPMessage(Get<Tmf::TmfAgent>())) != nullptr, error = kErrorNoBufs);
+    VerifyOrExit((message = NewMeshCoPMessage(Get<Tmf::Agent>())) != nullptr, error = kErrorNoBufs);
     SuccessOrExit(error = message->SetDefaultResponseHeader(aRequest));
     message->SetSubType(Message::kSubTypeJoinerEntrust);
 
     responseInfo.GetSockAddr().Clear();
-    SuccessOrExit(error = Get<Tmf::TmfAgent>().SendMessage(*message, responseInfo));
+    SuccessOrExit(error = Get<Tmf::Agent>().SendMessage(*message, responseInfo));
 
     SetState(kStateJoined);
 

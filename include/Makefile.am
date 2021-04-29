@@ -54,6 +54,7 @@ openthread_headers                      = \
     openthread/diag.h                     \
     openthread/dns.h                      \
     openthread/dns_client.h               \
+    openthread/dnssd_server.h             \
     openthread/entropy.h                  \
     openthread/error.h                    \
     openthread/heap.h                     \
@@ -78,6 +79,7 @@ openthread_headers                      = \
     openthread/server.h                   \
     openthread/sntp.h                     \
     openthread/srp_client.h               \
+    openthread/srp_client_buffers.h       \
     openthread/srp_server.h               \
     openthread/tasklet.h                  \
     openthread/thread.h                   \

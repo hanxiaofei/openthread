@@ -337,6 +337,30 @@ protected:
     void        HandleJoinerCallback(otError aError);
 #endif
 
+#if OPENTHREAD_CONFIG_MLE_LINK_METRICS_ENABLE
+    static void HandleLinkMetricsReport_Jump(const otIp6Address *       aSource,
+                                             const otLinkMetricsValues *aMetricsValues,
+                                             uint8_t                    aStatus,
+                                             void *                     aContext);
+
+    void HandleLinkMetricsReport(const otIp6Address *       aSource,
+                                 const otLinkMetricsValues *aMetricsValues,
+                                 uint8_t                    aStatus);
+
+    static void HandleLinkMetricsMgmtResponse_Jump(const otIp6Address *aSource, uint8_t aStatus, void *aContext);
+
+    void HandleLinkMetricsMgmtResponse(const otIp6Address *aSource, uint8_t aStatus);
+
+    static void HandleLinkMetricsEnhAckProbingIeReport_Jump(otShortAddress             aShortAddress,
+                                                            const otExtAddress *       aExtAddress,
+                                                            const otLinkMetricsValues *aMetricsValues,
+                                                            void *                     aContext);
+
+    void HandleLinkMetricsEnhAckProbingIeReport(otShortAddress             aShortAddress,
+                                                const otExtAddress *       aExtAddress,
+                                                const otLinkMetricsValues *aMetricsValues);
+#endif
+
     static void HandleMlrRegResult_Jump(void *              aContext,
                                         otError             aError,
                                         uint8_t             aMlrStatus,
@@ -362,6 +386,12 @@ protected:
 
 #if OPENTHREAD_FTD
     otError EncodeChildInfo(const otChildInfo &aChildInfo);
+#endif
+
+#if OPENTHREAD_CONFIG_MLE_LINK_METRICS_ENABLE
+    otError DecodeLinkMetrics(otLinkMetrics *aMetrics, bool aAllowPduCount);
+
+    otError EncodeLinkMetricsValues(const otLinkMetricsValues *aMetricsValues);
 #endif
 
 #if OPENTHREAD_CONFIG_UDP_FORWARD_ENABLE
@@ -611,19 +641,7 @@ protected:
 #if OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
     enum : uint8_t
     {
-        kSrpClientMaxServices      = OPENTHREAD_CONFIG_NCP_SRP_CLIENT_MAX_SERVICES,
-        kSrpClientMaxHostAddresses = OPENTHREAD_CONFIG_NCP_SRP_CLIENT_MAX_HOST_ADDRESSES,
-        kSrpClientNameSize         = 64,
-    };
-
-    struct SrpClientService
-    {
-        void MarkAsNotInUse(void) { mService.mNext = &mService; }
-        bool IsInUse(void) const { return (mService.mNext != &mService); }
-
-        otSrpClientService mService;
-        char               mInstanceName[kSrpClientNameSize];
-        char               mServiceName[kSrpClientNameSize];
+        kSrpClientMaxHostAddresses = OPENTHREAD_CONFIG_SRP_CLIENT_BUFFERS_MAX_HOST_ADDRESSES,
     };
 
     otError EncodeSrpClientHostInfo(const otSrpClientHostInfo &aHostInfo);
@@ -639,11 +657,7 @@ protected:
                                         const otSrpClientService * aServices,
                                         const otSrpClientService * aRemovedServices);
 
-    char             mSrpClientHostName[kSrpClientNameSize];
-    SrpClientService mSrpClientServicePool[kSrpClientMaxServices];
-    otIp6Address     mSrpClientHostAddresses[kSrpClientMaxHostAddresses];
-    uint8_t          mSrpClientNumHostAddresses;
-    bool             mSrpClientCallbackEnabled;
+    bool mSrpClientCallbackEnabled;
 #endif // OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
 
 #if OPENTHREAD_CONFIG_LEGACY_ENABLE

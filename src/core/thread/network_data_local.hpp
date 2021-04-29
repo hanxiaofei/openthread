@@ -37,10 +37,10 @@
 
 #include "openthread-core-config.h"
 
+#if OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE || OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
+
 #include "common/non_copyable.hpp"
 #include "thread/network_data.hpp"
-
-#if OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE || OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
 
 namespace ot {
 
@@ -74,7 +74,7 @@ public:
     /**
      * This method adds a Border Router entry to the Thread Network Data.
      *
-     * @param[in]  aConfig  A reference to the on mesh perfix configuration.
+     * @param[in]  aConfig  A reference to the on mesh prefix configuration.
      *
      * @retval kErrorNone         Successfully added the Border Router entry.
      * @retval kErrorNoBufs       Insufficient space to add the Border Router entry.
@@ -82,6 +82,17 @@ public:
      *
      */
     Error AddOnMeshPrefix(const OnMeshPrefixConfig &aConfig);
+
+    /**
+     * This method validates an on-mesh prefix.
+     *
+     * @param[in]  aConfig        A reference to the on-mesh perfix configuration.
+     *
+     * @retval kErrorNone         Successfully verified the on-mesh prefix.
+     * @retval kErrorInvalidArgs  The prefix is not a valid on-mesh prefix.
+     *
+     */
+    Error ValidateOnMeshPrefix(const OnMeshPrefixConfig &aConfig);
 
     /**
      * This method removes a Border Router entry from the Thread Network Data.
@@ -99,8 +110,9 @@ public:
      *
      * @param[in]  aConfig       A reference to the external route configuration.
      *
-     * @retval kErrorNone     Successfully added the Has Route entry.
-     * @retval kErrorNoBufs   Insufficient space to add the Has Route entry.
+     * @retval kErrorNone         Successfully added the Has Route entry.
+     * @retval kErrorInvalidArgs  One or more parameters in @p aConfig were invalid.
+     * @retval kErrorNoBufs       Insufficient space to add the Has Route entry.
      *
      */
     Error AddHasRoutePrefix(const ExternalRouteConfig &aConfig);
@@ -170,6 +182,7 @@ public:
 private:
     void UpdateRloc(void);
 #if OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE
+    Error ValidatePrefixAndPreference(const Ip6::Prefix &aPrefix, int8_t aPrf);
     Error AddPrefix(const Ip6::Prefix &  aPrefix,
                     NetworkDataTlv::Type aSubTlvType,
                     int8_t               aPrf,

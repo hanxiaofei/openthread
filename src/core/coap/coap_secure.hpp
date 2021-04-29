@@ -31,6 +31,8 @@
 
 #include "openthread-core-config.h"
 
+#if OPENTHREAD_CONFIG_DTLS_ENABLE
+
 #include "coap/coap.hpp"
 #include "meshcop/dtls.hpp"
 #include "meshcop/meshcop.hpp"
@@ -152,6 +154,14 @@ public:
      *
      */
     MeshCoP::Dtls &GetDtls(void) { return mDtls; }
+
+    /**
+     * This method gets the UDP port of this agent.
+     *
+     * @returns  UDP port number.
+     *
+     */
+    uint16_t GetUdpPort(void) const { return mDtls.GetUdpPort(); }
 
     /**
      * This method sets the PSK.
@@ -409,5 +419,7 @@ private:
 
 } // namespace Coap
 } // namespace ot
+
+#endif // OPENTHREAD_CONFIG_DTLS_ENABLE
 
 #endif // COAP_SECURE_HPP_
