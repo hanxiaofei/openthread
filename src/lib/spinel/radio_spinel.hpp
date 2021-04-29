@@ -1002,7 +1002,7 @@ private:
     size_t mDiagOutputMaxLen;
 #endif
 
-#if OPENTHREAD_CONFIG_RCP_PROCEDURE_CALL_ENABLE
+#if OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
     char * mRCPPC;
     size_t mRCPPCMaxLen;
 #endif

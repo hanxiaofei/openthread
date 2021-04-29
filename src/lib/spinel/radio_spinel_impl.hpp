@@ -212,7 +212,7 @@ RadioSpinel<InterfaceType, ProcessContextType>::RadioSpinel(void)
     , mDiagOutput(nullptr)
     , mDiagOutputMaxLen(0)
 #endif
-#if OPENTHREAD_CONFIG_RCP_PROCEDURE_CALL_ENABLE
+#if OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
     , mRCPPC(nullptr)
     , mRCPPCMaxLen(0)
 #endif
@@ -784,7 +784,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleWaitingResponse(uint3
         VerifyOrExit(unpacked > 0, mError = OT_ERROR_PARSE);
     }
 #endif
-#if OPENTHREAD_CONFIG_RCP_PROCEDURE_CALL_ENABLE
+#if OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
     else if (aKey == SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL)
     {
         spinel_ssize_t unpacked;

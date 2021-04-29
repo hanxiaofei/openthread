@@ -1374,7 +1374,7 @@ exit:
 otError NcpBase::HandlePropertySet_SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL(uint8_t aHeader)
 {
     const char *string = nullptr;
-    char        output[OPENTHREAD_CONFIG_RCP_PROCEDURE_CALL_OUTPUT_BUFFER_SIZE];
+    char        output[OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_OUTPUT_BUFFER_SIZE];
     otError     error = OT_ERROR_NONE;
 
     error = mDecoder.ReadUtf8(string);
