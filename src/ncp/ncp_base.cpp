@@ -980,9 +980,9 @@ bool NcpBase::HandlePropertySetForSpecialProperties(uint8_t aHeader, spinel_prop
         ExitNow(aError = HandlePropertySet_SPINEL_PROP_NEST_STREAM_MFG(aHeader));
 #endif
 
-#if OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
-    case SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL:
-        ExitNow(aError = HandlePropertySet_SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL(aHeader));
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+    case SPINEL_PROP_COPROCESSOR_RPC:
+        ExitNow(aError = HandlePropertySet_SPINEL_PROP_COPROCESSOR_RPC(aHeader));
 #endif
 
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_COMMISSIONER_ENABLE
@@ -1369,12 +1369,12 @@ exit:
 
 #endif // OPENTHREAD_CONFIG_DIAG_ENABLE
 
-#if OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
 
-otError NcpBase::HandlePropertySet_SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL(uint8_t aHeader)
+otError NcpBase::HandlePropertySet_SPINEL_PROP_COPROCESSOR_RPC(uint8_t aHeader)
 {
     const char *string = nullptr;
-    char        output[OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_OUTPUT_BUFFER_SIZE];
+    char        output[OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE];
     otError     error = OT_ERROR_NONE;
 
     error = mDecoder.ReadUtf8(string);
@@ -1386,7 +1386,7 @@ otError NcpBase::HandlePropertySet_SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL(uint8_t
     otDiagProcessCmdLine(mInstance, string, output, sizeof(output) - 1);
 
     // Prepare the response
-    SuccessOrExit(error = mEncoder.BeginFrame(aHeader, SPINEL_CMD_PROP_VALUE_IS, SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL));
+    SuccessOrExit(error = mEncoder.BeginFrame(aHeader, SPINEL_CMD_PROP_VALUE_IS, SPINEL_PROP_COPROCESSOR_RPC));
     SuccessOrExit(error = mEncoder.WriteUtf8(output));
     SuccessOrExit(error = mEncoder.EndFrame());
 
@@ -1394,7 +1394,7 @@ exit:
     return error;
 }
 
-#endif // OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
+#endif // OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
 
 template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_PHY_ENABLED>(void)
 {

@@ -4913,7 +4913,7 @@ void Interpreter::ProcessLine(char *aBuf)
         }
     }
 
-#if OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
     // TODO: Forward command to RCP
 #endif
 

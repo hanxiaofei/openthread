@@ -212,9 +212,9 @@ RadioSpinel<InterfaceType, ProcessContextType>::RadioSpinel(void)
     , mDiagOutput(nullptr)
     , mDiagOutputMaxLen(0)
 #endif
-#if OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
-    , mRCPPC(nullptr)
-    , mRCPPCMaxLen(0)
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+    , mCRPC(nullptr)
+    , mCRPCMaxLen(0)
 #endif
     , mTxRadioEndUs(UINT64_MAX)
     , mRadioTimeRecalcStart(UINT64_MAX)
@@ -784,14 +784,14 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleWaitingResponse(uint3
         VerifyOrExit(unpacked > 0, mError = OT_ERROR_PARSE);
     }
 #endif
-#if OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
-    else if (aKey == SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL)
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+    else if (aKey == SPINEL_PROP_COPROCESSOR_RPC)
     {
         spinel_ssize_t unpacked;
 
-        VerifyOrExit(mRCPPC != nullptr);
+        VerifyOrExit(mCRPC != nullptr);
         unpacked =
-            spinel_datatype_unpack_in_place(aBuffer, aLength, SPINEL_DATATYPE_UTF8_S, mRCPPC, &mRCPPCMaxLen);
+            spinel_datatype_unpack_in_place(aBuffer, aLength, SPINEL_DATATYPE_UTF8_S, mCRPC, &mCRPCMaxLen);
         VerifyOrExit(unpacked > 0, mError = OT_ERROR_PARSE);
     }
 #endif
@@ -2061,21 +2061,21 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::PlatDiagProcess(const ch
 }
 #endif
 
-#if OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
 template <typename InterfaceType, typename ProcessContextType>
-otError RadioSpinel<InterfaceType, ProcessContextType>::PlatRCPPCProcess(const char *aString,
+otError RadioSpinel<InterfaceType, ProcessContextType>::PlatCRPCProcess(const char *aString,
                                                                        char *      aOutput,
                                                                        size_t      aOutputMaxLen)
 {
     otError error;
 
-    mRCPPC       = aOutput;
-    mRCPPCMaxLen = aOutputMaxLen;
+    mCRPC       = aOutput;
+    mCRPCMaxLen = aOutputMaxLen;
 
-    error = Set(SPINEL_PROP_RCP_REMOTE_PROCEDURE_CALL, SPINEL_DATATYPE_UTF8_S, aString);
+    error = Set(SPINEL_PROP_COPROCESSOR_RPC, SPINEL_DATATYPE_UTF8_S, aString);
 
-    mRCPPC       = nullptr;
-    mRCPPCMaxLen = 0;
+    mCRPC       = nullptr;
+    mCRPCMaxLen = 0;
 
     return error;
 }

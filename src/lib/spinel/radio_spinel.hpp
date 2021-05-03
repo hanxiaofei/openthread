@@ -1002,9 +1002,9 @@ private:
     size_t mDiagOutputMaxLen;
 #endif
 
-#if OPENTHREAD_CONFIG_RCP_REMOTE_PROCEDURE_CALL_ENABLE
-    char * mRCPPC;
-    size_t mRCPPCMaxLen;
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+    char * mCRPC;
+    size_t mCRPCMaxLen;
 #endif
 
     uint64_t mTxRadioEndUs;
