@@ -51,7 +51,7 @@ namespace Ncp {
 
 static OT_DEFINE_ALIGNED_VAR(sNcpRaw, sizeof(NcpCPC), uint64_t);
 
-extern "C" void otNcpInit(otInstance *aInstance)
+extern "C" void otAppNcpInit(otInstance *aInstance)
 {
     NcpCPC * ncpCPC  = nullptr;
     Instance *instance = static_cast<Instance *>(aInstance);
@@ -70,7 +70,7 @@ NcpCPC::NcpCPC(Instance *aInstance)
     : NcpBase(aInstance)
     , mIsReady(false)
     , mIsWriting(false)
-    , mCpcSendTask(*aInstance, SendToCPC, this)
+    , mCpcSendTask(*aInstance, SendToCPC)
 {
     sl_status_t status = sl_cpc_open_user_endpoint(&mUserEp, 
                                                    SL_CPC_ENDPOINT_USER_ID_0, 
@@ -117,18 +117,18 @@ void NcpCPC::SendToCPC(void)
 {
     Spinel::Buffer &txFrameBuffer = mTxFrameBuffer;
     uint8_t bufferLen;
-    uint8_t *buffer;
+    //uint8_t *buffer;
 
     VerifyOrExit(mIsReady && !mIsWriting && !txFrameBuffer.IsEmpty());
     
     mIsWriting = true;
     IgnoreError(txFrameBuffer.OutFrameBegin());
     bufferLen = txFrameBuffer.OutFrameGetLength();
-    buffer = (uint8_t *)(malloc(bufferLen*sizeof(uint8_t)));
+    //buffer = (uint8_t *)(malloc(bufferLen*sizeof(uint8_t)));
 
-    txFrameBuffer.OutFrameRead(bufferLen,buffer);
-    
-    sl_cpc_write(&mUserEp, buffer, bufferLen, 0, NULL);
+    //txFrameBuffer.OutFrameRead(bufferLen,buffer);
+    txFrameBuffer.OutFrameRead(bufferLen, mCpcTxBuffer);
+    sl_cpc_write(&mUserEp, mCpcTxBuffer, bufferLen, 0, NULL);
     IgnoreError(txFrameBuffer.OutFrameRemove());
 
 exit:
@@ -146,16 +146,18 @@ void NcpCPC::HandleCPCSendDone(sl_cpc_user_endpoint_id_t endpoint_id,
                                 sl_status_t status)
 {
     OT_UNUSED_VARIABLE(endpoint_id);
+    OT_UNUSED_VARIABLE(buffer);
     OT_UNUSED_VARIABLE(arg);
     OT_UNUSED_VARIABLE(status);
-    free(buffer);
+
     static_cast<NcpCPC *>(GetNcpInstance())->HandleSendDone();
 }
 
 void NcpCPC::HandleSendDone(void)
 {
     mIsWriting = false;
-
+    memset(mCpcTxBuffer, 0, sizeof(mCpcTxBuffer));
+    
     if(!mTxFrameBuffer.IsEmpty())
         mCpcSendTask.Post();
 }
