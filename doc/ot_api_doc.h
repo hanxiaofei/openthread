@@ -119,6 +119,7 @@
  * @}
  *
  * @defgroup api-cli                  Command Line Interface
+ * @defgroup api-coprocessor-rpc      Co-processor Remote Procedure Call
  * @defgroup api-crypto               Crypto
  * @defgroup api-entropy              Entropy Source
  * @defgroup api-factory-diagnostics  Factory Diagnostics
@@ -152,6 +153,7 @@
  * @{
  *
  * @defgroup plat-alarm               Alarm
+ * @defgroup plat-coprocessor-rpc     Co-processor Remore Procedure Call
  * @defgroup plat-entropy             Entropy
  * @defgroup plat-factory-diagnostics Factory Diagnostics
  * @defgroup plat-logging             Logging
