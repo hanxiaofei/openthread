@@ -110,13 +110,6 @@ void platformRadioInit(otUrl *aRadioUrl)
     const char *maxPowerTable;
 #endif
 
-#if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC
-    uint8_t id = 90;
-    SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(id));
-#else
-    SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(radioUrl));
-#endif
-
 #if OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE
     VerifyOrDie(iidString != nullptr, OT_EXIT_INVALID_ARGUMENTS);
     iid = static_cast<spinel_iid_t>(atoi(iidString));
@@ -125,6 +118,12 @@ void platformRadioInit(otUrl *aRadioUrl)
     VerifyOrDie(iidString == nullptr, OT_EXIT_INVALID_ARGUMENTS);
 #endif
 
+#if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC
+    uint8_t id = 90;
+    SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(id));
+#else
+    SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(radioUrl));
+#endif
     sRadioSpinel.Init(resetRadio, restoreDataset, skipCompatibilityCheck, iid);
 
     parameterValue = radioUrl.GetValue("fem-lnagain");
