@@ -59,6 +59,7 @@
 
 #include "common/code_utils.hpp"
 #include "common/logging.hpp"
+#include "lib/spinel/spinel.h"
 
 #if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC
 
@@ -163,6 +164,15 @@ otError CpcInterface::Write(const uint8_t *aFrame, uint16_t aLength)
 {
     otError error = OT_ERROR_NONE;
 
+    // We are catching the SPINEL reset command and returning
+    // a SPINEL reset response immediately
+    if(aLength == 2 && SPINEL_HEADER_GET_TID(*aFrame) == 0 && 
+        *(aFrame + 1) == SPINEL_CMD_RESET)
+    {
+        SendResetResponse();
+        return error;
+    }
+
     while (aLength)
     {
         ssize_t bytesWritten = cpc_write_endpoint(mEndpoint, aFrame, aLength, mWriteFlags);
@@ -204,6 +214,20 @@ void CpcInterface::Process(const RadioProcessContext &aContext)
 {
     Read(0);
 }
+
+void CpcInterface::SendResetResponse(void)
+{   
+    for(int i=0; i<kResetCMDSize; ++i)
+    {
+        if(mReceiveFrameBuffer.CanWrite(sizeof(uint8_t)))
+        {
+            IgnoreError(mReceiveFrameBuffer.WriteByte(mResetCMD[i]));
+        }
+    }
+
+    mReceiveFrameCallback(mReceiveFrameContext);
+}
+
 /**
 otError CpcInterface::WaitForWritable(void)
 {

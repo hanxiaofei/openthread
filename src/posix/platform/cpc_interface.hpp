@@ -176,10 +176,20 @@ private:
      */
     otError Write(const uint8_t *aFrame, uint16_t aLength);
 
+    /**
+     * This method generates and sends a reset response back to OT.
+     *
+     * This method is called after the CPC layer catches the SPINEL reset command. This is done so that 
+     * CPC can handle resets of the RCP and OT is tricked into thinking it handles resets.
+     *
+     */
+    void SendResetResponse(void);
+
     enum
     {
         kMaxFrameSize = Spinel::SpinelInterface::kMaxFrameSize,
         kMaxWaitTime  = 2000, ///< Maximum wait time in Milliseconds for socket to become writable (see `SendFrame`).
+        kResetCMDSize = 4
     };
 
     Spinel::SpinelInterface::ReceiveFrameCallback mReceiveFrameCallback;
@@ -190,6 +200,10 @@ private:
     cpc_endpoint_t      mEndpoint;
     cpc_read_flags_t    mReadFlags;
     cpc_write_flags_t   mWriteFlags;
+
+    // Hard Coded Reset Response
+    // 0x72 -> STATUS_RESET_SOFTWARE
+    uint8_t mResetCMD[kResetCMDSize] = {0x80, 0x06, 0x00, 0x72};
 
     uint8_t             mId;
     typedef uint8_t     cpcError;
