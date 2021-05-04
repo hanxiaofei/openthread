@@ -39,6 +39,7 @@ target_compile_options(openthread-radio PRIVATE
 target_include_directories(openthread-radio PUBLIC ${OT_PUBLIC_INCLUDES} PRIVATE ${COMMON_INCLUDES})
 
 target_sources(openthread-radio PRIVATE
+    api/coprocessor_rpc_api.cpp
     api/diags_api.cpp
     api/error_api.cpp
     api/instance_api.cpp
@@ -53,6 +54,7 @@ target_sources(openthread-radio PRIVATE
     common/string.cpp
     common/tasklet.cpp
     common/timer.cpp
+    coprocessor/rpc.cpp
     crypto/aes_ccm.cpp
     crypto/aes_ecb.cpp
     diags/factory_diags.cpp

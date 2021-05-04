@@ -51,6 +51,7 @@
 #include "common/tasklet.hpp"
 #include "common/time_ticker.hpp"
 #include "common/timer.hpp"
+#include "coprocessor/rpc.hpp"
 #include "diags/factory_diags.hpp"
 #include "radio/radio.hpp"
 
@@ -970,7 +971,7 @@ template <> inline FactoryDiags::Diags &Instance::Get(void)
 #endif
 
 #if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-template <> inline CoprocessorRPC &Instance::Get(void)
+template <> inline Coprocessor::RPC &Instance::Get(void)
 {
     return mCRPC;
 }

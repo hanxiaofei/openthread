@@ -31,10 +31,10 @@
  *   This file implements the diagnostics module.
  */
 
-#include "controller_rpc.hpp"
+#include "rpc.hpp"
 
 // TODO: CRPC: REMOVE "|| 1"
-#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE || 1
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE || 0
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,7 +69,7 @@ const struct CRPC::Command CRPC::sCommands[] = {
     {"mycommand", &CRPC::ProcessMyCommand},
 };
 
-CoprocessorRPC(Instance &aInstance)
+Coprocessor::RPC(Instance &aInstance)
     : InstanceLocator(aInstance)
 {
 }
@@ -91,7 +91,7 @@ const struct CRPC::Command CRPC::sCommands[] = {
     {"mycommand", &CRPC::ProcessMyCommand},
 };
 
-CoprocessorRPC(Instance &aInstance)
+Coprocessor::RPC(Instance &aInstance)
     : InstanceLocator(aInstance)
 {
 }

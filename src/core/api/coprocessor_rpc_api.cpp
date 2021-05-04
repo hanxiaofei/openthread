@@ -34,7 +34,7 @@
 #include "openthread-core-config.h"
 
 // TODO: CRPC: REMOVE "|| 1"
-#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE || 1
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE || 0
 
 #include <openthread/coprocessor_rpc.h>
 

@@ -4929,7 +4929,6 @@ otError Interpreter::ProcessUserCommands(uint8_t aArgsLength, Arg aArgs[])
     // TODO: Forward command to RCP
 #endif
 
-exit:
     return error;
 }
 
