@@ -40,6 +40,8 @@ set(OT_EXTERNAL_MBEDTLS "" CACHE STRING "Specify external mbedtls library")
 option(OT_MBEDTLS_THREADING "enable mbedtls threading" OFF)
 
 add_library(ot-config INTERFACE)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_C_STANDARD 99)
 
 message(STATUS "OpenThread Source Directory: ${PROJECT_SOURCE_DIR}")
 
@@ -199,6 +201,10 @@ if(OT_PLATFORM STREQUAL "posix")
     endif()
 elseif(OT_PLATFORM)
     add_subdirectory(examples)
+endif()
+
+if (OT_DOC)
+    add_subdirectory(doc)
 endif()
 
 add_subdirectory(src)

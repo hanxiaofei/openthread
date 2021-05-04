@@ -1,6 +1,5 @@
-#!/bin/bash
 #
-#  Copyright (c) 2020, The OpenThread Authors.
+#  Copyright (c) 2021, The OpenThread Authors.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -27,42 +26,31 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
-set -euxo pipefail
+find_package(Doxygen)
 
-readonly OT_BUILDDIR="$(pwd)/build"
+if (DOXYGEN_FOUND)
+    set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in)
+    set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
 
-reset_source()
-{
-    rm -rf "$OT_BUILDDIR"
-}
+    set(PACKAGE_VERSION ${OT_PACKAGE_VERSION})
+    set(abs_srcdir ${CMAKE_CURRENT_SOURCE_DIR})
+    set(abs_builddir ${CMAKE_CURRENT_BINARY_DIR})
+    set(abs_top_srcdir ${PROJECT_SOURCE_DIR})
+    set(abs_top_builddir ${PROJECT_BINARY_DIR})
+    set(DOXYGEN_USE_DOT ${DOXYGEN_HAVE_DOT})
 
-build()
-{
-    local options=("$@")
+    configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
 
-    options+=(
-        "-DOT_FULL_LOGS=ON"
-    )
+    add_custom_target(ot-doc)
 
-    "$(dirname "$0")"/cmake-build posix "${options[@]}"
+    add_custom_target(ot-doxygen ALL
+        COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
+        COMMAND cmake -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/images ${CMAKE_CURRENT_BINARY_DIR}/html/doc/images
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Generating documentation with Doxygen"
+        VERBATIM)
+    add_dependencies(ot-doc ot-doxygen)
 
-    options+=(
-        "-DOT_TREL=ON"
-    )
-
-    reset_source
-    "$(dirname "$0")"/cmake-build posix "${options[@]}"
-}
-
-main()
-{
-    reset_source
-    build "$@"
-
-    if [[ $OSTYPE != "darwin"* ]]; then
-        reset_source
-        build -DOT_POSIX_CONFIG_RCP_BUS=SPI "$@"
-    fi
-}
-
-main "$@"
+else()
+    message("Doxygen must be installed to generate doxygen documentation")
+endif()
