@@ -3598,6 +3598,7 @@ void Mle::HandleChildUpdateRequest(const Message &aMessage, const Ip6::MessageIn
         tlvs[numTlvs++] = Tlv::kLinkFrameCounter;
         break;
     case kErrorNotFound:
+        challenge.mLength = 0;
         break;
     default:
         ExitNow(error = kErrorParse);
@@ -3655,7 +3656,7 @@ void Mle::HandleChildUpdateRequest(const Message &aMessage, const Ip6::MessageIn
     }
 
 #if OPENTHREAD_CONFIG_MULTI_RADIO
-    if (aNeighbor != nullptr)
+    if ((aNeighbor != nullptr) && (challenge.mLength != 0))
     {
         aNeighbor->ClearLastRxFragmentTag();
     }
@@ -3840,10 +3841,14 @@ void Mle::HandleAnnounce(const Message &aMessage, const Ip6::MessageInfo &aMessa
     }
     else
     {
-        // do nothing
-        // timestamps are equal: no behaviour specified by the Thread spec.
-        // If SendAnnounce is executed at this point, there exists a scenario where
-        // multiple devices keep sending MLE Announce messages to one another indefinitely.
+        // Timestamps are equal.
+
+#if OPENTHREAD_CONFIG_ANNOUNCE_SENDER_ENABLE
+        // Notify `AnnounceSender` of the received Announce
+        // message so it can update its state to determine
+        // whether to send Announce or not.
+        Get<AnnounceSender>().UpdateOnReceivedAnnounce();
+#endif
     }
 
 exit:
