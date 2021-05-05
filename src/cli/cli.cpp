@@ -4876,6 +4876,28 @@ otError Interpreter::ProcessDiag(uint8_t aArgsLength, Arg aArgs[])
 }
 #endif
 
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+otError Interpreter::ProcessCoprocessorRPC(uint8_t aArgsLength, Arg aArgs[])
+{
+    otError error = OT_ERROR_NOT_FOUND;
+
+    char *  args[kMaxArgs];
+    char    output[OPENTHREAD_CONFIG_DIAG_OUTPUT_BUFFER_SIZE];
+
+    // all diagnostics related features are processed within diagnostics module
+    output[0]                  = '\0';
+    output[sizeof(output) - 1] = '\0';
+
+    Arg::CopyArgsToStringArray(aArgs, aArgsLength, args);
+
+    error = otCRPCProcessCmd(mInstance, aArgsLength, args, output, sizeof(output) - 1);
+
+    OutputFormat("%s", output);
+
+    return error;
+}
+#endif
+
 void Interpreter::ProcessLine(char *aBuf)
 {
     Arg            args[kMaxArgs];
@@ -4902,6 +4924,10 @@ void Interpreter::ProcessLine(char *aBuf)
     }
 
     VerifyOrExit(ProcessUserCommands(argsLength, args) != OT_ERROR_NONE);
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+    VerifyOrExit(ProcessCoprocessorRPC(argsLength, args) != OT_ERROR_NONE);
+#endif
+
     OutputResult(OT_ERROR_INVALID_COMMAND);
 
 exit:
@@ -4924,10 +4950,6 @@ otError Interpreter::ProcessUserCommands(uint8_t aArgsLength, Arg aArgs[])
             break;
         }
     }
-
-#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-    // TODO: Forward command to RCP
-#endif
 
     return error;
 }

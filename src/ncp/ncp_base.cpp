@@ -1383,7 +1383,7 @@ otError NcpBase::HandlePropertySet_SPINEL_PROP_COPROCESSOR_RPC(uint8_t aHeader)
 
     output[sizeof(output) - 1] = '\0';
 
-    otDiagProcessCmdLine(mInstance, string, output, sizeof(output) - 1);
+    otCRPCProcessCmdLine(mInstance, string, output, sizeof(output) - 1);
 
     // Prepare the response
     SuccessOrExit(error = mEncoder.BeginFrame(aHeader, SPINEL_CMD_PROP_VALUE_IS, SPINEL_PROP_COPROCESSOR_RPC));
