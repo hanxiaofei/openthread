@@ -208,10 +208,15 @@ otError CpcInterface::WaitForFrame(uint64_t aTimeoutUs)
 
 void CpcInterface::UpdateFdSet(fd_set &aReadFdSet, fd_set &aWriteFdSet, int &aMaxFd, struct timeval &aTimeout)
 {
+    OT_UNUSED_VARIABLE(aReadFdSet);
+    OT_UNUSED_VARIABLE(aWriteFdSet);
+    OT_UNUSED_VARIABLE(aMaxFd);
+    OT_UNUSED_VARIABLE(aTimeout);
 }
 
 void CpcInterface::Process(const RadioProcessContext &aContext)
 {
+    OT_UNUSED_VARIABLE(aContext);
     Read(0);
 }
 
