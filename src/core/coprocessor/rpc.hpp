@@ -42,13 +42,14 @@
 #include <string.h>
 
 #include <openthread/platform/radio.h>
+#include <openthread/cli.h>
 
 #include "common/error.hpp"
 #include "common/locator.hpp"
 #include "common/non_copyable.hpp"
 
 namespace ot {
-namespace CoProcessor {
+namespace Coprocessor {
 
 class RPC : public InstanceLocator, private NonCopyable
 {
@@ -65,7 +66,7 @@ public:
      * This method processes a RPC command line.
      *
      * @param[in]   aString        A null-terminated input string.
-     * @param[out]  aOutput        The diagnostics execution result.
+     * @param[out]  aOutput        The execution result.
      * @param[in]   aOutputMaxLen  The output buffer size.
      *
      */
@@ -75,8 +76,8 @@ public:
      * This method processes a RPC command line.
      *
      * @param[in]   aArgsLength    The number of args in @p aArgs.
-     * @param[in]   aArgs          The arguments of diagnostics command line.
-     * @param[out]  aOutput        The diagnostics execution result.
+     * @param[in]   aArgs          The arguments of command line.
+     * @param[out]  aOutput        The execution result.
      * @param[in]   aOutputMaxLen  The output buffer size.
      *
      * @retval  kErrorInvalidArgs       The command is supported but invalid arguments provided.
@@ -86,18 +87,99 @@ public:
      */
     Error ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen);
 
+    /**
+     * Print all commands in @p commands
+     *
+     * @param[in]  commands         list of commands
+     * @param[in]  commandCount     number of commands in @p commands
+     *
+     */
+    // TODO: Should this just be a non-static function that deals with registered commands?
+    static void PrintCommands(otCliCommand commands[], size_t commandCount);
+
+    /**
+     * Call the corresponding handler for a command
+     *
+     * This function will look through @p commands to find a @ref otCliCommand that
+     * matches @p argv[0]. If found, the handler function for the command will be
+     * called with the remaining args passed to it.
+     *
+     * @param[in]  context          a context
+     * @param[in]  argc             number of args
+     * @param[in]  argv             list of args
+     * @param[in]  commands         list of commands
+     * @param[in]  commandCount     number of commands in @p commands
+     *
+     * @retval false if @p argv[0] is not a command in @p commands
+     * @retval true if @p argv[0] is found in @p commands
+     *
+     */
+    // TODO: Should this just be a non-static function that deals with registered commands?
+    static bool handleCommand(void *context, uint8_t argc, char *argv[], otCliCommand commands[], size_t commandCount);
+
+    /**
+     * This method sets the user command table.
+     *
+     * @param[in]  aUserCommands  A pointer to an array with user commands.
+     * @param[in]  aLength        @p aUserCommands length.
+     * @param[in]  aContext       @p aUserCommands length.
+     *
+     */
+    void SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext);
+
 private:
+#if 0
     struct Command
     {
         const char *mName;
         Error (RPC::*mCommand)(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen);
     };
+#endif
 
-    static void  AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen);
-    static Error ParseLong(char *aString, long &aLong);
+    char *mOutputBuffer;
+    size_t mOutputBufferMaxLen;
+#if OPENTHREAD_RADIO
+    /**
+     * Store the output buffer pointer and size
+     *
+     * These will be used later by @ref OutputFormat
+     *
+     * @param[in]   aOutput         A output buffer
+     * @param[in]   aOutputMaxLen   The size of @p aOutput
+     */
+    void SetOutputBuffer(const char *aOutput, size_t aOutputMaxLen);
+
+    /**
+     * Clears the output buffer variables
+     */
+    void ClearOutputBuffer(void);
+#endif
+
+
+    /**
+     * Write formatted string to the output buffer
+     *
+     * @param[in]  aFmt   A pointer to the format string.
+     * @param[in]  ...    A matching list of arguments.
+     *
+     */
+    static void OutputFormat(const char *aFmt, ...);
+
+    /**
+     * Write error code to the output buffer
+     *
+     * If the @p aError is `OT_ERROR_PENDING` nothing will be outputted.
+     *
+     * @param[in]  aError Error code value.
+     *
+     */
+    static void AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen);
 
     static const struct Command sCommands[];
 
+    const otCliCommand *mUserCommands;
+    uint8_t             mUserCommandsLength;
+    void *              mUserCommandsContext;
 };
 
 } // namespace Coprocessor

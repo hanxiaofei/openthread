@@ -65,59 +65,42 @@ namespace Coprocessor {
 
 #if OPENTHREAD_RADIO
 
-const struct CRPC::Command CRPC::sCommands[] = {
-    {"mycommand", &CRPC::ProcessMyCommand},
-};
-
-Coprocessor::RPC(Instance &aInstance)
-    : InstanceLocator(aInstance)
+void RPC::SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext)
 {
+    mUserCommands        = aCommands;
+    mUserCommandsLength  = aLength;
+    mUserCommandsContext = aContext;
 }
 
-Error CRPC::ProcessMyCommand(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
+RPC::RPC(Instance &aInstance)
+    : InstanceLocator(aInstance)
+    , mOutputBuffer(nullptr)
+    , mOutputBufferMaxLen(0)
 {
-    Error error = kErrorNone;
-
-    snprintf(aOutput, aOutputMaxLen, "Hello World from the coprocessor\r\n");
-
-exit:
-    AppendErrorResult(error, aOutput, aOutputMaxLen);
-    return error;
 }
 
 #else // OPENTHREAD_RADIO
 
-const struct CRPC::Command CRPC::sCommands[] = {
-    {"mycommand", &CRPC::ProcessMyCommand},
-};
-
-Coprocessor::RPC(Instance &aInstance)
+RPC::RPC(Instance &aInstance)
     : InstanceLocator(aInstance)
+    , mOutputBuffer(nullptr)
+    , mOutputBufferMaxLen(0)
+// TODO: Do these buffer vars need to be saved on the POSIX platform? Probably not
 {
-}
-
-Error CRPC::ProcessMyCommand(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
-{
-    Error error = kErrorNone;
-
-    snprintf(aOutput, aOutputMaxLen, "Hello World\r\n");
-
-exit:
-    AppendErrorResult(error, aOutput, aOutputMaxLen);
-    return error;
 }
 
 #endif // OPENTHREAD_RADIO
 
-void CRPC::AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen)
+void RPC::AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen)
 {
+    // TODO: Conditionalize this
     if (aError != kErrorNone)
     {
         snprintf(aOutput, aOutputMaxLen, "failed\r\nstatus %#x\r\n", aError);
     }
 }
 
-void CRPC::ProcessLine(const char *aString, char *aOutput, size_t aOutputMaxLen)
+void RPC::ProcessLine(const char *aString, char *aOutput, size_t aOutputMaxLen)
 {
     enum
     {
@@ -158,21 +141,12 @@ exit:
     }
 }
 
-Error CRPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
+Error RPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
 {
     Error error = kErrorNone;
 
+    SetOutputBuffer(aOutput, aOutputMaxLen);
     aOutput[0] = '\0';
-
-    for (const Command &command : sCommands)
-    {
-        if (strcmp(aArgs[0], command.mName) == 0)
-        {
-            error = (this->*command.mCommand)(aArgsLength - 1, (aArgsLength > 1) ? &aArgs[1] : nullptr, aOutput,
-                                              aOutputMaxLen);
-            ExitNow();
-        }
-    }
 
     // more platform specific features will be processed under platform layer
     error = otPlatCRPCProcess(&GetInstance(), aArgsLength, aArgs, aOutput, aOutputMaxLen);
@@ -185,6 +159,18 @@ exit:
     }
 
     return error;
+}
+
+void RPC::OutputFormat(const char *aFmt, ...)
+{
+    VerifyOrExit(mOutputBuffer && (mOutputBufferCount < mOutputBufferMaxLen));
+
+    va_list args;
+    va_start(args, aFmt);
+    mOutputBufferCount += vsnprintf(&mOutputBuffer[mOutputBufferCount], mOutputBufferMaxLen, aFmt, args);
+    va_end(args);
+exit:
+    return;
 }
 
 } // namespace Coprocessor

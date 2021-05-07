@@ -508,6 +508,28 @@ void otPlatDiagAlarmCallback(otInstance *aInstance)
 }
 #endif // OPENTHREAD_CONFIG_DIAG_ENABLE
 
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+otError otPlatCRPCProcess(otInstance *aInstance,
+                          uint8_t     aArgsLength,
+                          char *      aArgs[],
+                          char *      aOutput,
+                          size_t      aOutputMaxLen)
+{
+    // deliver the platform specific coprocessor RPC commands to radio only ncp.
+    OT_UNUSED_VARIABLE(aInstance);
+    char  cmd[OPENTHREAD_CONFIG_COPROCESSOR_RPC_CMD_LINE_BUFFER_SIZE] = {'\0'};
+    char *cur                                              = cmd;
+    char *end                                              = cmd + sizeof(cmd);
+
+    for (uint8_t index = 0; (index < aArgsLength) && (cur < end); index++)
+    {
+        cur += snprintf(cur, static_cast<size_t>(end - cur), "%s ", aArgs[index]);
+    }
+
+    return sRadioSpinel.PlatCRPCProcess(cmd, aOutput, aOutputMaxLen);
+}
+#endif // OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+
 uint32_t otPlatRadioGetSupportedChannelMask(otInstance *aInstance)
 {
     OT_UNUSED_VARIABLE(aInstance);

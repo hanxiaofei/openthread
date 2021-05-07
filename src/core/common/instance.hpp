@@ -420,7 +420,7 @@ private:
     FactoryDiags::Diags mDiags;
 #endif
 #if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-    ControllerRPC::CRPC mCRPC;
+    Coprocessor::RPC mCRPC;
 #endif
     bool mIsInitialized;
 
