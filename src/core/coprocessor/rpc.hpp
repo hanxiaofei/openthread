@@ -128,6 +128,12 @@ public:
     void SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext);
 
 private:
+    enum
+    {
+        kMaxArgs          = OPENTHREAD_CONFIG_COPROCESSOR_RPC_CMD_LINE_ARGS_MAX,
+        kMaxCommandBuffer = OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE,
+    };
+
 #if 0
     struct Command
     {
@@ -137,8 +143,13 @@ private:
 #endif
 
     char *mOutputBuffer;
+    size_t mOutputBufferCount;
     size_t mOutputBufferMaxLen;
-#if OPENTHREAD_RADIO
+
+    const otCliCommand *mUserCommands;
+    void *              mUserCommandsContext;
+    uint8_t             mUserCommandsLength;
+
     /**
      * Store the output buffer pointer and size
      *
@@ -147,14 +158,14 @@ private:
      * @param[in]   aOutput         A output buffer
      * @param[in]   aOutputMaxLen   The size of @p aOutput
      */
-    void SetOutputBuffer(const char *aOutput, size_t aOutputMaxLen);
+    void SetOutputBuffer(char *aOutput, size_t aOutputMaxLen);
 
     /**
      * Clears the output buffer variables
      */
     void ClearOutputBuffer(void);
-#endif
 
+    Error ParseCmd(char *aString, uint8_t &aArgsLength, char *aArgs[]);
 
     /**
      * Write formatted string to the output buffer
@@ -163,7 +174,7 @@ private:
      * @param[in]  ...    A matching list of arguments.
      *
      */
-    static void OutputFormat(const char *aFmt, ...);
+    void OutputFormat(const char *aFmt, ...);
 
     /**
      * Write error code to the output buffer
@@ -173,13 +184,9 @@ private:
      * @param[in]  aError Error code value.
      *
      */
-    static void AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen);
+    void AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen);
 
-    static const struct Command sCommands[];
-
-    const otCliCommand *mUserCommands;
-    uint8_t             mUserCommandsLength;
-    void *              mUserCommandsContext;
+    // const otCliCommand sCommands[];
 };
 
 } // namespace Coprocessor

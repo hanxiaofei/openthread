@@ -65,31 +65,27 @@ namespace Coprocessor {
 
 #if OPENTHREAD_RADIO
 
+
 void RPC::SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext)
 {
     mUserCommands        = aCommands;
     mUserCommandsLength  = aLength;
     mUserCommandsContext = aContext;
 }
+#endif // OPENTHREAD_RADIO
 
 RPC::RPC(Instance &aInstance)
     : InstanceLocator(aInstance)
     , mOutputBuffer(nullptr)
+    , mOutputBufferCount(0)
     , mOutputBufferMaxLen(0)
-{
-}
-
-#else // OPENTHREAD_RADIO
-
-RPC::RPC(Instance &aInstance)
-    : InstanceLocator(aInstance)
-    , mOutputBuffer(nullptr)
-    , mOutputBufferMaxLen(0)
+    , mUserCommands(nullptr)
+    , mUserCommandsContext(nullptr)
+    , mUserCommandsLength(0)
 // TODO: Do these buffer vars need to be saved on the POSIX platform? Probably not
 {
 }
 
-#endif // OPENTHREAD_RADIO
 
 void RPC::AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen)
 {
@@ -100,23 +96,30 @@ void RPC::AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen)
     }
 }
 
+Error RPC::ParseCmd(char *aString, uint8_t &aArgsLength, char *aArgs[])
+{
+    Error                     error;
+    Utils::CmdLineParser::Arg args[kMaxArgs];
+
+    SuccessOrExit(error = Utils::CmdLineParser::ParseCmd(aString, aArgsLength, args, aArgsLength));
+    Utils::CmdLineParser::Arg::CopyArgsToStringArray(args, aArgsLength, aArgs);
+
+exit:
+    return error;
+}
+
 void RPC::ProcessLine(const char *aString, char *aOutput, size_t aOutputMaxLen)
 {
-    enum
-    {
-        kMaxArgs          = OPENTHREAD_CONFIG_COPROCESSOR_RPC_CMD_LINE_ARGS_MAX,
-        kMaxCommandBuffer = OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE,
-    };
-
     Error   error = kErrorNone;
     char    buffer[kMaxCommandBuffer];
-    char *  aArgsector[kMaxArgs];
+    char *  args[kMaxArgs];
     uint8_t argCount = 0;
 
     VerifyOrExit(StringLength(aString, kMaxCommandBuffer) < kMaxCommandBuffer, error = kErrorNoBufs);
 
     strcpy(buffer, aString);
-    error = ot::Utils::CmdLineParser::ParseCmd(buffer, argCount, aArgsector, kMaxArgs);
+    argCount = kMaxArgs;
+    error    = ParseCmd(buffer, argCount, args);
 
 exit:
 
@@ -124,7 +127,7 @@ exit:
     {
     case kErrorNone:
         aOutput[0] = '\0'; // In case there is no output.
-        IgnoreError(ProcessCmd(argCount, &aArgsector[0], aOutput, aOutputMaxLen));
+        IgnoreError(ProcessCmd(argCount, &args[0], aOutput, aOutputMaxLen));
         break;
 
     case kErrorNoBufs:
@@ -149,7 +152,7 @@ Error RPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t 
     aOutput[0] = '\0';
 
     // more platform specific features will be processed under platform layer
-    error = otPlatCRPCProcess(&GetInstance(), aArgsLength, aArgs, aOutput, aOutputMaxLen);
+    SuccessOrExit(otPlatCRPCProcess(&GetInstance(), aArgsLength, aArgs, aOutput, aOutputMaxLen));
 
 exit:
     // Add more platform specific features here.
@@ -171,6 +174,19 @@ void RPC::OutputFormat(const char *aFmt, ...)
     va_end(args);
 exit:
     return;
+}
+
+void RPC::SetOutputBuffer(char *aOutput, size_t aOutputMaxLen)
+{
+    mOutputBuffer = aOutput;
+    mOutputBufferMaxLen = aOutputMaxLen;
+    mOutputBufferCount = 0;
+}
+
+void RPC::ClearOutputBuffer(void)
+{
+    mOutputBuffer = nullptr;
+    mOutputBufferMaxLen = 0;
 }
 
 } // namespace Coprocessor

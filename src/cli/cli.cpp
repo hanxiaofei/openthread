@@ -37,6 +37,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+#include <openthread/coprocessor_rpc.h>
+#endif
 #include <openthread/diag.h>
 #include <openthread/dns.h>
 #include <openthread/icmp6.h>

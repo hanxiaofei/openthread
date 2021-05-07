@@ -463,6 +463,14 @@ protected:
 
     otError HandlePropertySet_SPINEL_PROP_HOST_POWER_STATE(uint8_t aHeader);
 
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+    static_assert(OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE <=
+                      OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE - kSpinelCmdHeaderSize - kSpinelPropIdSize,
+                  "Coprocessor RPC output buffer should be smaller than NCP HDLC tx buffer");
+
+    otError HandlePropertySet_SPINEL_PROP_COPROCESSOR_RPC(uint8_t aHeader);
+#endif
+
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     static_assert(OPENTHREAD_CONFIG_DIAG_OUTPUT_BUFFER_SIZE <=
                       OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE - kSpinelCmdHeaderSize - kSpinelPropIdSize,
