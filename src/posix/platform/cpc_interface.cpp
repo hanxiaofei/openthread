@@ -85,7 +85,7 @@ void CpcInterface::OnRcpReset(void)
 otError CpcInterface::Init(uint8_t id)
 {
     mId = id;
-    cpcError cpc_error = cpc_init(&mHandle, true);
+    cpcError cpc_error = cpc_init(&mHandle, false);
 
     VerifyOrDie(cpc_error == 0, OT_EXIT_FAILURE);
 
