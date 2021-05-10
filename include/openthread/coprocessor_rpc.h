@@ -36,6 +36,7 @@
 #define OPENTHREAD_COPROCESSOR_RPC_H_
 
 #include <openthread/instance.h>
+#include <openthread/cli.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -82,6 +83,26 @@ otError otCRPCProcessCmd(otInstance *aInstance,
  *
  */
 void otCRPCProcessCmdLine(otInstance *aInstance, const char *aString, char *aOutput, size_t aOutputMaxLen);
+
+
+/**
+ * Set a user command table.
+ *
+ * @param[in]  aUserCommands  A pointer to an array with user commands.
+ * @param[in]  aLength        @p aUserCommands length.
+ * @param[in]  aContext       @p The context passed to the handler.
+ *
+ */
+void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext);
+
+/**
+ * Write formatted string to the CLI console
+ *
+ * @param[in]  aFmt   A pointer to the format string.
+ * @param[in]  ...    A matching list of arguments.
+ *
+ */
+void otCRPCOutputFormat(const char *aFmt, ...);
 
 /**
  * @}

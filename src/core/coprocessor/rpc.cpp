@@ -42,6 +42,7 @@
 #include "common/code_utils.hpp"
 #include "common/instance.hpp"
 #include "common/locator_getters.hpp"
+#include "common/new.hpp"
 #include "utils/parse_cmdline.hpp"
 
 OT_TOOL_WEAK
@@ -63,8 +64,9 @@ otError otPlatCRPCProcess(otInstance *aInstance,
 namespace ot {
 namespace Coprocessor {
 
-#if OPENTHREAD_RADIO
 
+RPC *RPC::sRPC = nullptr;
+static OT_DEFINE_ALIGNED_VAR(sRPCRaw, sizeof(RPC), uint64_t);
 
 void RPC::SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext)
 {
@@ -72,7 +74,6 @@ void RPC::SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *
     mUserCommandsLength  = aLength;
     mUserCommandsContext = aContext;
 }
-#endif // OPENTHREAD_RADIO
 
 RPC::RPC(Instance &aInstance)
     : InstanceLocator(aInstance)
@@ -187,6 +188,24 @@ void RPC::ClearOutputBuffer(void)
 {
     mOutputBuffer = nullptr;
     mOutputBufferMaxLen = 0;
+}
+
+void RPC::Initialize(Instance &aInstance)
+{
+    RPC::sRPC = new (&sRPCRaw) RPC(aInstance);
+}
+
+extern "C" void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
+{
+    RPC::GetRPC().SetUserCommands(aUserCommands, aLength, aContext);
+}
+
+extern "C" void otCRPCOutputFormat(const char *aFmt, ...)
+{
+    va_list aAp;
+    va_start(aAp, aFmt);
+    RPC::GetRPC().OutputFormat(aFmt, aAp);
+    va_end(aAp);
 }
 
 } // namespace Coprocessor

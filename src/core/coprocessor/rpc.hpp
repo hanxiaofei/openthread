@@ -44,6 +44,7 @@
 #include <openthread/platform/radio.h>
 #include <openthread/cli.h>
 
+#include "common/debug.hpp"
 #include "common/error.hpp"
 #include "common/locator.hpp"
 #include "common/non_copyable.hpp"
@@ -61,6 +62,37 @@ public:
      *
      */
     explicit RPC(Instance &aInstance);
+
+    /**
+     * This method returns a reference to the RPC object.
+     *
+     * @returns A reference to the RPC object.
+     *
+     */
+    static RPC &GetRPC(void)
+    {
+        OT_ASSERT(sRPC != nullptr);
+
+        return *sRPC;
+    }
+
+    /**
+     * This method initializes the RPC object.
+     *
+     * @param[in]  aInstance  The OpenThread instance structure.
+     * @param[in]  aCallback  A pointer to a callback method.
+     * @param[in]  aContext   A pointer to a user context.
+     *
+     */
+    static void Initialize(Instance &aInstance);
+
+    /**
+     * This method returns whether the RPC is initialized.
+     *
+     * @returns  Whether the RPC is initialized.
+     *
+     */
+    static bool IsInitialized(void) { return sRPC != nullptr; }
 
     /**
      * This method processes a RPC command line.
@@ -127,6 +159,18 @@ public:
      */
     void SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext);
 
+    /**
+     * Write formatted string to the output buffer
+     *
+     * @param[in]  aFmt   A pointer to the format string.
+     * @param[in]  ...    A matching list of arguments.
+     *
+     */
+    void OutputFormat(const char *aFmt, ...);
+
+protected:
+    static RPC *sRPC;
+
 private:
     enum
     {
@@ -166,15 +210,6 @@ private:
     void ClearOutputBuffer(void);
 
     Error ParseCmd(char *aString, uint8_t &aArgsLength, char *aArgs[]);
-
-    /**
-     * Write formatted string to the output buffer
-     *
-     * @param[in]  aFmt   A pointer to the format string.
-     * @param[in]  ...    A matching list of arguments.
-     *
-     */
-    void OutputFormat(const char *aFmt, ...);
 
     /**
      * Write error code to the output buffer
