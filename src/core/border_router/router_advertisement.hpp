@@ -47,6 +47,7 @@
 #include <openthread/platform/toolchain.h>
 
 #include "common/encoding.hpp"
+#include "common/equatable.hpp"
 #include "net/icmp6.hpp"
 #include "net/ip6.hpp"
 
@@ -386,7 +387,7 @@ static_assert(sizeof(RouteInfoOption) == 24, "invalid RouteInfoOption structure"
  *
  */
 OT_TOOL_PACKED_BEGIN
-class RouterAdvMessage
+class RouterAdvMessage : public Unequatable<RouterAdvMessage>
 {
 public:
     /**
@@ -446,6 +447,18 @@ public:
      *
      */
     const RouterAdvMessage &operator=(const RouterAdvMessage &aOther);
+
+    /**
+     * This method overloads operator `==` to evaluate whether or not
+     * two instances of `RouterAdvMessage` are equal.
+     *
+     * @param[in]  aOther  The other `RouterAdvMessage` instance to compare with.
+     *
+     * @retval TRUE   If the two `RouterAdvMessage` instances are equal.
+     * @retval FALSE  If the two `RouterAdvMessage` instances are not equal.
+     *
+     */
+    bool operator==(const RouterAdvMessage &aOther) const;
 
 private:
     enum : uint8_t
