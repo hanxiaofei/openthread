@@ -603,6 +603,22 @@ public:
     otError PlatDiagProcess(const char *aString, char *aOutput, size_t aOutputMaxLen);
 #endif
 
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+    /**
+     * This method processes platform diagnostics commands.
+     *
+     * @param[in]   aString         A null-terminated input string.
+     * @param[out]  aOutput         The diagnostics execution result.
+     * @param[in]   aOutputMaxLen   The output buffer size.
+     *
+     * @retval  OT_ERROR_NONE               Succeeded.
+     * @retval  OT_ERROR_BUSY               Failed due to another operation is on going.
+     * @retval  OT_ERROR_RESPONSE_TIMEOUT   Failed due to no response received from the transceiver.
+     *
+     */
+    otError PlatCRPCProcess(const char *aString, char *aOutput, size_t aOutputMaxLen);
+#endif
+
     /**
      * This method returns the radio channel mask.
      *
@@ -1003,8 +1019,8 @@ private:
 #endif
 
 #if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-    char * mCRPC;
-    size_t mCRPCMaxLen;
+    char * mCRPCOutput;
+    size_t mCRPCOutputMaxLen;
 #endif
 
     uint64_t mTxRadioEndUs;

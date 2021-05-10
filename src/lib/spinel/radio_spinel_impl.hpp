@@ -213,8 +213,8 @@ RadioSpinel<InterfaceType, ProcessContextType>::RadioSpinel(void)
     , mDiagOutputMaxLen(0)
 #endif
 #if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-    , mCRPC(nullptr)
-    , mCRPCMaxLen(0)
+    , mCRPCOutput(nullptr)
+    , mCRPCOutputMaxLen(0)
 #endif
     , mTxRadioEndUs(UINT64_MAX)
     , mRadioTimeRecalcStart(UINT64_MAX)
@@ -789,9 +789,9 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleWaitingResponse(uint3
     {
         spinel_ssize_t unpacked;
 
-        VerifyOrExit(mCRPC != nullptr);
+        VerifyOrExit(mCRPCOutput != nullptr);
         unpacked =
-            spinel_datatype_unpack_in_place(aBuffer, aLength, SPINEL_DATATYPE_UTF8_S, mCRPC, &mCRPCMaxLen);
+            spinel_datatype_unpack_in_place(aBuffer, aLength, SPINEL_DATATYPE_UTF8_S, mCRPCOutput, &mCRPCOutputMaxLen);
         VerifyOrExit(unpacked > 0, mError = OT_ERROR_PARSE);
     }
 #endif
@@ -2069,13 +2069,13 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::PlatCRPCProcess(const ch
 {
     otError error;
 
-    mCRPC       = aOutput;
-    mCRPCMaxLen = aOutputMaxLen;
+    mCRPCOutput       = aOutput;
+    mCRPCOutputMaxLen = aOutputMaxLen;
 
     error = Set(SPINEL_PROP_COPROCESSOR_RPC, SPINEL_DATATYPE_UTF8_S, aString);
 
-    mCRPC       = nullptr;
-    mCRPCMaxLen = 0;
+    mCRPCOutput       = nullptr;
+    mCRPCOutputMaxLen = 0;
 
     return error;
 }
