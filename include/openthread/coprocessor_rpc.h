@@ -54,6 +54,33 @@ extern "C" {
  */
 
 /**
+ * Initialize the CLI module.
+ *
+ * @param[in]  aInstance   The OpenThread instance structure.
+ *
+ */
+void otCRPCInit(otInstance *aInstance);
+
+/**
+ * Set a user command table.
+ *
+ * @param[in]  aUserCommands  A pointer to an array with user commands.
+ * @param[in]  aLength        @p aUserCommands length.
+ * @param[in]  aContext       @p The context passed to the handler.
+ *
+ */
+void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext);
+
+/**
+ * Write formatted string to the CLI console
+ *
+ * @param[in]  aFmt   A pointer to the format string.
+ * @param[in]  ...    A matching list of arguments.
+ *
+ */
+void otCRPCOutputFormat(const char *aFmt, ...);
+
+/**
  * This function processes a command line.
  *
  * @param[in]   aInstance       A pointer to an OpenThread instance.
@@ -84,25 +111,6 @@ otError otCRPCProcessCmd(otInstance *aInstance,
  */
 void otCRPCProcessCmdLine(otInstance *aInstance, const char *aString, char *aOutput, size_t aOutputMaxLen);
 
-
-/**
- * Set a user command table.
- *
- * @param[in]  aUserCommands  A pointer to an array with user commands.
- * @param[in]  aLength        @p aUserCommands length.
- * @param[in]  aContext       @p The context passed to the handler.
- *
- */
-void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext);
-
-/**
- * Write formatted string to the CLI console
- *
- * @param[in]  aFmt   A pointer to the format string.
- * @param[in]  ...    A matching list of arguments.
- *
- */
-void otCRPCOutputFormat(const char *aFmt, ...);
 
 /**
  * @}

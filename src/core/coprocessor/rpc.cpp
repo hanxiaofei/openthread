@@ -68,13 +68,6 @@ namespace Coprocessor {
 RPC *RPC::sRPC = nullptr;
 static OT_DEFINE_ALIGNED_VAR(sRPCRaw, sizeof(RPC), uint64_t);
 
-void RPC::SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext)
-{
-    mUserCommands        = aCommands;
-    mUserCommandsLength  = aLength;
-    mUserCommandsContext = aContext;
-}
-
 RPC::RPC(Instance &aInstance)
     : InstanceLocator(aInstance)
     , mOutputBuffer(nullptr)
@@ -87,6 +80,12 @@ RPC::RPC(Instance &aInstance)
 {
 }
 
+void RPC::SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext)
+{
+    mUserCommands        = aCommands;
+    mUserCommandsLength  = aLength;
+    mUserCommandsContext = aContext;
+}
 
 void RPC::AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen)
 {
@@ -193,6 +192,14 @@ void RPC::ClearOutputBuffer(void)
 void RPC::Initialize(Instance &aInstance)
 {
     RPC::sRPC = new (&sRPCRaw) RPC(aInstance);
+}
+
+extern "C" void otCRPCInit(otInstance *aInstance)
+{
+    // TODO: Double check this
+    Instance &instance = static_cast<Instance &>(*aInstance);
+
+    RPC::Initialize(instance);
 }
 
 extern "C" void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
