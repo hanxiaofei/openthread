@@ -2950,25 +2950,6 @@ exit:
 }
 #endif // OPENTHREAD_FTD
 
-#if OPENTHREAD_CONFIG_PLATFORM_NETIF_ENABLE
-otError Interpreter::ProcessNetif(uint8_t aArgsLength, Arg aArgs[])
-{
-    OT_UNUSED_VARIABLE(aArgsLength);
-    OT_UNUSED_VARIABLE(aArgs);
-
-    otError      error    = OT_ERROR_NONE;
-    const char * netif    = nullptr;
-    unsigned int netifidx = 0;
-
-    SuccessOrExit(error = otPlatGetNetif(mInstance, &netif, &netifidx));
-
-    OutputLine("%s:%u", netif ? netif : "(null)", netifidx);
-
-exit:
-    return error;
-}
-#endif
-
 otError Interpreter::ProcessNetstat(uint8_t aArgsLength, Arg aArgs[])
 {
     otUdpSocket *socket = otUdpGetSockets(mInstance);
@@ -4906,6 +4887,7 @@ void Interpreter::ProcessLine(char *aBuf)
     Arg            args[kMaxArgs];
     uint8_t        argsLength;
     const Command *command;
+    otError        error = OT_ERROR_INVALID_COMMAND;
 
     VerifyOrExit(aBuf != nullptr && StringLength(aBuf, kMaxLineLength) <= kMaxLineLength - 1);
 
@@ -4922,24 +4904,22 @@ void Interpreter::ProcessLine(char *aBuf)
 
     if (command != nullptr)
     {
-        OutputResult((this->*command->mHandler)(argsLength - 1, &args[1]));
-        ExitNow();
+        error = (this->*command->mHandler)(argsLength - 1, &args[1]);
+    }
+    else
+    {
+        VerifyOrExit((error = ProcessUserCommands(argsLength, args)) != OT_ERROR_NONE);
+        VerifyOrExit((error = ProcessCoprocessorRPC(argsLength, args)) != OT_ERROR_NONE);
     }
 
-    VerifyOrExit(ProcessUserCommands(argsLength, args) != OT_ERROR_NONE);
-#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-    VerifyOrExit(ProcessCoprocessorRPC(argsLength, args) != OT_ERROR_NONE);
-#endif
-
-    OutputResult(OT_ERROR_INVALID_COMMAND);
-
 exit:
+    OutputResult(error);
     return;
 }
 
 otError Interpreter::ProcessUserCommands(uint8_t aArgsLength, Arg aArgs[])
 {
-    otError error = OT_ERROR_NOT_FOUND;
+    otError error = OT_ERROR_INVALID_COMMAND;
 
     for (uint8_t i = 0; i < mUserCommandsLength; i++)
     {
