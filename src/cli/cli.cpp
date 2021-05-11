@@ -4886,7 +4886,7 @@ void Interpreter::ProcessLine(char *aBuf)
     Arg            args[kMaxArgs];
     uint8_t        argsLength;
     const Command *command;
-    otError        error = OT_ERROR_INVALID_COMMAND;
+    otError        error;
 
     VerifyOrExit(aBuf != nullptr && StringLength(aBuf, kMaxLineLength) <= kMaxLineLength - 1);
 
@@ -4910,9 +4910,9 @@ void Interpreter::ProcessLine(char *aBuf)
         VerifyOrExit((error = ProcessUserCommands(argsLength, args)) != OT_ERROR_NONE);
         VerifyOrExit((error = ProcessCoprocessorRPC(argsLength, args)) != OT_ERROR_NONE);
     }
+    OutputResult(error);
 
 exit:
-    OutputResult(error);
     return;
 }
 

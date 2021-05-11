@@ -36,8 +36,7 @@
 
 #include "openthread-core-config.h"
 
-// TODO: CRPC: REMOVE "|| 1"
-#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE || 0
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
 
 #include <string.h>
 
@@ -87,14 +86,6 @@ public:
     static void Initialize(Instance &aInstance);
 
     /**
-     * This method returns whether the RPC is initialized.
-     *
-     * @returns  Whether the RPC is initialized.
-     *
-     */
-    static bool IsInitialized(void) { return sRPC != nullptr; }
-
-    /**
      * This method processes a RPC command line.
      *
      * @param[in]   aString        A null-terminated input string.
@@ -120,14 +111,40 @@ public:
     Error ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen);
 
     /**
-     * Print all commands in @p commands
+     * Call the corresponding handler for a command
      *
-     * @param[in]  commands         list of commands
-     * @param[in]  commandCount     number of commands in @p commands
+     * This function will look through @p aCommands to find a @ref otCliCommand
+     * that matches @p aArgs[0]. If found, the handler function for the command
+     * will be called with the remaining args passed to it.
+     *
+     * @param[in]  aContext         a context
+     * @param[in]  aArgsLength      number of args
+     * @param[in]  aArgs            list of args
+     * @param[in]  aCommandsLength  number of commands in @p aCommands
+     * @param[in]  aCommands        list of commands
+     *
+     * @retval false if no matching command was found
+     * @retval true if a matching command was found and the handler was called
      *
      */
-    // TODO: Should this just be a non-static function that deals with registered commands?
-    static void PrintCommands(otCliCommand commands[], size_t commandCount);
+    // TODO: Add a C API for this so that commands with subcommands can use it
+    Error HandleCommand(void *             aContext,
+                        uint8_t            aArgsLength,
+                        char *             aArgs[],
+                        uint8_t            aCommandsLength,
+                        const otCliCommand aCommands[]);
+
+    /**
+     * Write error code to a buffer
+     *
+     * @param[in]   aError          Error code value.
+     * @param[out]  aOutput         The execution result.
+     * @param[in]   aOutputMaxLen   The output buffer size.
+     *
+     */
+    void AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen);
+
+#if OPENTHREAD_RADIO
 
     /**
      * This method sets the user command table.
@@ -148,6 +165,16 @@ public:
      */
     void OutputFormat(const char *aFmt, ...);
 
+    /**
+     * Print all commands in @p aCommands
+     *
+     * @param[in]  aCommands        List of commands
+     * @param[in]  aCommandsLength  Number of commands in @p aCommands
+     *
+     */
+    void PrintCommands(otCliCommand aCommands[], size_t aCommandsLength);
+#endif
+
 protected:
     static RPC *sRPC;
 
@@ -158,14 +185,7 @@ private:
         kMaxCommandBuffer = OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE,
     };
 
-#if 0
-    struct Command
-    {
-        const char *mName;
-        Error (RPC::*mCommand)(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen);
-    };
-#endif
-
+#if OPENTHREAD_RADIO
     char * mOutputBuffer;
     size_t mOutputBufferCount;
     size_t mOutputBufferMaxLen;
@@ -188,44 +208,9 @@ private:
      * Clears the output buffer variables
      */
     void ClearOutputBuffer(void);
+#endif
 
     Error ParseCmd(char *aString, uint8_t &aArgsLength, char *aArgs[]);
-
-    /**
-     * Write error code to the output buffer
-     *
-     * If the @p aError is `OT_ERROR_PENDING` nothing will be outputted.
-     *
-     * @param[in]  aError Error code value.
-     *
-     */
-    void AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen);
-
-    /**
-     * Call the corresponding handler for a command
-     *
-     * This function will look through @p commands to find a @ref otCliCommand that
-     * matches @p argv[0]. If found, the handler function for the command will be
-     * called with the remaining args passed to it.
-     *
-     * @param[in]  context          a context
-     * @param[in]  argc             number of args
-     * @param[in]  argv             list of args
-     * @param[in]  commands         list of commands
-     * @param[in]  commandCount     number of commands in @p commands
-     *
-     * @retval false if @p argv[0] is not a command in @p commands
-     * @retval true if @p argv[0] is found in @p commands
-     *
-     */
-    // TODO: Should this just be a non-static function that deals with registered commands?
-    Error HandleCommand(void *             aContext,
-                        uint8_t            aArgsLength,
-                        char *             aArgs[],
-                        uint8_t            aCommandsLength,
-                        const otCliCommand aCommands[]);
-
-    // const otCliCommand sCommands[];
 };
 
 } // namespace Coprocessor

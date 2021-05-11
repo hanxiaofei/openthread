@@ -28,7 +28,7 @@
 
 /**
  * @file
- *   This file includes compile-time configurations for the COPROCESSOR_RPC service.
+ *   This file includes compile-time configurations for the Co-processor Remote Procedure Call (CRPC) service.
  *
  */
 

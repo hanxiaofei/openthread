@@ -28,13 +28,12 @@
 
 /**
  * @file
- *   This file implements the OpenThread Factory Diagnostics API.
+ *   This file implements the OpenThread Co-processor RPC (CRPC) API.
  */
 
 #include "openthread-core-config.h"
 
-// TODO: CRPC: REMOVE "|| 1"
-#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE || 0
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
 
 #include <openthread/coprocessor_rpc.h>
 
