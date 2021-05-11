@@ -202,13 +202,13 @@ exit:
 void RPC::OutputFormat(const char *aFmt, ...)
 {
     va_list args;
-    int ret = 0;
+    int     ret = 0;
 
     VerifyOrExit(mOutputBuffer && (mOutputBufferCount < mOutputBufferMaxLen));
 
     va_start(args, aFmt);
-    ret = vsnprintf(&mOutputBuffer[mOutputBufferCount], mOutputBufferMaxLen, aFmt, args);
-    if (ret > 0)
+
+    if ((ret = vsnprintf(&mOutputBuffer[mOutputBufferCount], mOutputBufferMaxLen, aFmt, args)) > 0)
     {
         mOutputBufferCount += static_cast<size_t>(ret);
     }

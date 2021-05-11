@@ -523,7 +523,15 @@ otError otPlatCRPCProcess(otInstance *aInstance,
 
     for (uint8_t index = 0; (index < aArgsLength) && (cur < end); index++)
     {
-        cur += snprintf(cur, static_cast<size_t>(end - cur), "%s ", aArgs[index]);
+        int ret = snprintf(cur, static_cast<size_t>(end - cur), "%s ", aArgs[index]);
+        if (ret >= 0)
+        {
+            cur += ret;
+        }
+        else
+        {
+            return OT_ERROR_FAILED;
+        }
     }
 
     return sRadioSpinel.PlatCRPCProcess(cmd, aOutput, aOutputMaxLen);
