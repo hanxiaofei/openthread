@@ -130,31 +130,11 @@ public:
     static void PrintCommands(otCliCommand commands[], size_t commandCount);
 
     /**
-     * Call the corresponding handler for a command
-     *
-     * This function will look through @p commands to find a @ref otCliCommand that
-     * matches @p argv[0]. If found, the handler function for the command will be
-     * called with the remaining args passed to it.
-     *
-     * @param[in]  context          a context
-     * @param[in]  argc             number of args
-     * @param[in]  argv             list of args
-     * @param[in]  commands         list of commands
-     * @param[in]  commandCount     number of commands in @p commands
-     *
-     * @retval false if @p argv[0] is not a command in @p commands
-     * @retval true if @p argv[0] is found in @p commands
-     *
-     */
-    // TODO: Should this just be a non-static function that deals with registered commands?
-    static bool handleCommand(void *context, uint8_t argc, char *argv[], otCliCommand commands[], size_t commandCount);
-
-    /**
      * This method sets the user command table.
      *
      * @param[in]  aUserCommands  A pointer to an array with user commands.
      * @param[in]  aLength        @p aUserCommands length.
-     * @param[in]  aContext       @p aUserCommands length.
+     * @param[in]  aContext       @p aUserCommands context.
      *
      */
     void SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext);
@@ -220,6 +200,26 @@ private:
      *
      */
     void AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen);
+
+    /**
+     * Call the corresponding handler for a command
+     *
+     * This function will look through @p commands to find a @ref otCliCommand that
+     * matches @p argv[0]. If found, the handler function for the command will be
+     * called with the remaining args passed to it.
+     *
+     * @param[in]  context          a context
+     * @param[in]  argc             number of args
+     * @param[in]  argv             list of args
+     * @param[in]  commands         list of commands
+     * @param[in]  commandCount     number of commands in @p commands
+     *
+     * @retval false if @p argv[0] is not a command in @p commands
+     * @retval true if @p argv[0] is found in @p commands
+     *
+     */
+    // TODO: Should this just be a non-static function that deals with registered commands?
+    Error HandleCommand(void *aContext, uint8_t aArgsLength, char * aArgs[], uint8_t aCommandsLength, const otCliCommand aCommands[]);
 
     // const otCliCommand sCommands[];
 };

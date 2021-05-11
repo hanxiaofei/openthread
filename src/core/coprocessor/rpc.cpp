@@ -80,6 +80,26 @@ RPC::RPC(Instance &aInstance)
 {
 }
 
+Error RPC::HandleCommand(void *aContext, uint8_t aArgsLength, char * aArgs[], uint8_t aCommandsLength, const otCliCommand aCommands[])
+{
+    Error error = kErrorInvalidCommand;
+    VerifyOrExit(aArgsLength != 0);
+
+    for (size_t i = 0; i < aCommandsLength; i++)
+    {
+        if (strcmp(aArgs[0], aCommands[i].mName) == 0)
+        {
+            // Command found, call command handler
+            (aCommands[i].mCommand)(aContext, aArgsLength-1, (aArgsLength > 1) ? &aArgs[1] : nullptr);
+            error = kErrorNone;
+            ExitNow();
+        }
+    }
+
+exit:
+    return error;
+}
+
 void RPC::SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext)
 {
     mUserCommands        = aCommands;
@@ -151,8 +171,15 @@ Error RPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t 
     SetOutputBuffer(aOutput, aOutputMaxLen);
     aOutput[0] = '\0';
 
+    volatile uint8_t argsLen = aArgsLength;
+    OT_UNUSED_VARIABLE(argsLen);
+
+#if OPENTHREAD_RADIO
+    SuccessOrExit(error = HandleCommand(mUserCommandsContext, aArgsLength, aArgs, mUserCommandsLength, mUserCommands));
+#else
     // more platform specific features will be processed under platform layer
-    SuccessOrExit(otPlatCRPCProcess(&GetInstance(), aArgsLength, aArgs, aOutput, aOutputMaxLen));
+    SuccessOrExit(error = otPlatCRPCProcess(&GetInstance(), aArgsLength, aArgs, aOutput, aOutputMaxLen));
+#endif
 
 exit:
     // Add more platform specific features here.
@@ -161,6 +188,7 @@ exit:
         snprintf(aOutput, aOutputMaxLen, "feature '%s' is not supported\r\n", aArgs[0]);
     }
 
+    ClearOutputBuffer();
     return error;
 }
 
