@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2016, The OpenThread Authors.
+ *  Copyright (c) 2021, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,7 @@
 /**
  * @file
  * @brief
- *   This file includes the OpenThread API for Co-processor RPC.
+ *   This file includes the OpenThread API for Co-processor RPC (CRPC).
  */
 
 #ifndef OPENTHREAD_COPROCESSOR_RPC_H_
@@ -46,15 +46,15 @@ extern "C" {
  * @addtogroup api-coprocessor-rpc
  *
  * @brief
- *   This module includes functions that allow a Host Processor to execute
- *   remote procedure calls on a co-processor over Spinel
+ *   This module includes functions that allow a Host processor to execute
+ *   remote procedure calls on a co-processor over spinel
  *
  * @{
  *
  */
 
 /**
- * Initialize the CLI module.
+ * Initialize the CRPC module.
  *
  * @param[in]  aInstance   The OpenThread instance structure.
  *
@@ -72,7 +72,7 @@ void otCRPCInit(otInstance *aInstance);
 void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext);
 
 /**
- * Write formatted string to the CLI console
+ * Write formatted string to the output buffer
  *
  * @param[in]  aFmt   A pointer to the format string.
  * @param[in]  ...    A matching list of arguments.
@@ -101,11 +101,11 @@ otError otCRPCProcessCmd(otInstance *aInstance,
                          size_t      aOutputMaxLen);
 
 /**
- * This function processes a command line.
+ * This function processes a command-line string.
  *
  * @param[in]   aInstance       A pointer to an OpenThread instance.
  * @param[in]   aString         A NULL-terminated input string.
- * @param[out]  aOutput         The diagnostics execution result.
+ * @param[out]  aOutput         The execution result.
  * @param[in]   aOutputMaxLen   The output buffer size.
  *
  */

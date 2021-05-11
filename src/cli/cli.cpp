@@ -4866,9 +4866,8 @@ otError Interpreter::ProcessCoprocessorRPC(uint8_t aArgsLength, Arg aArgs[])
     otError error = OT_ERROR_NOT_FOUND;
 
     char *args[kMaxArgs];
-    char  output[OPENTHREAD_CONFIG_DIAG_OUTPUT_BUFFER_SIZE];
+    char  output[OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE];
 
-    // all diagnostics related features are processed within diagnostics module
     output[0]                  = '\0';
     output[sizeof(output) - 1] = '\0';
 

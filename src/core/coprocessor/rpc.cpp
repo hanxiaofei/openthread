@@ -210,7 +210,7 @@ void RPC::OutputFormat(const char *aFmt, ...)
     ret = vsnprintf(&mOutputBuffer[mOutputBufferCount], mOutputBufferMaxLen, aFmt, args);
     if (ret > 0)
     {
-        mOutputBufferCount += static_cast<size_t>ret;
+        mOutputBufferCount += static_cast<size_t>(ret);
     }
     va_end(args);
 exit:
@@ -242,15 +242,6 @@ extern "C" void otCRPCInit(otInstance *aInstance)
 
     RPC::Initialize(instance);
 }
-
-// extern "C" void otCRPCProcessLine(char *aBuf)
-// {
-//     RPC::GetRPC().ProcessLine(aUserCommands, aLength, aContext);
-//     // TODO: Double check this
-//     Instance &instance = static_cast<Instance &>(*aInstance);
-
-//     RPC::Initialize(instance);
-// }
 
 extern "C" void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
 {

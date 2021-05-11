@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2016, The OpenThread Authors.
+ *  Copyright (c) 2021, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,7 @@
 /**
  * @file
  * @brief
- *   This file defines the platform co-processor RPC interface.
+ *   This file defines the platform Co-processor RPC (CRPC) interface.
  *
  */
 
@@ -50,7 +50,7 @@ extern "C" {
  * @addtogroup plat-coprocessor-rpc
  *
  * @brief
- *   This module includes the platform abstraction for Co-processor RPC features.
+ *   This module includes the platform abstraction for Co-processor RPC (CRPC) features.
  *
  * @{
  *
