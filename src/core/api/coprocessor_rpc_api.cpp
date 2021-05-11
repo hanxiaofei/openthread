@@ -41,9 +41,7 @@
 #include "common/instance.hpp"
 #include "common/locator_getters.hpp"
 
-namespace ot
-{
-
+namespace ot {
 
 }
 

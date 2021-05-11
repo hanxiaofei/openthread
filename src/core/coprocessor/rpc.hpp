@@ -41,8 +41,8 @@
 
 #include <string.h>
 
-#include <openthread/platform/radio.h>
 #include <openthread/cli.h>
+#include <openthread/platform/radio.h>
 
 #include "common/debug.hpp"
 #include "common/error.hpp"
@@ -166,7 +166,7 @@ private:
     };
 #endif
 
-    char *mOutputBuffer;
+    char * mOutputBuffer;
     size_t mOutputBufferCount;
     size_t mOutputBufferMaxLen;
 
@@ -219,7 +219,11 @@ private:
      *
      */
     // TODO: Should this just be a non-static function that deals with registered commands?
-    Error HandleCommand(void *aContext, uint8_t aArgsLength, char * aArgs[], uint8_t aCommandsLength, const otCliCommand aCommands[]);
+    Error HandleCommand(void *             aContext,
+                        uint8_t            aArgsLength,
+                        char *             aArgs[],
+                        uint8_t            aCommandsLength,
+                        const otCliCommand aCommands[]);
 
     // const otCliCommand sCommands[];
 };

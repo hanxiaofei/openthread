@@ -35,8 +35,8 @@
 #ifndef OPENTHREAD_COPROCESSOR_RPC_H_
 #define OPENTHREAD_COPROCESSOR_RPC_H_
 
-#include <openthread/instance.h>
 #include <openthread/cli.h>
+#include <openthread/instance.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -110,7 +110,6 @@ otError otCRPCProcessCmd(otInstance *aInstance,
  *
  */
 void otCRPCProcessCmdLine(otInstance *aInstance, const char *aString, char *aOutput, size_t aOutputMaxLen);
-
 
 /**
  * @}

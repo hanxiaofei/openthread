@@ -2064,8 +2064,8 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::PlatDiagProcess(const ch
 #if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
 template <typename InterfaceType, typename ProcessContextType>
 otError RadioSpinel<InterfaceType, ProcessContextType>::PlatCRPCProcess(const char *aString,
-                                                                       char *      aOutput,
-                                                                       size_t      aOutputMaxLen)
+                                                                        char *      aOutput,
+                                                                        size_t      aOutputMaxLen)
 {
     otError error;
 

@@ -518,8 +518,8 @@ otError otPlatCRPCProcess(otInstance *aInstance,
     // deliver the platform specific coprocessor RPC commands to radio only ncp.
     OT_UNUSED_VARIABLE(aInstance);
     char  cmd[OPENTHREAD_CONFIG_COPROCESSOR_RPC_CMD_LINE_BUFFER_SIZE] = {'\0'};
-    char *cur                                              = cmd;
-    char *end                                              = cmd + sizeof(cmd);
+    char *cur                                                         = cmd;
+    char *end                                                         = cmd + sizeof(cmd);
 
     for (uint8_t index = 0; (index < aArgsLength) && (cur < end); index++)
     {

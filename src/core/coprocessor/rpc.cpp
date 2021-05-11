@@ -64,7 +64,6 @@ otError otPlatCRPCProcess(otInstance *aInstance,
 namespace ot {
 namespace Coprocessor {
 
-
 RPC *RPC::sRPC = nullptr;
 static OT_DEFINE_ALIGNED_VAR(sRPCRaw, sizeof(RPC), uint64_t);
 
@@ -80,9 +79,13 @@ RPC::RPC(Instance &aInstance)
 {
 }
 
-Error RPC::HandleCommand(void *aContext, uint8_t aArgsLength, char * aArgs[], uint8_t aCommandsLength, const otCliCommand aCommands[])
+Error RPC::HandleCommand(void *             aContext,
+                         uint8_t            aArgsLength,
+                         char *             aArgs[],
+                         uint8_t            aCommandsLength,
+                         const otCliCommand aCommands[])
 {
-    Error error = kErrorInvalidCommand;
+    Error            error       = kErrorInvalidCommand;
     volatile uint8_t commandsLen = aCommandsLength;
 
     VerifyOrExit(aArgsLength != 0);
@@ -94,7 +97,7 @@ Error RPC::HandleCommand(void *aContext, uint8_t aArgsLength, char * aArgs[], ui
         if (strcmp(aArgs[0], aCommands[i].mName) == 0)
         {
             // Command found, call command handler
-            (aCommands[i].mCommand)(aContext, aArgsLength-1, (aArgsLength > 1) ? &aArgs[1] : nullptr);
+            (aCommands[i].mCommand)(aContext, aArgsLength - 1, (aArgsLength > 1) ? &aArgs[1] : nullptr);
             error = kErrorNone;
             ExitNow();
         }
@@ -170,7 +173,7 @@ exit:
 
 Error RPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
 {
-    Error error = kErrorNone;
+    Error            error   = kErrorNone;
     volatile uint8_t argsLen = aArgsLength;
 
     SetOutputBuffer(aOutput, aOutputMaxLen);
@@ -210,14 +213,14 @@ exit:
 
 void RPC::SetOutputBuffer(char *aOutput, size_t aOutputMaxLen)
 {
-    mOutputBuffer = aOutput;
+    mOutputBuffer       = aOutput;
     mOutputBufferMaxLen = aOutputMaxLen;
-    mOutputBufferCount = 0;
+    mOutputBufferCount  = 0;
 }
 
 void RPC::ClearOutputBuffer(void)
 {
-    mOutputBuffer = nullptr;
+    mOutputBuffer       = nullptr;
     mOutputBufferMaxLen = 0;
 }
 
@@ -254,7 +257,11 @@ extern "C" void otCRPCProcessCmdLine(otInstance *aInstance, const char *aString,
     RPC::GetRPC().ProcessLine(aString, aOutput, aOutputMaxLen);
 }
 
-extern "C" otError otCRPCProcessCmd(otInstance *aInstance, uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
+extern "C" otError otCRPCProcessCmd(otInstance *aInstance,
+                                    uint8_t     aArgsLength,
+                                    char *      aArgs[],
+                                    char *      aOutput,
+                                    size_t      aOutputMaxLen)
 {
     OT_UNUSED_VARIABLE(aInstance);
     return RPC::GetRPC().ProcessCmd(aArgsLength, aArgs, aOutput, aOutputMaxLen);
