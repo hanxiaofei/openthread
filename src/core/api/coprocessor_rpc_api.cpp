@@ -41,21 +41,10 @@
 #include "common/instance.hpp"
 #include "common/locator_getters.hpp"
 
-using namespace ot;
-
-void otCRPCProcessCmdLine(otInstance *aInstance, const char *aString, char *aOutput, size_t aOutputMaxLen)
+namespace ot
 {
-    Instance &instance = *static_cast<Instance *>(aInstance);
 
-    instance.Get<Coprocessor::RPC>().ProcessLine(aString, aOutput, aOutputMaxLen);
+
 }
-
-otError otCRPCProcessCmd(otInstance *aInstance, uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
-{
-    Instance &instance = *static_cast<Instance *>(aInstance);
-
-    return instance.Get<Coprocessor::RPC>().ProcessCmd(aArgsLength, aArgs, aOutput, aOutputMaxLen);
-}
-
 
 #endif // OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE

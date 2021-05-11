@@ -83,7 +83,11 @@ RPC::RPC(Instance &aInstance)
 Error RPC::HandleCommand(void *aContext, uint8_t aArgsLength, char * aArgs[], uint8_t aCommandsLength, const otCliCommand aCommands[])
 {
     Error error = kErrorInvalidCommand;
+    volatile uint8_t commandsLen = aCommandsLength;
+
     VerifyOrExit(aArgsLength != 0);
+
+    OT_UNUSED_VARIABLE(commandsLen);
 
     for (size_t i = 0; i < aCommandsLength; i++)
     {
@@ -167,11 +171,11 @@ exit:
 Error RPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
 {
     Error error = kErrorNone;
+    volatile uint8_t argsLen = aArgsLength;
 
     SetOutputBuffer(aOutput, aOutputMaxLen);
     aOutput[0] = '\0';
 
-    volatile uint8_t argsLen = aArgsLength;
     OT_UNUSED_VARIABLE(argsLen);
 
 #if OPENTHREAD_RADIO
@@ -230,9 +234,30 @@ extern "C" void otCRPCInit(otInstance *aInstance)
     RPC::Initialize(instance);
 }
 
+// extern "C" void otCRPCProcessLine(char *aBuf)
+// {
+//     RPC::GetRPC().ProcessLine(aUserCommands, aLength, aContext);
+//     // TODO: Double check this
+//     Instance &instance = static_cast<Instance &>(*aInstance);
+
+//     RPC::Initialize(instance);
+// }
+
 extern "C" void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
 {
     RPC::GetRPC().SetUserCommands(aUserCommands, aLength, aContext);
+}
+
+extern "C" void otCRPCProcessCmdLine(otInstance *aInstance, const char *aString, char *aOutput, size_t aOutputMaxLen)
+{
+    OT_UNUSED_VARIABLE(aInstance);
+    RPC::GetRPC().ProcessLine(aString, aOutput, aOutputMaxLen);
+}
+
+extern "C" otError otCRPCProcessCmd(otInstance *aInstance, uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
+{
+    OT_UNUSED_VARIABLE(aInstance);
+    return RPC::GetRPC().ProcessCmd(aArgsLength, aArgs, aOutput, aOutputMaxLen);
 }
 
 extern "C" void otCRPCOutputFormat(const char *aFmt, ...)
