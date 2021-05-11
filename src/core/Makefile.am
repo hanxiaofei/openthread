@@ -443,7 +443,7 @@ HEADERS_COMMON                                  = \
     config/srp_server.h                           \
     config/time_sync.h                            \
     config/tmf.h                                  \
-    coprocessor/rpc.h                             \
+    coprocessor/rpc.hpp                           \
     crypto/aes_ccm.hpp                            \
     crypto/aes_ecb.hpp                            \
     crypto/ecdsa.hpp                              \
