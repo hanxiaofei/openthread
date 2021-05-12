@@ -42,6 +42,7 @@
 #include "common/instance.hpp"
 #include "common/locator_getters.hpp"
 #include "common/new.hpp"
+#include "openthread/coprocessor_rpc.h"
 #include "utils/parse_cmdline.hpp"
 
 OT_TOOL_WEAK
@@ -66,6 +67,17 @@ namespace Coprocessor {
 RPC *RPC::sRPC = nullptr;
 static OT_DEFINE_ALIGNED_VAR(sRPCRaw, sizeof(RPC), uint64_t);
 
+#if OPENTHREAD_RADIO
+
+const RPC::Command RPC::sCommands[] = {
+    {"help-crpc", otCRPCProcessHelp},
+};
+#else
+RPC::Arg RPC::mCachedCommands[];
+uint8_t  RPC::mCachedCommandsLength = 0;
+
+#endif
+
 RPC::RPC(Instance &aInstance)
     : InstanceLocator(aInstance)
 #if OPENTHREAD_RADIO
@@ -82,6 +94,23 @@ RPC::RPC(Instance &aInstance)
 void RPC::Initialize(Instance &aInstance)
 {
     RPC::sRPC = new (&sRPCRaw) RPC(aInstance);
+
+#if !OPENTHREAD_RADIO
+    // Initialize a response buffer
+    char output[kMaxCommandBuffer];
+    output[0]                  = '\0';
+    output[sizeof(output) - 1] = '\0';
+
+    // Get a list of supported commands
+    sRPC->ProcessLine("help-crpc", output, sizeof(output));
+
+    // Parse response string into mCachedCommands to make it iterable
+    Error error =
+        Utils::CmdLineParser::ParseCmd(output, ot::Coprocessor::RPC::mCachedCommandsLength,
+                                       ot::Coprocessor::RPC::mCachedCommands, OT_ARRAY_LENGTH(mCachedCommands));
+    OT_ASSERT(error == kErrorNone);
+
+#endif
 }
 
 void RPC::ProcessLine(const char *aString, char *aOutput, size_t aOutputMaxLen)
@@ -134,20 +163,36 @@ exit:
 
 Error RPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
 {
-    Error            error   = kErrorNone;
-    volatile uint8_t argsLen = aArgsLength;
+    Error error = kErrorInvalidCommand;
+    VerifyOrExit(aArgsLength > 0);
 
     aOutput[0] = '\0';
 
-    OT_UNUSED_VARIABLE(argsLen);
-
 #if OPENTHREAD_RADIO
+
     SetOutputBuffer(aOutput, aOutputMaxLen);
+
+    for (const Command &command : sCommands)
+    {
+        if (strcmp(aArgs[0], command.mName) == 0)
+        {
+            command.mCommand(NULL, aArgsLength, aArgs);
+            error = kErrorNone;
+            break;
+        }
+    }
     SuccessOrExit(error = HandleCommand(mUserCommandsContext, aArgsLength, aArgs, mUserCommandsLength, mUserCommands));
     ClearOutputBuffer();
 #else
-    // more platform specific features will be processed under platform layer
-    SuccessOrExit(error = otPlatCRPCProcess(&GetInstance(), aArgsLength, aArgs, aOutput, aOutputMaxLen));
+    for (Arg &command : mCachedCommands)
+    {
+        if (command == aArgs[0])
+        {
+            // more platform specific features will be processed under platform layer
+            SuccessOrExit(error = otPlatCRPCProcess(&GetInstance(), aArgsLength, aArgs, aOutput, aOutputMaxLen));
+            ExitNow();
+        }
+    }
 #endif
 
 exit:
@@ -160,11 +205,11 @@ exit:
     return error;
 }
 
-Error RPC::HandleCommand(void *             aContext,
-                         uint8_t            aArgsLength,
-                         char *             aArgs[],
-                         uint8_t            aCommandsLength,
-                         const otCliCommand aCommands[])
+Error RPC::HandleCommand(void *        aContext,
+                         uint8_t       aArgsLength,
+                         char *        aArgs[],
+                         uint8_t       aCommandsLength,
+                         const Command aCommands[])
 {
     Error error = kErrorInvalidCommand;
 
@@ -219,6 +264,14 @@ exit:
     return;
 }
 
+void RPC::PrintCommands(const Command aCommands[], size_t aCommandsLength)
+{
+    for (size_t i = 0; i < aCommandsLength; i++)
+    {
+        OutputFormat("%s\n", aCommands[i].mName);
+    }
+}
+
 void RPC::SetOutputBuffer(char *aOutput, size_t aOutputMaxLen)
 {
     mOutputBuffer       = aOutput;
@@ -269,6 +322,20 @@ extern "C" void otCRPCOutputFormat(const char *aFmt, ...)
     va_start(aAp, aFmt);
     RPC::GetRPC().OutputFormat(aFmt, aAp);
     va_end(aAp);
+}
+
+extern "C" void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
+{
+    RPC::GetRPC().ProcessHelp(aContext, aArgsLength, aArgs);
+}
+
+void RPC::ProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
+{
+    OT_UNUSED_VARIABLE(aContext);
+    OT_UNUSED_VARIABLE(aArgsLength);
+    OT_UNUSED_VARIABLE(aArgs);
+
+    PrintCommands(mUserCommands, mUserCommandsLength);
 }
 #endif
 

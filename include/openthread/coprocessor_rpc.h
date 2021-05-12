@@ -71,6 +71,7 @@ void otCRPCInit(otInstance *aInstance);
  */
 void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext);
 
+void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[]);
 /**
  * Write formatted string to the output buffer
  *

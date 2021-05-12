@@ -4861,7 +4861,7 @@ otError Interpreter::ProcessDiag(uint8_t aArgsLength, Arg aArgs[])
 #endif
 
 #if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-otError Interpreter::ProcessCoprocessorRPC(uint8_t aArgsLength, Arg aArgs[])
+otError Interpreter::ProcessCRPC(uint8_t aArgsLength, Arg aArgs[])
 {
     otError error = OT_ERROR_INVALID_COMMAND;
 
@@ -4908,7 +4908,7 @@ void Interpreter::ProcessLine(char *aBuf)
     else
     {
         VerifyOrExit((error = ProcessUserCommands(argsLength, args)) != OT_ERROR_NONE);
-        VerifyOrExit((error = ProcessCoprocessorRPC(argsLength, args)) != OT_ERROR_NONE);
+        VerifyOrExit((error = ProcessCRPC(argsLength, args)) != OT_ERROR_NONE);
     }
     OutputResult(error);
 

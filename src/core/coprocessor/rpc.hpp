@@ -47,6 +47,7 @@
 #include "common/error.hpp"
 #include "common/locator.hpp"
 #include "common/non_copyable.hpp"
+#include "utils/parse_cmdline.hpp"
 
 namespace ot {
 namespace Coprocessor {
@@ -54,6 +55,9 @@ namespace Coprocessor {
 class RPC : public InstanceLocator, private NonCopyable
 {
 public:
+    typedef Utils::CmdLineParser::Arg Arg;
+    typedef otCliCommand              Command;
+
     /**
      * Constructor.
      *
@@ -113,7 +117,7 @@ public:
     /**
      * Call the corresponding handler for a command
      *
-     * This function will look through @p aCommands to find a @ref otCliCommand
+     * This function will look through @p aCommands to find a @ref CRPC::Command
      * that matches @p aArgs[0]. If found, the handler function for the command
      * will be called with the remaining args passed to it.
      *
@@ -128,11 +132,11 @@ public:
      *
      */
     // TODO: Add a C API for this so that commands with subcommands can use it
-    Error HandleCommand(void *             aContext,
-                        uint8_t            aArgsLength,
-                        char *             aArgs[],
-                        uint8_t            aCommandsLength,
-                        const otCliCommand aCommands[]);
+    Error HandleCommand(void *        aContext,
+                        uint8_t       aArgsLength,
+                        char *        aArgs[],
+                        uint8_t       aCommandsLength,
+                        const Command aCommands[]);
 
     /**
      * Write error code to a buffer
@@ -144,8 +148,6 @@ public:
      */
     void AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen);
 
-#if OPENTHREAD_RADIO
-
     /**
      * This method sets the user command table.
      *
@@ -154,8 +156,9 @@ public:
      * @param[in]  aContext       @p aUserCommands context.
      *
      */
-    void SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext);
+    void SetUserCommands(const Command aCommands[], uint8_t aLength, void *aContext);
 
+#if OPENTHREAD_RADIO
     /**
      * Write formatted string to the output buffer
      *
@@ -172,27 +175,25 @@ public:
      * @param[in]  aCommandsLength  Number of commands in @p aCommands
      *
      */
-    void PrintCommands(otCliCommand aCommands[], size_t aCommandsLength);
+    void PrintCommands(const Command aCommands[], size_t aCommandsLength);
+
+    void ProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[]);
 #endif
+    enum
+    {
+        kMaxCommands      = OPENTHREAD_CONFIG_COPROCESSOR_RPC_COMMANDS_MAX,
+        kMaxArgs          = OPENTHREAD_CONFIG_COPROCESSOR_RPC_CMD_LINE_ARGS_MAX,
+        kMaxCommandBuffer = OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE,
+    };
 
 protected:
     static RPC *sRPC;
 
 private:
-    enum
-    {
-        kMaxArgs          = OPENTHREAD_CONFIG_COPROCESSOR_RPC_CMD_LINE_ARGS_MAX,
-        kMaxCommandBuffer = OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE,
-    };
-
 #if OPENTHREAD_RADIO
     char * mOutputBuffer;
     size_t mOutputBufferCount;
     size_t mOutputBufferMaxLen;
-
-    const otCliCommand *mUserCommands;
-    void *              mUserCommandsContext;
-    uint8_t             mUserCommandsLength;
 
     /**
      * Store the output buffer pointer and size
@@ -209,6 +210,16 @@ private:
      */
     void ClearOutputBuffer(void);
 #endif
+
+#if OPENTHREAD_RADIO
+    const Command *mUserCommands;
+    void *         mUserCommandsContext;
+    uint8_t        mUserCommandsLength;
+#else
+    static Arg     mCachedCommands[kMaxCommands];
+    static uint8_t mCachedCommandsLength;
+#endif
+    static const Command sCommands[];
 
     Error ParseCmd(char *aString, uint8_t &aArgsLength, char *aArgs[]);
 };

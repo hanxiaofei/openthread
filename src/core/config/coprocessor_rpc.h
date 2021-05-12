@@ -66,6 +66,16 @@
 #endif
 
 /**
+ * @def OPENTHREAD_CONFIG_COPROCESSOR_RPC_COMMANDS_MAX
+ *
+ * Define OpenThread Co-processor Remote Procedure Call max number of commands.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_COPROCESSOR_RPC_COMMANDS_MAX
+#define OPENTHREAD_CONFIG_COPROCESSOR_RPC_COMMANDS_MAX 32
+#endif
+
+/**
  * @def OPENTHREAD_CONFIG_COPROCESSOR_RPC_CMD_LINE_BUFFER_SIZE
  *
  * Define OpenThread Co-processor Remote Procedure Call command line buffer size in bytes.

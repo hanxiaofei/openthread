@@ -388,7 +388,7 @@ private:
     otError ProcessCounters(uint8_t aArgsLength, Arg aArgs[]);
 
 #if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-    otError ProcessCoprocessorRPC(uint8_t aArgsLength, Arg aArgs[]);
+    otError ProcessCRPC(uint8_t aArgsLength, Arg aArgs[]);
 #endif
     otError ProcessCsl(uint8_t aArgsLength, Arg aArgs[]);
 #if OPENTHREAD_FTD
