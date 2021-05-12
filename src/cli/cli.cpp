@@ -5265,6 +5265,8 @@ void Interpreter::Initialize(otInstance *aInstance, otCliOutputCallback aCallbac
 extern "C" void otCliInit(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext)
 {
     Interpreter::Initialize(aInstance, aCallback, aContext);
+
+    otCRPCInit(aInstance);
 }
 
 extern "C" void otCliInputLine(char *aBuf)

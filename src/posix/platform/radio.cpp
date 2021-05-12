@@ -522,7 +522,8 @@ otError otPlatCRPCProcess(otInstance *aInstance,
     char *end                                                         = cmd + sizeof(cmd);
 
     // TODO: Cache the commands available from the coprocessor upon connection
-    // TODO: Return OT_ERROR_INVALID_COMMAND when command isn't in cache. Without this, invalid commands will print "Done" instead of "Error 35: Invalid command"
+    // TODO: Return OT_ERROR_INVALID_COMMAND when command isn't in cache. Without this, invalid commands will print
+    // "Done" instead of "Error 35: Invalid command"
 
     for (uint8_t index = 0; (index < aArgsLength) && (cur < end); index++)
     {
