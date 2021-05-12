@@ -68,14 +68,9 @@ RPC *RPC::sRPC = nullptr;
 static OT_DEFINE_ALIGNED_VAR(sRPCRaw, sizeof(RPC), uint64_t);
 
 #if OPENTHREAD_RADIO
-
 const RPC::Command RPC::sCommands[] = {
     {"help-crpc", otCRPCProcessHelp},
 };
-#else
-RPC::Arg RPC::mCachedCommands[];
-uint8_t  RPC::mCachedCommandsLength = 0;
-
 #endif
 
 RPC::RPC(Instance &aInstance)
@@ -87,6 +82,9 @@ RPC::RPC(Instance &aInstance)
     , mUserCommands(nullptr)
     , mUserCommandsContext(nullptr)
     , mUserCommandsLength(0)
+#else
+    , mCachedCommands()
+    , mCachedCommandsLength(0)
 #endif
 {
 }
@@ -97,17 +95,18 @@ void RPC::Initialize(Instance &aInstance)
 
 #if !OPENTHREAD_RADIO
     // Initialize a response buffer
-    char output[kMaxCommandBuffer];
-    output[0]                  = '\0';
-    output[sizeof(output) - 1] = '\0';
+    memset(RPC::sRPC->mCachedCommandsBuffer, 0, sizeof(RPC::sRPC->mCachedCommandsBuffer));
 
     // Get a list of supported commands
-    sRPC->ProcessLine("help-crpc", output, sizeof(output));
+    char help[] = "help-crpc\n";
+    char * helpCmd[] = {help};
+    otPlatCRPCProcess(&RPC::sRPC->GetInstance(), OT_ARRAY_LENGTH(helpCmd), helpCmd, RPC::sRPC->mCachedCommandsBuffer, sizeof(RPC::sRPC->mCachedCommandsBuffer));
 
     // Parse response string into mCachedCommands to make it iterable
     Error error =
-        Utils::CmdLineParser::ParseCmd(output, ot::Coprocessor::RPC::mCachedCommandsLength,
-                                       ot::Coprocessor::RPC::mCachedCommands, OT_ARRAY_LENGTH(mCachedCommands));
+        Utils::CmdLineParser::ParseCmd(RPC::sRPC->mCachedCommandsBuffer, RPC::sRPC->mCachedCommandsLength,
+                                       RPC::sRPC->mCachedCommands, OT_ARRAY_LENGTH(RPC::sRPC->mCachedCommands));
+
     OT_ASSERT(error == kErrorNone);
 
 #endif
@@ -184,8 +183,9 @@ Error RPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t 
     SuccessOrExit(error = HandleCommand(mUserCommandsContext, aArgsLength, aArgs, mUserCommandsLength, mUserCommands));
     ClearOutputBuffer();
 #else
-    for (Arg &command : mCachedCommands)
+    for (uint8_t i = 0; i < mCachedCommandsLength; i++)
     {
+        Arg &command = mCachedCommands[i];
         if (command == aArgs[0])
         {
             // more platform specific features will be processed under platform layer

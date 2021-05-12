@@ -184,6 +184,7 @@ public:
         kMaxCommands      = OPENTHREAD_CONFIG_COPROCESSOR_RPC_COMMANDS_MAX,
         kMaxArgs          = OPENTHREAD_CONFIG_COPROCESSOR_RPC_CMD_LINE_ARGS_MAX,
         kMaxCommandBuffer = OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE,
+        kCommandCacheBufferLength = OPENTHREAD_CONFIG_COPROCESSOR_RPC_COMMAND_CACHE_BUFFER_SIZE,
     };
 
 protected:
@@ -216,8 +217,10 @@ private:
     void *         mUserCommandsContext;
     uint8_t        mUserCommandsLength;
 #else
-    static Arg     mCachedCommands[kMaxCommands];
-    static uint8_t mCachedCommandsLength;
+    Arg     mCachedCommands[kMaxCommands];
+    char    mCachedCommandsBuffer[kCommandCacheBufferLength];
+    uint8_t mCachedCommandsLength;
+
 #endif
     static const Command sCommands[];
 
