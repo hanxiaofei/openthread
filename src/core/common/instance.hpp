@@ -419,9 +419,6 @@ private:
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     FactoryDiags::Diags mDiags;
 #endif
-#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-    Coprocessor::RPC mCRPC;
-#endif
     bool mIsInitialized;
 
 #if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE && (OPENTHREAD_FTD || OPENTHREAD_MTD)
@@ -967,13 +964,6 @@ template <> inline Extension::ExtensionBase &Instance::Get(void)
 template <> inline FactoryDiags::Diags &Instance::Get(void)
 {
     return mDiags;
-}
-#endif
-
-#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-template <> inline Coprocessor::RPC &Instance::Get(void)
-{
-    return mCRPC;
 }
 #endif
 
