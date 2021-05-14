@@ -1,5 +1,6 @@
+#!/usr/bin/env python3
 #
-#  Copyright (c) 2016, The OpenThread Authors.
+#  Copyright (c) 2021, The OpenThread Authors.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -26,27 +27,49 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
-include $(abs_top_nlbuild_autotools_dir)/automake/pre.am
+import unittest
+import ipaddress
 
-EXTRA_DIST                              = \
-    nlbuild-autotools                     \
-    openthread-test-driver                \
-    $(NULL)
+import config
+import thread_cert
 
-# Always package (e.g. for 'make dist') these subdirectories.
+LEADER = 1
 
-DIST_SUBDIRS                            = \
-    jlink                                 \
-    mbedtls                               \
-    $(NULL)
 
-SUBDIRS =                                 \
-    $(NULL)
+class Test_SetMlIid(thread_cert.TestCase):
+    USE_MESSAGE_FACTORY = False
 
-if OPENTHREAD_ENABLE_BUILTIN_MBEDTLS
-SUBDIRS                                += \
-    mbedtls                               \
-    $(NULL)
-endif # OPENTHREAD_ENABLE_BUILTIN_MBEDTLS
+    TOPOLOGY = {
+        LEADER: {
+            'mode': 'rdn',
+        },
+    }
 
-include $(abs_top_nlbuild_autotools_dir)/automake/post.am
+    def test(self):
+        # Set ML-IID before Thread is enabled.
+        self.nodes[LEADER].set_mliid('1122334455667788')
+
+        self.nodes[LEADER].start()
+        self.simulator.go(4)
+        self.assertEqual(self.nodes[LEADER].get_state(), 'leader')
+
+        # Ensure set ML-IID was effective.
+        mleid = self.nodes[LEADER].get_ip6_address(config.ADDRESS_TYPE.ML_EID)
+        self.assertEqual(b'\x11\x22\x33\x44\x55\x66\x77\x88', ipaddress.IPv6Address(mleid).packed[-8:])
+
+        # Ensure set ML-IID fail after Thread is enabled.
+        self.assertRaises(Exception, lambda: self.nodes[LEADER].set_mliid('5566778811223344'))
+
+        self.nodes[LEADER].reset()
+
+        self.nodes[LEADER].start()
+        self.simulator.go(10)
+        self.assertEqual(self.nodes[LEADER].get_state(), 'leader')
+
+        # Ensure ML-IID is persistent after reset.
+        mleid = self.nodes[LEADER].get_ip6_address(config.ADDRESS_TYPE.ML_EID)
+        self.assertEqual(b'\x11\x22\x33\x44\x55\x66\x77\x88', ipaddress.IPv6Address(mleid).packed[-8:])
+
+
+if __name__ == '__main__':
+    unittest.main()

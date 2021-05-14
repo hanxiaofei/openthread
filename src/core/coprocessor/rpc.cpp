@@ -289,6 +289,11 @@ void RPC::ClearOutputBuffer(void)
 }
 #endif
 
+Arg * RPC::GetCachedCommands(void)
+{
+    return RPC::mCachedCommands;
+}
+
 extern "C" void otCRPCInit(otInstance *aInstance)
 {
     // TODO: Double check this

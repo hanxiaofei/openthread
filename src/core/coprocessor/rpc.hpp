@@ -158,6 +158,7 @@ public:
      */
     void SetUserCommands(const Command aCommands[], uint8_t aLength, void *aContext);
 
+    Arg* GetCachedCommands(void);
 #if OPENTHREAD_RADIO
     /**
      * Write formatted string to the output buffer
