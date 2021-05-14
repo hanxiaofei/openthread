@@ -4915,7 +4915,9 @@ void Interpreter::ProcessLine(char *aBuf)
     else
     {
         VerifyOrExit((error = ProcessUserCommands(argsLength, args)) != OT_ERROR_NONE);
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
         VerifyOrExit((error = ProcessCRPC(argsLength, args)) != OT_ERROR_NONE);
+#endif
     }
 
 exit:
@@ -5275,7 +5277,9 @@ extern "C" void otCliInit(otInstance *aInstance, otCliOutputCallback aCallback, 
 {
     Interpreter::Initialize(aInstance, aCallback, aContext);
 
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
     otCRPCInit(aInstance);
+#endif
 }
 
 extern "C" void otCliInputLine(char *aBuf)
