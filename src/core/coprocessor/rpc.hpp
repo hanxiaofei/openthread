@@ -113,6 +113,7 @@ public:
      *
      */
     Error ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen);
+#if OPENTHREAD_RADIO
 
     /**
      * Call the corresponding handler for a command
@@ -139,14 +140,36 @@ public:
                         const Command aCommands[]);
 
     /**
-     * Write error code to a buffer
+     * This method writes a number of bytes to the CLI console as a hex string.
      *
-     * @param[in]   aError          Error code value.
-     * @param[out]  aOutput         The execution result.
-     * @param[in]   aOutputMaxLen   The output buffer size.
+     * @param[in]  aBytes   A pointer to data which should be printed.
+     * @param[in]  aLength  @p aBytes length.
      *
      */
-    void AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen);
+    void OutputBytes(const uint8_t *aBytes, uint16_t aLength);
+
+    /**
+     * This method writes a number of bytes to the CLI console as a hex string.
+     *
+     * @tparam kBytesLength   The length of @p aBytes array.
+     *
+     * @param[in]  aBytes     A array of @p kBytesLength bytes which should be printed.
+     *
+     */
+    template <uint8_t kBytesLength> void OutputBytes(const uint8_t (&aBytes)[kBytesLength])
+    {
+        OutputBytes(aBytes, kBytesLength);
+    }
+
+    /**
+     * This method delivers a success or error message the client.
+     *
+     * If the @p aError is `OT_ERROR_PENDING` nothing will be outputted.
+     *
+     * @param[in]  aError  The error code.
+     *
+     */
+    void OutputResult(otError aError);
 
     /**
      * This method sets the user command table.
@@ -158,15 +181,20 @@ public:
      */
     void SetUserCommands(const Command aCommands[], uint8_t aLength, void *aContext);
 
-#if OPENTHREAD_RADIO
     /**
      * Write formatted string to the output buffer
      *
-     * @param[in]  aFmt   A pointer to the format string.
+     * @param[in]  aFormat   A pointer to the format string.
      * @param[in]  ...    A matching list of arguments.
      *
      */
-    void OutputFormat(const char *aFmt, ...);
+    void OutputFormat(const char *aFormat, ...);
+
+    void OutputFormat(uint8_t aIndentSize, const char *aFormat, ...);
+    void OutputLine(const char *aFormat, ...);
+    void OutputLine(uint8_t aIndentSize, const char *aFormat, ...);
+    void OutputSpaces(uint8_t aCount);
+    int OutputFormatV(const char *aFormat, va_list aArguments);
 
     /**
      * Print all commands in @p aCommands
@@ -175,9 +203,10 @@ public:
      * @param[in]  aCommandsLength  Number of commands in @p aCommands
      *
      */
-    void PrintCommands(const Command aCommands[], size_t aCommandsLength);
+    void OutputCommands(const Command aCommands[], size_t aCommandsLength);
 
     void ProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[]);
+
 #endif
     enum
     {
@@ -213,14 +242,13 @@ private:
 #endif
 
 #if OPENTHREAD_RADIO
-    const Command *mUserCommands;
-    void *         mUserCommandsContext;
-    uint8_t        mUserCommandsLength;
+    const Command *     mUserCommands;
+    void *              mUserCommandsContext;
+    uint8_t             mUserCommandsLength;
 #else
     Arg     mCachedCommands[kMaxCommands];
     char    mCachedCommandsBuffer[kCommandCacheBufferLength];
     uint8_t mCachedCommandsLength;
-
 #endif
     static const Command sCommands[];
 

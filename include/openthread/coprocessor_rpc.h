@@ -84,7 +84,6 @@ void otCRPCOutputFormat(const char *aFmt, ...);
 /**
  * This function processes a command line.
  *
- * @param[in]   aInstance       A pointer to an OpenThread instance.
  * @param[in]   aArgsLength     The number of elements in @p aArgs.
  * @param[in]   aArgs           An array of arguments.
  * @param[out]  aOutput         The execution result.
@@ -95,8 +94,7 @@ void otCRPCOutputFormat(const char *aFmt, ...);
  * @retval  OT_ERROR_NOT_IMPLEMENTED    The command is not supported.
  *
  */
-otError otCRPCProcessCmd(otInstance *aInstance,
-                         uint8_t     aArgsLength,
+otError otCRPCProcessCmd(uint8_t     aArgsLength,
                          char *      aArgs[],
                          char *      aOutput,
                          size_t      aOutputMaxLen);
@@ -104,13 +102,14 @@ otError otCRPCProcessCmd(otInstance *aInstance,
 /**
  * This function processes a command-line string.
  *
- * @param[in]   aInstance       A pointer to an OpenThread instance.
  * @param[in]   aString         A NULL-terminated input string.
  * @param[out]  aOutput         The execution result.
  * @param[in]   aOutputMaxLen   The output buffer size.
  *
  */
-void otCRPCProcessCmdLine(otInstance *aInstance, const char *aString, char *aOutput, size_t aOutputMaxLen);
+void otCRPCProcessCmdLine(const char *aString,
+                          char *aOutput,
+                          size_t aOutputMaxLen);
 
 /**
  * @}

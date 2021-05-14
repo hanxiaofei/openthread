@@ -45,6 +45,17 @@
 #include "openthread/coprocessor_rpc.h"
 #include "utils/parse_cmdline.hpp"
 
+/**
+ * Deliver the platform specific coprocessor RPC commands to radio only ncp
+ *
+ * @param[in]   aInstance       The OpenThread instance structure.
+ * @param[in]   aArgsLength     The number of elements in @p aArgs.
+ * @param[in]   aArgs           An array of arguments.
+ * @param[out]  aOutput         The execution result.
+ * @param[in]   aOutputMaxLen   The output buffer size.
+ *
+ * NOTE: This only needs to be implemented for the POSIX platform
+ */
 OT_TOOL_WEAK
 otError otPlatCRPCProcess(otInstance *aInstance,
                           uint8_t     aArgsLength,
@@ -100,15 +111,13 @@ void RPC::Initialize(Instance &aInstance)
     // Get a list of supported commands
     char help[] = "help-crpc\n";
     char * helpCmd[] = {help};
-    otPlatCRPCProcess(&RPC::sRPC->GetInstance(), OT_ARRAY_LENGTH(helpCmd), helpCmd, RPC::sRPC->mCachedCommandsBuffer, sizeof(RPC::sRPC->mCachedCommandsBuffer));
+    SuccessOrExit(otPlatCRPCProcess(&RPC::sRPC->GetInstance(), OT_ARRAY_LENGTH(helpCmd), helpCmd, RPC::sRPC->mCachedCommandsBuffer, sizeof(RPC::sRPC->mCachedCommandsBuffer)));
 
     // Parse response string into mCachedCommands to make it iterable
-    Error error =
-        Utils::CmdLineParser::ParseCmd(RPC::sRPC->mCachedCommandsBuffer, RPC::sRPC->mCachedCommandsLength,
-                                       RPC::sRPC->mCachedCommands, OT_ARRAY_LENGTH(RPC::sRPC->mCachedCommands));
-
-    OT_ASSERT(error == kErrorNone);
-
+    SuccessOrExit(Utils::CmdLineParser::ParseCmd(RPC::sRPC->mCachedCommandsBuffer, RPC::sRPC->mCachedCommandsLength,
+                                       RPC::sRPC->mCachedCommands, OT_ARRAY_LENGTH(RPC::sRPC->mCachedCommands)));
+exit:
+    return;
 #endif
 }
 
@@ -205,6 +214,8 @@ exit:
     return error;
 }
 
+#if OPENTHREAD_RADIO
+
 Error RPC::HandleCommand(void *        aContext,
                          uint8_t       aArgsLength,
                          char *        aArgs[],
@@ -230,15 +241,30 @@ exit:
     return error;
 }
 
-void RPC::AppendErrorResult(Error aError, char *aOutput, size_t aOutputMaxLen)
+void RPC::OutputResult(otError aError)
 {
-    if (aError != kErrorNone)
+    switch (aError)
     {
-        snprintf(aOutput, aOutputMaxLen, "failed\r\nstatus %#x\r\n", aError);
+    case OT_ERROR_NONE:
+        OutputLine("Done");
+        break;
+
+    case OT_ERROR_PENDING:
+        break;
+
+    default:
+        OutputLine("Error %d: %s", aError, otThreadErrorToString(aError));
     }
 }
 
-#if OPENTHREAD_RADIO
+void RPC::OutputBytes(const uint8_t *aBytes, uint16_t aLength)
+{
+    for (uint16_t i = 0; i < aLength; i++)
+    {
+        OutputFormat("%02x", aBytes[i]);
+    }
+}
+
 void RPC::SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext)
 {
     mUserCommands        = aCommands;
@@ -246,30 +272,85 @@ void RPC::SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *
     mUserCommandsContext = aContext;
 }
 
-void RPC::OutputFormat(const char *aFmt, ...)
+void RPC::OutputFormat(const char *aFormat, ...)
+{
+    va_list ap;
+
+    va_start(ap, aFormat);
+    OutputFormatV(aFormat, ap);
+    va_end(ap);
+}
+
+void RPC::OutputFormat(uint8_t aIndentSize, const char *aFormat, ...)
+{
+    va_list ap;
+
+    OutputSpaces(aIndentSize);
+
+    va_start(ap, aFormat);
+    OutputFormatV(aFormat, ap);
+    va_end(ap);
+}
+
+void RPC::OutputLine(const char *aFormat, ...)
 {
     va_list args;
-    int     ret = 0;
+
+    va_start(args, aFormat);
+    OutputFormatV(aFormat, args);
+    va_end(args);
+
+    OutputFormat("\r\n");
+}
+
+void RPC::OutputLine(uint8_t aIndentSize, const char *aFormat, ...)
+{
+    va_list args;
+
+    OutputSpaces(aIndentSize);
+
+    va_start(args, aFormat);
+    OutputFormatV(aFormat, args);
+    va_end(args);
+
+    OutputFormat("\r\n");
+}
+
+void RPC::OutputSpaces(uint8_t aCount)
+{
+    char format[sizeof("%256s")];
+
+    snprintf(format, sizeof(format), "%%%us", aCount);
+
+    OutputFormat(format, "");
+}
+
+int RPC::OutputFormatV(const char *aFormat, va_list aArguments)
+{
+    int rval = 0;
 
     VerifyOrExit(mOutputBuffer && (mOutputBufferCount < mOutputBufferMaxLen));
 
-    va_start(args, aFmt);
-
-    if ((ret = vsnprintf(&mOutputBuffer[mOutputBufferCount], mOutputBufferMaxLen, aFmt, args)) > 0)
+    rval = vsnprintf(&mOutputBuffer[mOutputBufferCount], mOutputBufferMaxLen, aFormat, aArguments);
+    if (rval > 0)
     {
-        mOutputBufferCount += static_cast<size_t>(ret);
+        mOutputBufferCount += static_cast<size_t>(rval);
     }
-    va_end(args);
 exit:
-    return;
+    return rval;
 }
 
-void RPC::PrintCommands(const Command aCommands[], size_t aCommandsLength)
+void RPC::OutputCommands(const Command aCommands[], size_t aCommandsLength)
 {
+    VerifyOrExit(aCommands != NULL);
+
     for (size_t i = 0; i < aCommandsLength; i++)
     {
         OutputFormat("%s\n", aCommands[i].mName);
     }
+
+exit:
+    return;
 }
 
 void RPC::SetOutputBuffer(char *aOutput, size_t aOutputMaxLen)
@@ -284,50 +365,6 @@ void RPC::ClearOutputBuffer(void)
     mOutputBuffer       = nullptr;
     mOutputBufferMaxLen = 0;
 }
-#endif
-
-extern "C" void otCRPCInit(otInstance *aInstance)
-{
-    // TODO: Double check this
-    Instance &instance = static_cast<Instance &>(*aInstance);
-
-    RPC::Initialize(instance);
-}
-
-extern "C" void otCRPCProcessCmdLine(otInstance *aInstance, const char *aString, char *aOutput, size_t aOutputMaxLen)
-{
-    OT_UNUSED_VARIABLE(aInstance);
-    RPC::GetRPC().ProcessLine(aString, aOutput, aOutputMaxLen);
-}
-
-extern "C" otError otCRPCProcessCmd(otInstance *aInstance,
-                                    uint8_t     aArgsLength,
-                                    char *      aArgs[],
-                                    char *      aOutput,
-                                    size_t      aOutputMaxLen)
-{
-    OT_UNUSED_VARIABLE(aInstance);
-    return RPC::GetRPC().ProcessCmd(aArgsLength, aArgs, aOutput, aOutputMaxLen);
-}
-
-#if OPENTHREAD_RADIO
-extern "C" void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
-{
-    RPC::GetRPC().SetUserCommands(aUserCommands, aLength, aContext);
-}
-
-extern "C" void otCRPCOutputFormat(const char *aFmt, ...)
-{
-    va_list aAp;
-    va_start(aAp, aFmt);
-    RPC::GetRPC().OutputFormat(aFmt, aAp);
-    va_end(aAp);
-}
-
-extern "C" void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
-{
-    RPC::GetRPC().ProcessHelp(aContext, aArgsLength, aArgs);
-}
 
 void RPC::ProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
 {
@@ -335,10 +372,61 @@ void RPC::ProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
     OT_UNUSED_VARIABLE(aArgsLength);
     OT_UNUSED_VARIABLE(aArgs);
 
-    PrintCommands(mUserCommands, mUserCommandsLength);
+    OutputCommands(mUserCommands, mUserCommandsLength);
 }
+
 #endif
 
+extern "C" void otCRPCInit(otInstance *aInstance)
+{
+    Instance &instance = static_cast<Instance &>(*aInstance);
+
+    RPC::Initialize(instance);
+}
+
+extern "C" void otCRPCProcessCmdLine(const char *aString, char *aOutput, size_t aOutputMaxLen)
+{
+    RPC::GetRPC().ProcessLine(aString, aOutput, aOutputMaxLen);
+}
+
+extern "C" otError otCRPCProcessCmd(uint8_t     aArgsLength,
+                                    char *      aArgs[],
+                                    char *      aOutput,
+                                    size_t      aOutputMaxLen)
+{
+    return RPC::GetRPC().ProcessCmd(aArgsLength, aArgs, aOutput, aOutputMaxLen);
+}
+
+#if OPENTHREAD_RADIO
+
+extern "C" void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
+{
+    RPC::GetRPC().SetUserCommands(aUserCommands, aLength, aContext);
+}
+
+extern "C" void otCRPCOutputBytes(const uint8_t *aBytes, uint8_t aLength)
+{
+    RPC::GetRPC().OutputBytes(aBytes, aLength);
+}
+
+extern "C" void otCRPCOutputFormat(const char *aFmt, ...)
+{
+    va_list aAp;
+    va_start(aAp, aFmt);
+    RPC::GetRPC().OutputFormatV(aFmt, aAp);
+    va_end(aAp);
+}
+
+extern "C" void otCRPCAppendResult(otError aError)
+{
+    RPC::GetRPC().OutputResult(aError);
+}
+
+extern "C" void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
+{
+    RPC::GetRPC().ProcessHelp(aContext, aArgsLength, aArgs);
+}
+#endif
 } // namespace Coprocessor
 } // namespace ot
 

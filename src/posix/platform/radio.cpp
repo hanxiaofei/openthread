@@ -515,7 +515,6 @@ otError otPlatCRPCProcess(otInstance *aInstance,
                           char *      aOutput,
                           size_t      aOutputMaxLen)
 {
-    // deliver the platform specific coprocessor RPC commands to radio only ncp.
     OT_UNUSED_VARIABLE(aInstance);
     char  cmd[OPENTHREAD_CONFIG_COPROCESSOR_RPC_CMD_LINE_BUFFER_SIZE] = {'\0'};
     char *cur                                                         = cmd;

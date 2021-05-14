@@ -4873,7 +4873,7 @@ otError Interpreter::ProcessCRPC(uint8_t aArgsLength, Arg aArgs[])
 
     Arg::CopyArgsToStringArray(aArgs, aArgsLength, args);
 
-    error = otCRPCProcessCmd(mInstance, aArgsLength, args, output, sizeof(output) - 1);
+    error = otCRPCProcessCmd(aArgsLength, args, output, sizeof(output) - 1);
 
     OutputFormat("%s", output);
 
