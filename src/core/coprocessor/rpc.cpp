@@ -71,6 +71,11 @@ static OT_DEFINE_ALIGNED_VAR(sRPCRaw, sizeof(RPC), uint64_t);
 const RPC::Command RPC::sCommands[] = {
     {"help-crpc", otCRPCProcessHelp},
 };
+#else
+
+RPC::Arg RPC::mCachedCommands[RPC::kMaxCommands];
+char     RPC::mCachedCommandsBuffer[RPC::kCommandCacheBufferLength];
+uint8_t  RPC::mCachedCommandsLength = 0;
 #endif
 
 RPC::RPC(Instance &aInstance)
@@ -83,8 +88,6 @@ RPC::RPC(Instance &aInstance)
     , mUserCommandsContext(nullptr)
     , mUserCommandsLength(0)
 #else
-    , mCachedCommands()
-    , mCachedCommandsLength(0)
 #endif
 {
 }
@@ -95,20 +98,20 @@ void RPC::Initialize(Instance &aInstance)
 
 #if !OPENTHREAD_RADIO
     // Initialize a response buffer
-    memset(RPC::sRPC->mCachedCommandsBuffer, 0, sizeof(RPC::sRPC->mCachedCommandsBuffer));
+    memset(ot::Coprocessor::RPC::mCachedCommandsBuffer, 0, sizeof(ot::Coprocessor::RPC::mCachedCommandsBuffer));
 
     // Get a list of supported commands
-    char help[] = "help-crpc\n";
-    char * helpCmd[] = {help};
-    otPlatCRPCProcess(&RPC::sRPC->GetInstance(), OT_ARRAY_LENGTH(helpCmd), helpCmd, RPC::sRPC->mCachedCommandsBuffer, sizeof(RPC::sRPC->mCachedCommandsBuffer));
+    char  help[]    = "help-crpc\n";
+    char *helpCmd[] = {help};
+    SuccessOrExit(otPlatCRPCProcess(&RPC::sRPC->GetInstance(), OT_ARRAY_LENGTH(helpCmd), helpCmd,
+                                    RPC::sRPC->mCachedCommandsBuffer, sizeof(RPC::sRPC->mCachedCommandsBuffer)));
 
     // Parse response string into mCachedCommands to make it iterable
-    Error error =
-        Utils::CmdLineParser::ParseCmd(RPC::sRPC->mCachedCommandsBuffer, RPC::sRPC->mCachedCommandsLength,
-                                       RPC::sRPC->mCachedCommands, OT_ARRAY_LENGTH(RPC::sRPC->mCachedCommands));
-
-    OT_ASSERT(error == kErrorNone);
-
+    SuccessOrExit(Utils::CmdLineParser::ParseCmd(RPC::sRPC->mCachedCommandsBuffer, RPC::sRPC->mCachedCommandsLength,
+                                                 RPC::sRPC->mCachedCommands,
+                                                 OT_ARRAY_LENGTH(RPC::sRPC->mCachedCommands)));
+exit:
+    return;
 #endif
 }
 
