@@ -364,6 +364,7 @@ void RPC::ProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
     OT_UNUSED_VARIABLE(aArgsLength);
     OT_UNUSED_VARIABLE(aArgs);
 
+    OutputCommands(sCommands, OT_ARRAY_LENGTH(sCommands));
     OutputCommands(mUserCommands, mUserCommandsLength);
 }
 
