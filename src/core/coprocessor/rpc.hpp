@@ -83,8 +83,6 @@ public:
      * This method initializes the RPC object.
      *
      * @param[in]  aInstance  The OpenThread instance structure.
-     * @param[in]  aCallback  A pointer to a callback method.
-     * @param[in]  aContext   A pointer to a user context.
      *
      */
     static void Initialize(Instance &aInstance);
@@ -210,9 +208,9 @@ public:
 #endif
     enum
     {
-        kMaxCommands      = OPENTHREAD_CONFIG_COPROCESSOR_RPC_COMMANDS_MAX,
-        kMaxArgs          = OPENTHREAD_CONFIG_COPROCESSOR_RPC_CMD_LINE_ARGS_MAX,
-        kMaxCommandBuffer = OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE,
+        kMaxCommands              = OPENTHREAD_CONFIG_COPROCESSOR_RPC_COMMANDS_MAX,
+        kMaxArgs                  = OPENTHREAD_CONFIG_COPROCESSOR_RPC_CMD_LINE_ARGS_MAX,
+        kMaxCommandBuffer         = OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE,
         kCommandCacheBufferLength = OPENTHREAD_CONFIG_COPROCESSOR_RPC_COMMAND_CACHE_BUFFER_SIZE,
     };
 
@@ -246,9 +244,9 @@ private:
     void *              mUserCommandsContext;
     uint8_t             mUserCommandsLength;
 #else
-    Arg     mCachedCommands[kMaxCommands];
-    char    mCachedCommandsBuffer[kCommandCacheBufferLength];
-    uint8_t mCachedCommandsLength;
+    static Arg     mCachedCommands[kMaxCommands];
+    static char    mCachedCommandsBuffer[kCommandCacheBufferLength];
+    static uint8_t mCachedCommandsLength;
 #endif
     static const Command sCommands[];
 
