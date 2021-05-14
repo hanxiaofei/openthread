@@ -275,6 +275,15 @@ void RPC::PrintCommands(const Command aCommands[], size_t aCommandsLength)
     }
 }
 
+void RPC::ProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
+{
+    OT_UNUSED_VARIABLE(aContext);
+    OT_UNUSED_VARIABLE(aArgsLength);
+    OT_UNUSED_VARIABLE(aArgs);
+
+    PrintCommands(mUserCommands, mUserCommandsLength);
+}
+
 void RPC::SetOutputBuffer(char *aOutput, size_t aOutputMaxLen)
 {
     mOutputBuffer       = aOutput;
@@ -289,14 +298,8 @@ void RPC::ClearOutputBuffer(void)
 }
 #endif
 
-Arg * RPC::GetCachedCommands(void)
-{
-    return RPC::mCachedCommands;
-}
-
 extern "C" void otCRPCInit(otInstance *aInstance)
 {
-    // TODO: Double check this
     Instance &instance = static_cast<Instance &>(*aInstance);
 
     RPC::Initialize(instance);
@@ -335,15 +338,6 @@ extern "C" void otCRPCOutputFormat(const char *aFmt, ...)
 extern "C" void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
 {
     RPC::GetRPC().ProcessHelp(aContext, aArgsLength, aArgs);
-}
-
-void RPC::ProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
-{
-    OT_UNUSED_VARIABLE(aContext);
-    OT_UNUSED_VARIABLE(aArgsLength);
-    OT_UNUSED_VARIABLE(aArgs);
-
-    PrintCommands(mUserCommands, mUserCommandsLength);
 }
 #endif
 

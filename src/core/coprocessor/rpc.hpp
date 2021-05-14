@@ -83,8 +83,6 @@ public:
      * This method initializes the RPC object.
      *
      * @param[in]  aInstance  The OpenThread instance structure.
-     * @param[in]  aCallback  A pointer to a callback method.
-     * @param[in]  aContext   A pointer to a user context.
      *
      */
     static void Initialize(Instance &aInstance);
@@ -158,7 +156,6 @@ public:
      */
     void SetUserCommands(const Command aCommands[], uint8_t aLength, void *aContext);
 
-    Arg* GetCachedCommands(void);
 #if OPENTHREAD_RADIO
     /**
      * Write formatted string to the output buffer
