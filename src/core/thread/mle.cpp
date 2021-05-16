@@ -40,7 +40,7 @@
 #include "common/debug.hpp"
 #include "common/encoding.hpp"
 #include "common/instance.hpp"
-#include "common/locator-getters.hpp"
+#include "common/locator_getters.hpp"
 #include "common/logging.hpp"
 #include "common/random.hpp"
 #include "common/settings.hpp"
@@ -93,6 +93,9 @@ Mle::Mle(Instance &aInstance)
     , mReceivedResponseFromParent(false)
     , mSocket(aInstance)
     , mTimeout(kMleEndDeviceTimeout)
+#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
+    , mCslTimeout(OPENTHREAD_CONFIG_CSL_TIMEOUT)
+#endif
 #if OPENTHREAD_CONFIG_MLE_INFORM_PREVIOUS_PARENT_ON_REATTACH
     , mPreviousParentRloc(Mac::kShortAddrInvalid)
 #endif
@@ -855,6 +858,10 @@ void Mle::ApplyMeshLocalPrefix(void)
     Get<Dhcp6::Server>().ApplyMeshLocalPrefix();
 #endif
 
+#if OPENTHREAD_CONFIG_NEIGHBOR_DISCOVERY_AGENT_ENABLE
+    Get<NeighborDiscovery::Agent>().ApplyMeshLocalPrefix();
+#endif
+
 #if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
 
     for (Ip6::NetifUnicastAddress &serviceAloc : mServiceAlocs)
@@ -894,7 +901,7 @@ void Mle::SetRloc16(uint16_t aRloc16)
         // Clear cached CoAP with old RLOC source
         if (oldRloc16 != Mac::kShortAddrInvalid)
         {
-            Get<Tmf::TmfAgent>().ClearRequests(mMeshLocal16.GetAddress());
+            Get<Tmf::Agent>().ClearRequests(mMeshLocal16.GetAddress());
         }
     }
 
@@ -1451,8 +1458,24 @@ exit:
 Error Mle::AppendCslTimeout(Message &aMessage)
 {
     OT_ASSERT(Get<Mac::Mac>().IsCslEnabled());
-    return Tlv::Append<CslTimeoutTlv>(aMessage, Get<Mac::Mac>().GetCslTimeout() == 0 ? mTimeout
-                                                                                     : Get<Mac::Mac>().GetCslTimeout());
+    return Tlv::Append<CslTimeoutTlv>(aMessage, mCslTimeout == 0 ? mTimeout : mCslTimeout);
+}
+
+void Mle::SetCslTimeout(uint32_t aTimeout)
+{
+    VerifyOrExit(mCslTimeout != aTimeout);
+
+    mCslTimeout = aTimeout;
+
+    Get<DataPollSender>().RecalculatePollPeriod();
+
+    if (Get<Mac::Mac>().IsCslEnabled())
+    {
+        ScheduleChildUpdateRequest();
+    }
+
+exit:
+    return;
 }
 #endif // OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
 
@@ -1537,11 +1560,15 @@ void Mle::HandleNotifierEvents(Events aEvents)
 
 #if OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
         IgnoreError(Get<Dhcp6::Server>().UpdateService());
-#endif // OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
+#endif
+
+#if OPENTHREAD_CONFIG_NEIGHBOR_DISCOVERY_AGENT_ENABLE
+        Get<NeighborDiscovery::Agent>().UpdateService();
+#endif
 
 #if OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
         Get<Dhcp6::Client>().UpdateAddresses();
-#endif // OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
+#endif
     }
 
     if (aEvents.ContainsAny(kEventThreadRoleChanged | kEventThreadKeySeqCounterChanged))
@@ -1553,11 +1580,6 @@ void Mle::HandleNotifierEvents(Events aEvents)
         {
             IgnoreError(Store());
         }
-    }
-
-    if (aEvents.Contains(kEventSecurityPolicyChanged))
-    {
-        Get<Ip6::Filter>().AllowNativeCommissioner(Get<KeyManager>().IsNativeCommissioningAllowed());
     }
 
 exit:
@@ -3571,6 +3593,7 @@ void Mle::HandleChildUpdateRequest(const Message &aMessage, const Ip6::MessageIn
         tlvs[numTlvs++] = Tlv::kLinkFrameCounter;
         break;
     case kErrorNotFound:
+        challenge.mLength = 0;
         break;
     default:
         ExitNow(error = kErrorParse);
@@ -3628,7 +3651,7 @@ void Mle::HandleChildUpdateRequest(const Message &aMessage, const Ip6::MessageIn
     }
 
 #if OPENTHREAD_CONFIG_MULTI_RADIO
-    if (aNeighbor != nullptr)
+    if ((aNeighbor != nullptr) && (challenge.mLength != 0))
     {
         aNeighbor->ClearLastRxFragmentTag();
     }
@@ -3813,10 +3836,14 @@ void Mle::HandleAnnounce(const Message &aMessage, const Ip6::MessageInfo &aMessa
     }
     else
     {
-        // do nothing
-        // timestamps are equal: no behaviour specified by the Thread spec.
-        // If SendAnnounce is executed at this point, there exists a scenario where
-        // multiple devices keep sending MLE Announce messages to one another indefinitely.
+        // Timestamps are equal.
+
+#if OPENTHREAD_CONFIG_ANNOUNCE_SENDER_ENABLE
+        // Notify `AnnounceSender` of the received Announce
+        // message so it can update its state to determine
+        // whether to send Announce or not.
+        Get<AnnounceSender>().UpdateOnReceivedAnnounce();
+#endif
     }
 
 exit:
@@ -4087,10 +4114,11 @@ void Mle::Log(MessageAction aAction, MessageType aType, const Ip6::Address &aAdd
     };
 
     String<kRlocStringSize> rlocString;
+    StringWriter            writer(rlocString);
 
     if (aRloc != Mac::kShortAddrInvalid)
     {
-        IgnoreError(rlocString.Set(",0x%04x", aRloc));
+        writer.Append(",0x%04x", aRloc);
     }
 
     otLogInfoMle("%s %s%s (%s%s)", MessageActionToString(aAction), MessageTypeToString(aType),

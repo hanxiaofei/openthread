@@ -53,8 +53,8 @@
 
 #include "common/logging.hpp"
 
-#include "radio_url.hpp"
 #include "lib/platform/exit_code.h"
+#include "lib/url/url.hpp"
 
 /**
  * @def OPENTHREAD_POSIX_VIRTUAL_TIME
@@ -524,14 +524,6 @@ void platformInfraIfDeinit(void);
  *
  */
 bool platformInfraIfIsRunning(void);
-
-/**
- * this function returns the IPv6 link-local address of the infrastructure interface.
- *
- * @returns  A pointer to the link-local address; NULL if no link-local address is present.
- *
- */
-const otIp6Address *platformInfraIfGetLinkLocalAddress(void);
 
 /**
  * This function updates the read fd set.
