@@ -101,16 +101,21 @@ RPC::RPC(Instance &aInstance)
 #else
 #endif
 {
-    Initialize(aInstance);
+    if(!IsInitialized())
+    {
+        Initialize(aInstance);
+    }
 }
 
 void RPC::Initialize(Instance &aInstance)
 {
     char  help[]    = "help-crpc\n";
     char *helpCmd[] = {help};
+    static bool initStarted = false;
     OT_UNUSED_VARIABLE(helpCmd);
 
-    VerifyOrExit(RPC::sRPC == nullptr);
+    VerifyOrExit((RPC::sRPC == nullptr) && !initStarted);
+    initStarted = true;
     RPC::sRPC = new (&sRPCRaw) RPC(aInstance);
 
 #if !OPENTHREAD_RADIO

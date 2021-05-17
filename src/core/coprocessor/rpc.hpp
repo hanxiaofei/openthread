@@ -67,6 +67,14 @@ public:
     explicit RPC(Instance &aInstance);
 
     /**
+     * This method returns whether @ref sRPC is initialized.
+     *
+     * @returns  Whether @ref sRPC is initialized.
+     *
+     */
+    static bool IsInitialized(void) { return sRPC != nullptr; }
+
+    /**
      * This method returns a reference to the RPC object.
      *
      * @returns A reference to the RPC object.
