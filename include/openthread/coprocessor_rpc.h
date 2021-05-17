@@ -86,10 +86,7 @@ void otCRPCOutputFormat(const char *aFmt, ...);
  * @retval  OT_ERROR_NOT_IMPLEMENTED    The command is not supported.
  *
  */
-otError otCRPCProcessCmd(uint8_t     aArgsLength,
-                         char *      aArgs[],
-                         char *      aOutput,
-                         size_t      aOutputMaxLen);
+otError otCRPCProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen);
 
 /**
  * This function processes a command-line string.
@@ -99,9 +96,7 @@ otError otCRPCProcessCmd(uint8_t     aArgsLength,
  * @param[in]   aOutputMaxLen   The output buffer size.
  *
  */
-void otCRPCProcessCmdLine(const char *aString,
-                          char *aOutput,
-                          size_t aOutputMaxLen);
+void otCRPCProcessCmdLine(const char *aString, char *aOutput, size_t aOutputMaxLen);
 
 /**
  * @}

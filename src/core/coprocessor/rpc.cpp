@@ -101,7 +101,7 @@ RPC::RPC(Instance &aInstance)
 #else
 #endif
 {
-    if(!IsInitialized())
+    if (!IsInitialized())
     {
         Initialize(aInstance);
     }
@@ -109,14 +109,14 @@ RPC::RPC(Instance &aInstance)
 
 void RPC::Initialize(Instance &aInstance)
 {
-    char  help[]    = "help-crpc\n";
-    char *helpCmd[] = {help};
+    char        help[]      = "help-crpc\n";
+    char *      helpCmd[]   = {help};
     static bool initStarted = false;
     OT_UNUSED_VARIABLE(helpCmd);
 
     VerifyOrExit((RPC::sRPC == nullptr) && !initStarted);
     initStarted = true;
-    RPC::sRPC = new (&sRPCRaw) RPC(aInstance);
+    RPC::sRPC   = new (&sRPCRaw) RPC(aInstance);
 
 #if !OPENTHREAD_RADIO
     // Initialize a response buffer
@@ -183,6 +183,8 @@ exit:
     return error;
 }
 
+#if OPENTHREAD_RADIO
+
 Error RPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
 {
     Error error = kErrorInvalidCommand;
@@ -190,10 +192,9 @@ Error RPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t 
 
     aOutput[0] = '\0';
 
-#if OPENTHREAD_RADIO
-
     SetOutputBuffer(aOutput, aOutputMaxLen);
 
+    // Check built-in commands
     for (const Command &command : sCommands)
     {
         if (strcmp(aArgs[0], command.mName) == 0)
@@ -203,9 +204,25 @@ Error RPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t 
             break;
         }
     }
+    VerifyOrExit(error != kErrorNone);
+
+    // Check user commands
     SuccessOrExit(error = HandleCommand(mUserCommandsContext, aArgsLength, aArgs, mUserCommandsLength, mUserCommands));
+
+exit:
     ClearOutputBuffer();
+    return error;
+}
+
 #else
+
+Error RPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
+{
+    Error error = kErrorInvalidCommand;
+    VerifyOrExit(aArgsLength > 0);
+
+    aOutput[0] = '\0';
+
     for (uint8_t i = 0; i < mCachedCommandsLength; i++)
     {
         Arg &command = mCachedCommands[i];
@@ -216,7 +233,6 @@ Error RPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t 
             ExitNow();
         }
     }
-#endif
 
 exit:
     // Add more platform specific features here.
@@ -227,6 +243,7 @@ exit:
 
     return error;
 }
+#endif
 
 #if OPENTHREAD_RADIO
 
@@ -397,10 +414,7 @@ extern "C" void otCRPCProcessCmdLine(const char *aString, char *aOutput, size_t 
     RPC::GetRPC().ProcessLine(aString, aOutput, aOutputMaxLen);
 }
 
-extern "C" otError otCRPCProcessCmd(uint8_t     aArgsLength,
-                                    char *      aArgs[],
-                                    char *      aOutput,
-                                    size_t      aOutputMaxLen)
+extern "C" otError otCRPCProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
 {
     return RPC::GetRPC().ProcessCmd(aArgsLength, aArgs, aOutput, aOutputMaxLen);
 }

@@ -200,7 +200,7 @@ public:
     void OutputLine(const char *aFormat, ...);
     void OutputLine(uint8_t aIndentSize, const char *aFormat, ...);
     void OutputSpaces(uint8_t aCount);
-    int OutputFormatV(const char *aFormat, va_list aArguments);
+    int  OutputFormatV(const char *aFormat, va_list aArguments);
 
     /**
      * Print all commands in @p aCommands
@@ -248,9 +248,9 @@ private:
 #endif
 
 #if OPENTHREAD_RADIO
-    const Command *     mUserCommands;
-    void *              mUserCommandsContext;
-    uint8_t             mUserCommandsLength;
+    const Command *mUserCommands;
+    void *         mUserCommandsContext;
+    uint8_t        mUserCommandsLength;
 #else
     static Arg     mCachedCommands[kMaxCommands];
     static char    mCachedCommandsBuffer[kCommandCacheBufferLength];
