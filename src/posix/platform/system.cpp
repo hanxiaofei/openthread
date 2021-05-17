@@ -110,25 +110,10 @@ static const char *getTrelRadioUrl(otPlatformConfig *aPlatformConfig)
 
 otInstance *otSysInit(otPlatformConfig *aPlatformConfig)
 {
-    otInstance *        instance = nullptr;
-    ot::Posix::RadioUrl radioUrl(get802154RadioUrl(aPlatformConfig));
+    otInstance *instance = nullptr;
 
-#if OPENTHREAD_POSIX_VIRTUAL_TIME
-    // The last argument must be the node id
-    {
-        const char *nodeId = nullptr;
-
-        for (const char *arg = nullptr; (arg = radioUrl.GetValue("forkpty-arg", arg)) != nullptr; nodeId = arg)
-        {
-        }
-
-        virtualTimeInit(static_cast<uint16_t>(atoi(nodeId)));
-    }
-#endif
-
-    VerifyOrDie(radioUrl.GetPath() != nullptr, OT_EXIT_INVALID_ARGUMENTS);
     platformAlarmInit(aPlatformConfig->mSpeedUpFactor, aPlatformConfig->mRealTimeSignal);
-    platformRadioInit(&radioUrl);
+    platformRadioInit(get802154RadioUrl(aPlatformConfig));
 #if OPENTHREAD_CONFIG_RADIO_LINK_TREL_ENABLE
     platformTrelInit(getTrelRadioUrl(aPlatformConfig));
 #endif

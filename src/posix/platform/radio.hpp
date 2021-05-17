@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017, The OpenThread Authors.
+ *  Copyright (c) 2021, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -26,52 +26,40 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef POSIX_PLATFORM_RADIO_HPP_
+#define POSIX_PLATFORM_RADIO_HPP_
+
+#include "posix/platform/radio_url.hpp"
+
+namespace ot {
+namespace Posix {
+
 /**
- * @file
- *   This file implements the OpenThread child supervision API.
+ * This class manages Thread radio.
+ *
  */
-
-#include "openthread-core-config.h"
-
-#if OPENTHREAD_CONFIG_CHILD_SUPERVISION_ENABLE
-
-#include <openthread/child_supervision.h>
-
-#include "common/instance.hpp"
-#include "common/locator_getters.hpp"
-
-using namespace ot;
-
-#if OPENTHREAD_FTD
-
-uint16_t otChildSupervisionGetInterval(otInstance *aInstance)
+class Radio
 {
-    Instance &instance = *static_cast<Instance *>(aInstance);
+public:
+    /**
+     * This method creates the radio manager.
+     *
+     * @param[in]   aUrl    A pointer to the null-terminated URL.
+     *
+     */
+    explicit Radio(const char *aUrl);
 
-    return instance.Get<Utils::ChildSupervisor>().GetSupervisionInterval();
-}
+    /**
+     * This method initialize the Thread radio.
+     *
+     */
+    void Init(void);
 
-void otChildSupervisionSetInterval(otInstance *aInstance, uint16_t aInterval)
-{
-    Instance &instance = *static_cast<Instance *>(aInstance);
+private:
+    RadioUrl mRadioUrl;
+};
 
-    instance.Get<Utils::ChildSupervisor>().SetSupervisionInterval(aInterval);
-}
+} // namespace Posix
+} // namespace ot
 
-#endif
-
-uint16_t otChildSupervisionGetCheckTimeout(otInstance *aInstance)
-{
-    Instance &instance = *static_cast<Instance *>(aInstance);
-
-    return instance.Get<Utils::SupervisionListener>().GetTimeout();
-}
-
-void otChildSupervisionSetCheckTimeout(otInstance *aInstance, uint16_t aTimeout)
-{
-    Instance &instance = *static_cast<Instance *>(aInstance);
-
-    instance.Get<Utils::SupervisionListener>().SetTimeout(aTimeout);
-}
-
-#endif // OPENTHREAD_CONFIG_CHILD_SUPERVISION_ENABLE
+#endif // POSIX_PLATFORM_RADIO_HPP_
