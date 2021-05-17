@@ -112,6 +112,9 @@ Instance::Instance(void)
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     , mDiags(*this)
 #endif
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+    , mCRPC(*this)
+#endif
     , mIsInitialized(false)
 {
 }

@@ -5276,10 +5276,6 @@ void Interpreter::Initialize(otInstance *aInstance, otCliOutputCallback aCallbac
 extern "C" void otCliInit(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext)
 {
     Interpreter::Initialize(aInstance, aCallback, aContext);
-
-#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-    otCRPCInit(aInstance);
-#endif
 }
 
 extern "C" void otCliInputLine(char *aBuf)

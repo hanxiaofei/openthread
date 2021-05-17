@@ -419,6 +419,9 @@ private:
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     FactoryDiags::Diags mDiags;
 #endif
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+    Coprocessor::RPC mCRPC;
+#endif
     bool mIsInitialized;
 
 #if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE && (OPENTHREAD_FTD || OPENTHREAD_MTD)

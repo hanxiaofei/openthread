@@ -54,14 +54,6 @@ extern "C" {
  */
 
 /**
- * Initialize the CRPC module.
- *
- * @param[in]  aInstance   The OpenThread instance structure.
- *
- */
-void otCRPCInit(otInstance *aInstance);
-
-/**
  * Set a user command table.
  *
  * @param[in]  aUserCommands  A pointer to an array with user commands.

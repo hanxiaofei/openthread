@@ -101,10 +101,16 @@ RPC::RPC(Instance &aInstance)
 #else
 #endif
 {
+    Initialize(aInstance);
 }
 
 void RPC::Initialize(Instance &aInstance)
 {
+    char  help[]    = "help-crpc\n";
+    char *helpCmd[] = {help};
+    OT_UNUSED_VARIABLE(helpCmd);
+
+    VerifyOrExit(RPC::sRPC == nullptr);
     RPC::sRPC = new (&sRPCRaw) RPC(aInstance);
 
 #if !OPENTHREAD_RADIO
@@ -112,8 +118,6 @@ void RPC::Initialize(Instance &aInstance)
     memset(ot::Coprocessor::RPC::mCachedCommandsBuffer, 0, sizeof(ot::Coprocessor::RPC::mCachedCommandsBuffer));
 
     // Get a list of supported commands
-    char  help[]    = "help-crpc\n";
-    char *helpCmd[] = {help};
     SuccessOrExit(otPlatCRPCProcess(&RPC::sRPC->GetInstance(), OT_ARRAY_LENGTH(helpCmd), helpCmd,
                                     RPC::sRPC->mCachedCommandsBuffer, sizeof(RPC::sRPC->mCachedCommandsBuffer)));
 
@@ -121,9 +125,9 @@ void RPC::Initialize(Instance &aInstance)
     SuccessOrExit(Utils::CmdLineParser::ParseCmd(RPC::sRPC->mCachedCommandsBuffer, RPC::sRPC->mCachedCommandsLength,
                                                  RPC::sRPC->mCachedCommands,
                                                  OT_ARRAY_LENGTH(RPC::sRPC->mCachedCommands)));
+#endif
 exit:
     return;
-#endif
 }
 
 void RPC::ProcessLine(const char *aString, char *aOutput, size_t aOutputMaxLen)
@@ -383,13 +387,6 @@ void RPC::ClearOutputBuffer(void)
 
 #endif
 
-extern "C" void otCRPCInit(otInstance *aInstance)
-{
-    Instance &instance = static_cast<Instance &>(*aInstance);
-
-    RPC::Initialize(instance);
-}
-
 extern "C" void otCRPCProcessCmdLine(const char *aString, char *aOutput, size_t aOutputMaxLen)
 {
     RPC::GetRPC().ProcessLine(aString, aOutput, aOutputMaxLen);
@@ -432,6 +429,10 @@ extern "C" void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aAr
 {
     RPC::GetRPC().ProcessHelp(aContext, aArgsLength, aArgs);
 }
+#else
+#define otCRPCOutputBytes otCliOutputBytes
+#define otCRPCOutputFormat otCliOutputFormat
+#define otCRPCAppendResult otCliAppendResult
 #endif
 } // namespace Coprocessor
 } // namespace ot
