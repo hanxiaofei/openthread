@@ -4843,27 +4843,6 @@ exit:
 }
 #endif
 
-#if OPENTHREAD_CONFIG_DIAG_ENABLE
-otError Interpreter::ProcessDiag(uint8_t aArgsLength, Arg aArgs[])
-{
-    otError error;
-    char *  args[kMaxArgs];
-    char    output[OPENTHREAD_CONFIG_DIAG_OUTPUT_BUFFER_SIZE];
-
-    // all diagnostics related features are processed within diagnostics module
-    output[0]                  = '\0';
-    output[sizeof(output) - 1] = '\0';
-
-    Arg::CopyArgsToStringArray(aArgs, aArgsLength, args);
-
-    error = otDiagProcessCmd(mInstance, aArgsLength, args, output, sizeof(output) - 1);
-
-    OutputFormat("%s", output);
-
-    return error;
-}
-#endif
-
 #if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
 otError Interpreter::ProcessCRPC(uint8_t aArgsLength, Arg aArgs[])
 {
@@ -4878,6 +4857,27 @@ otError Interpreter::ProcessCRPC(uint8_t aArgsLength, Arg aArgs[])
     Arg::CopyArgsToStringArray(aArgs, aArgsLength, args);
 
     error = otCRPCProcessCmd(aArgsLength, args, output, sizeof(output) - 1);
+
+    OutputFormat("%s", output);
+
+    return error;
+}
+#endif
+
+#if OPENTHREAD_CONFIG_DIAG_ENABLE
+otError Interpreter::ProcessDiag(uint8_t aArgsLength, Arg aArgs[])
+{
+    otError error;
+    char *  args[kMaxArgs];
+    char    output[OPENTHREAD_CONFIG_DIAG_OUTPUT_BUFFER_SIZE];
+
+    // all diagnostics related features are processed within diagnostics module
+    output[0]                  = '\0';
+    output[sizeof(output) - 1] = '\0';
+
+    Arg::CopyArgsToStringArray(aArgs, aArgsLength, args);
+
+    error = otDiagProcessCmd(mInstance, aArgsLength, args, output, sizeof(output) - 1);
 
     OutputFormat("%s", output);
 

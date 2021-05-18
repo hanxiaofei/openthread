@@ -386,7 +386,6 @@ private:
     otError ProcessContextIdReuseDelay(uint8_t aArgsLength, Arg aArgs[]);
 #endif
     otError ProcessCounters(uint8_t aArgsLength, Arg aArgs[]);
-
 #if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
     otError ProcessCRPC(uint8_t aArgsLength, Arg aArgs[]);
 #endif

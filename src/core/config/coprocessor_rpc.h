@@ -38,7 +38,7 @@
 /**
  * @def OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
  *
- * Define to 1 to enable Host->RCP remote procedure call support.
+ * Define to 1 to enable Host->Co-processor remote procedure call support.
  *
  */
 #ifndef OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
