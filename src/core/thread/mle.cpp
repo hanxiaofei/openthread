@@ -124,7 +124,7 @@ Mle::Mle(Instance &aInstance)
     mParentCandidate.Clear();
     ResetCounters();
 
-    mLinkLocal64.InitAsThreadOrigin();
+    mLinkLocal64.InitAsThreadOrigin(/* aPreferred */ true);
     mLinkLocal64.GetAddress().SetToLinkLocalAddress(Get<Mac::Mac>().GetExtAddress());
 
     mLeaderAloc.InitAsThreadOriginRealmLocalScope();
@@ -822,6 +822,19 @@ void Mle::SetMeshLocalPrefix(const MeshLocalPrefix &aMeshLocalPrefix)
 exit:
     return;
 }
+
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+Error Mle::SetMeshLocalIid(const Ip6::InterfaceIdentifier &aMlIid)
+{
+    Error error = kErrorNone;
+
+    VerifyOrExit(!Get<ThreadNetif>().HasUnicastAddress(mMeshLocal64), error = kErrorInvalidState);
+
+    mMeshLocal64.GetAddress().SetIid(aMlIid);
+exit:
+    return error;
+}
+#endif
 
 void Mle::ApplyMeshLocalPrefix(void)
 {
@@ -2796,7 +2809,7 @@ void Mle::HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessageIn
 #if OPENTHREAD_FTD
         if (IsRouterOrLeader())
         {
-            Get<MleRouter>().HandleChildUpdateRequest(aMessage, aMessageInfo, keySequence);
+            Get<MleRouter>().HandleChildUpdateRequest(aMessage, aMessageInfo);
         }
         else
 #endif
