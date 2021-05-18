@@ -42,15 +42,7 @@
 
 namespace ot {
 namespace Coprocessor {
-extern "C" void otCRPCProcessCmdLine(const char *aString, char *aOutput, size_t aOutputMaxLen)
-{
-    RPC::GetRPC().ProcessLine(aString, aOutput, aOutputMaxLen);
-}
 
-extern "C" otError otCRPCProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
-{
-    return RPC::GetRPC().ProcessCmd(aArgsLength, aArgs, aOutput, aOutputMaxLen);
-}
 
 #if OPENTHREAD_RADIO
 extern "C" void otCRPCAppendResult(otError aError)
@@ -86,7 +78,19 @@ extern "C" void otCRPCOutputFormat(const char *aFmt, ...)
     RPC::GetRPC().OutputFormatV(aFmt, aAp);
     va_end(aAp);
 }
+#endif
 
+extern "C" void otCRPCProcessCmdLine(const char *aString, char *aOutput, size_t aOutputMaxLen)
+{
+    RPC::GetRPC().ProcessLine(aString, aOutput, aOutputMaxLen);
+}
+
+extern "C" otError otCRPCProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
+{
+    return RPC::GetRPC().ProcessCmd(aArgsLength, aArgs, aOutput, aOutputMaxLen);
+}
+
+#if OPENTHREAD_RADIO
 extern "C" void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
 {
     RPC::GetRPC().ProcessHelp(aContext, aArgsLength, aArgs);

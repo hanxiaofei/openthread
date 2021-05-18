@@ -79,6 +79,10 @@ RPC *RPC::sRPC = nullptr;
 static OT_DEFINE_ALIGNED_VAR(sRPCRaw, sizeof(RPC), uint64_t);
 
 #if OPENTHREAD_RADIO
+#include <openthread/ip6.h>
+#include "common/encoding.hpp"
+using ot::Encoding::BigEndian::HostSwap16;
+
 const RPC::Command RPC::sCommands[] = {
     {"help-crpc", otCRPCProcessHelp},
 };
@@ -264,21 +268,6 @@ exit:
 }
 
 #if OPENTHREAD_RADIO
-void RPC::OutputResult(otError aError)
-{
-    switch (aError)
-    {
-    case OT_ERROR_NONE:
-        OutputLine("Done");
-        break;
-
-    case OT_ERROR_PENDING:
-        break;
-
-    default:
-        OutputLine("Error %d: %s", aError, otThreadErrorToString(aError));
-    }
-}
 
 void RPC::OutputBytes(const uint8_t *aBytes, uint16_t aLength)
 {
@@ -288,20 +277,29 @@ void RPC::OutputBytes(const uint8_t *aBytes, uint16_t aLength)
     }
 }
 
-void RPC::SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext)
+void RPC::OutputCommands(const Command aCommands[], size_t aCommandsLength)
 {
-    mUserCommands        = aCommands;
-    mUserCommandsLength  = aLength;
-    mUserCommandsContext = aContext;
+    VerifyOrExit(aCommands != NULL);
+
+    for (size_t i = 0; i < aCommandsLength; i++)
+    {
+        OutputFormat("%s\n", aCommands[i].mName);
+    }
+
+exit:
+    return;
 }
 
-void RPC::OutputFormat(const char *aFormat, ...)
+int RPC::OutputFormat(const char *aFormat, ...)
 {
+    int     rval;
     va_list ap;
 
     va_start(ap, aFormat);
-    OutputFormatV(aFormat, ap);
+    rval = OutputFormatV(aFormat, ap);
     va_end(ap);
+
+    return rval;
 }
 
 void RPC::OutputFormat(uint8_t aIndentSize, const char *aFormat, ...)
@@ -313,6 +311,29 @@ void RPC::OutputFormat(uint8_t aIndentSize, const char *aFormat, ...)
     va_start(ap, aFormat);
     OutputFormatV(aFormat, ap);
     va_end(ap);
+}
+
+int RPC::OutputFormatV(const char *aFormat, va_list aArguments)
+{
+    int rval = 0;
+
+    VerifyOrExit(mOutputBuffer && (mOutputBufferCount < mOutputBufferMaxLen));
+
+    rval = vsnprintf(&mOutputBuffer[mOutputBufferCount], mOutputBufferMaxLen, aFormat, aArguments);
+    if (rval > 0)
+    {
+        mOutputBufferCount += static_cast<size_t>(rval);
+    }
+exit:
+    return rval;
+}
+
+int RPC::OutputIp6Address(const otIp6Address &aAddress)
+{
+    return OutputFormat(
+        "%x:%x:%x:%x:%x:%x:%x:%x", HostSwap16(aAddress.mFields.m16[0]), HostSwap16(aAddress.mFields.m16[1]),
+        HostSwap16(aAddress.mFields.m16[2]), HostSwap16(aAddress.mFields.m16[3]), HostSwap16(aAddress.mFields.m16[4]),
+        HostSwap16(aAddress.mFields.m16[5]), HostSwap16(aAddress.mFields.m16[6]), HostSwap16(aAddress.mFields.m16[7]));
 }
 
 void RPC::OutputLine(const char *aFormat, ...)
@@ -339,6 +360,22 @@ void RPC::OutputLine(uint8_t aIndentSize, const char *aFormat, ...)
     OutputFormat("\r\n");
 }
 
+void RPC::OutputResult(otError aError)
+{
+    switch (aError)
+    {
+    case OT_ERROR_NONE:
+        OutputLine("Done");
+        break;
+
+    case OT_ERROR_PENDING:
+        break;
+
+    default:
+        OutputLine("Error %d: %s", aError, otThreadErrorToString(aError));
+    }
+}
+
 void RPC::OutputSpaces(uint8_t aCount)
 {
     char format[sizeof("%256s")];
@@ -346,34 +383,6 @@ void RPC::OutputSpaces(uint8_t aCount)
     snprintf(format, sizeof(format), "%%%us", aCount);
 
     OutputFormat(format, "");
-}
-
-int RPC::OutputFormatV(const char *aFormat, va_list aArguments)
-{
-    int rval = 0;
-
-    VerifyOrExit(mOutputBuffer && (mOutputBufferCount < mOutputBufferMaxLen));
-
-    rval = vsnprintf(&mOutputBuffer[mOutputBufferCount], mOutputBufferMaxLen, aFormat, aArguments);
-    if (rval > 0)
-    {
-        mOutputBufferCount += static_cast<size_t>(rval);
-    }
-exit:
-    return rval;
-}
-
-void RPC::OutputCommands(const Command aCommands[], size_t aCommandsLength)
-{
-    VerifyOrExit(aCommands != NULL);
-
-    for (size_t i = 0; i < aCommandsLength; i++)
-    {
-        OutputFormat("%s\n", aCommands[i].mName);
-    }
-
-exit:
-    return;
 }
 
 void RPC::ProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
@@ -398,6 +407,14 @@ void RPC::ClearOutputBuffer(void)
     mOutputBuffer       = nullptr;
     mOutputBufferMaxLen = 0;
 }
+
+void RPC::SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext)
+{
+    mUserCommands        = aCommands;
+    mUserCommandsLength  = aLength;
+    mUserCommandsContext = aContext;
+}
+
 
 #endif
 } // namespace Coprocessor

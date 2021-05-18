@@ -36,6 +36,7 @@
 #define OPENTHREAD_COPROCESSOR_RPC_H_
 
 #include <openthread/cli.h>
+#include <openthread/ip6.h>
 #include <openthread/instance.h>
 
 #ifdef __cplusplus
@@ -53,12 +54,14 @@ extern "C" {
  *
  */
 
+#if OPENTHREAD_RADIO
 /**
  * Append an error code to the output buffer
  *
  * @param[in] aError
  */
 void otCRPCAppendResult(otError aError);
+#endif
 
 /**
  * Call the corresponding handler for a command
@@ -83,6 +86,7 @@ otError otCRPCHandleCommand(void *             aContext,
                             uint8_t            aCommandsLength,
                             const otCliCommand aCommands[]);
 
+#if OPENTHREAD_RADIO
 /**
  * Output a byte array as hex to the output buffer
  *
@@ -92,12 +96,23 @@ otError otCRPCHandleCommand(void *             aContext,
 void otCRPCOutputBytes(const uint8_t *aBytes, uint8_t aLength);
 
 /**
- * Output all command names in a @ref Command array to the output buffer
+ * Write all command names in @p aCommands to the output buffer
  *
  * @param[in] aCommands         an array of commands
  * @param[in] aCommandsLength   length of @p aCommands
  */
 void otCRPCOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength);
+
+/**
+ * Write formatted output to the output buffer
+ *
+ * @param[in]  aFormat      A pointer to the format string.
+ * @param[in]  aArguments   A variable list of arguments for format.
+ *
+ * @returns The number of bytes placed in the output buffer.
+ *
+ */
+int otCRPCOutputFormatV(const char *aFormat, va_list aArguments);
 
 /**
  * Write formatted string to the output buffer
@@ -107,6 +122,19 @@ void otCRPCOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength
  *
  */
 void otCRPCOutputFormat(const char *aFmt, ...);
+
+/**
+ * Write an IPv6 address to the output buffer.
+ *
+ * @param[in]  aAddress  A reference to the IPv6 address.
+ *
+ * @returns The number of bytes placed in the output queue.
+ *
+ * @retval  -1  Driver is broken.
+ *
+ */
+int otCRPCOutputIp6Address(const otIp6Address &aAddress);
+#endif
 
 /**
  * Process a command line
@@ -133,6 +161,7 @@ otError otCRPCProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size
  */
 void otCRPCProcessCmdLine(const char *aString, char *aOutput, size_t aOutputMaxLen);
 
+#if OPENTHREAD_RADIO
 /**
  * Output all available CRPC built-in commands and user commands
  *
@@ -151,6 +180,7 @@ void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[]);
  *
  */
 void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext);
+#endif
 
 /**
  * @}

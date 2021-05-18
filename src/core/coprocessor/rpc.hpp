@@ -88,7 +88,7 @@ public:
     }
 
     /**
-     * This method initializes the RPC object.
+     * Initialize the RPC object.
      *
      * @param[in]  aInstance  The OpenThread instance structure.
      *
@@ -96,7 +96,7 @@ public:
     static void Initialize(Instance &aInstance);
 
     /**
-     * This method processes a RPC command line.
+     * Process a RPC command line.
      *
      * @param[in]   aString        A null-terminated input string.
      * @param[out]  aOutput        The execution result.
@@ -106,7 +106,7 @@ public:
     void ProcessLine(const char *aString, char *aOutput, size_t aOutputMaxLen);
 
     /**
-     * This method processes a RPC command line.
+     * Process a RPC command line.
      *
      * @param[in]   aArgsLength    The number of args in @p aArgs.
      * @param[in]   aArgs          The arguments of command line.
@@ -123,7 +123,7 @@ public:
     /**
      * Call the corresponding handler for a command
      *
-     * This function will look through @p aCommands to find a @ref CRPC::Command
+     * This method will look through @p aCommands to find a @ref CRPC::Command
      * that matches @p aArgs[0]. If found, the handler function for the command
      * will be called with the remaining args passed to it.
      *
@@ -145,7 +145,17 @@ public:
 
 #if OPENTHREAD_RADIO
     /**
-     * This method writes a number of bytes to the CLI console as a hex string.
+     * Set the user command table.
+     *
+     * @param[in]  aUserCommands  A pointer to an array with user commands.
+     * @param[in]  aLength        @p aUserCommands length.
+     * @param[in]  aContext       @p aUserCommands context.
+     *
+     */
+    void SetUserCommands(const Command aCommands[], uint8_t aLength, void *aContext);
+
+    /**
+     * Write a number of bytes to the output buffer as a hex string.
      *
      * @param[in]  aBytes   A pointer to data which should be printed.
      * @param[in]  aLength  @p aBytes length.
@@ -154,7 +164,7 @@ public:
     void OutputBytes(const uint8_t *aBytes, uint16_t aLength);
 
     /**
-     * This method writes a number of bytes to the CLI console as a hex string.
+     * Write a number of bytes to the output buffer as a hex string.
      *
      * @tparam kBytesLength   The length of @p aBytes array.
      *
@@ -167,7 +177,83 @@ public:
     }
 
     /**
-     * This method delivers a success or error message the client.
+     * Write all commands in @p aCommands to the output buffer
+     *
+     * @param[in]  aCommands        List of commands
+     * @param[in]  aCommandsLength  Number of commands in @p aCommands
+     *
+     */
+    void OutputCommands(const Command aCommands[], size_t aCommandsLength);
+
+    /**
+     * Write formatted output to the output buffer.
+     *
+     * @param[in]  aFormat  A pointer to the format string.
+     * @param[in]  ...      A variable list of arguments to format.
+     *
+     * @returns The number of bytes placed in the output buffer.
+     *
+     * @retval  -1  Driver is broken.
+     *
+     */
+    int OutputFormat(const char *aFormat, ...);
+
+    /**
+     * Write formatted output (to which it prepends a given number indentation space chars) to the
+     * client.
+     *
+     * @param[in]  aIndentSize   Number of indentation space chars to prepend to the string.
+     * @param[in]  aFormat       A pointer to the format string.
+     * @param[in]  ...           A variable list of arguments to format.
+     *
+     */
+    void OutputFormat(uint8_t aIndentSize, const char *aFormat, ...);
+
+    /**
+     * Write formatted output to the output buffer.
+     *
+     * @param[in]  aFormat      A pointer to the format string.
+     * @param[in]  aArguments   A variable list of arguments for format.
+     *
+     * @returns The number of bytes placed in the output buffer.
+     *
+     */
+    int OutputFormatV(const char *aFormat, va_list aArguments);
+
+    /**
+     * Write an IPv6 address to the output buffer.
+     *
+     * @param[in]  aAddress  A reference to the IPv6 address.
+     *
+     * @returns The number of bytes placed in the output buffer.
+     *
+     * @retval  -1  Driver is broken.
+     *
+     */
+    int OutputIp6Address(const otIp6Address &aAddress);
+
+    /**
+     * Write formatted output (to which it also appends newline `\r\n`) to the output buffer.
+     *
+     * @param[in]  aFormat  A pointer to the format string.
+     * @param[in]  ...      A variable list of arguments to format.
+     *
+     */
+    void OutputLine(const char *aFormat, ...);
+
+    /**
+     * Write formatted output (to which it prepends a given number indentation space chars and appends
+     * newline `\r\n`) to the output buffer.
+     *
+     * @param[in]  aIndentSize   Number of indentation space chars to prepend to the string.
+     * @param[in]  aFormat       A pointer to the format string.
+     * @param[in]  ...           A variable list of arguments to format.
+     *
+     */
+    void OutputLine(uint8_t aIndentSize, const char *aFormat, ...);
+
+    /**
+     * Write a success or error message the client.
      *
      * If the @p aError is `OT_ERROR_PENDING` nothing will be outputted.
      *
@@ -177,38 +263,20 @@ public:
     void OutputResult(otError aError);
 
     /**
-     * This method sets the user command table.
+     * Write a given number of space chars to the output buffer.
      *
-     * @param[in]  aUserCommands  A pointer to an array with user commands.
-     * @param[in]  aLength        @p aUserCommands length.
-     * @param[in]  aContext       @p aUserCommands context.
+     * @param[in] aCount  Number of space chars to output.
      *
      */
-    void SetUserCommands(const Command aCommands[], uint8_t aLength, void *aContext);
-
-    /**
-     * Write formatted string to the output buffer
-     *
-     * @param[in]  aFormat   A pointer to the format string.
-     * @param[in]  ...    A matching list of arguments.
-     *
-     */
-    void OutputFormat(const char *aFormat, ...);
-
-    void OutputFormat(uint8_t aIndentSize, const char *aFormat, ...);
-    void OutputLine(const char *aFormat, ...);
-    void OutputLine(uint8_t aIndentSize, const char *aFormat, ...);
     void OutputSpaces(uint8_t aCount);
-    int  OutputFormatV(const char *aFormat, va_list aArguments);
 
     /**
-     * Print all commands in @p aCommands
+     * Write an Extended MAC Address to the output buffer.
      *
-     * @param[in]  aCommands        List of commands
-     * @param[in]  aCommandsLength  Number of commands in @p aCommands
+     * param[in] aExtAddress  The Extended MAC Address to output.
      *
      */
-    void OutputCommands(const Command aCommands[], size_t aCommandsLength);
+    void OutputExtAddress(const otExtAddress &aExtAddress) { OutputBytes(aExtAddress.m8); }
 
     void ProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[]);
 
@@ -241,7 +309,7 @@ private:
     void SetOutputBuffer(char *aOutput, size_t aOutputMaxLen);
 
     /**
-     * Clears the output buffer variables
+     * Clear the output buffer variables
      */
     void ClearOutputBuffer(void);
 #endif
@@ -257,6 +325,13 @@ private:
 #endif
     static const Command sCommands[];
 
+    /**
+     * Parse a string into an array of argumentsparses a given command line string and breaks it into an argument list.
+     *
+     * @param[in]   aString         input string
+     * @param[out]  aArgsLength     The argument counter of the command line.
+     * @param[out]  aArgs           The argument vector of the command line.
+     */
     Error ParseCmd(char *aString, uint8_t &aArgsLength, char *aArgs[]);
 };
 
