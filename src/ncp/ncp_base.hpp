@@ -657,7 +657,7 @@ protected:
         uint8_t      mTid : 4;
         uint8_t      mScanChannel;
         otRadioFrame mTransmitFrame;
-        uint8_t      mTransmitPsdu[127];
+        uint8_t      mTransmitPsdu[OT_RADIO_FRAME_MAX_SIZE];
     };
 
     uint8_t             mPendingCommandQueueHead;
