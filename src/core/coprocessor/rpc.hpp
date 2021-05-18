@@ -138,10 +138,10 @@ public:
      *
      */
     static Error HandleCommand(void *        aContext,
-                        uint8_t       aArgsLength,
-                        char *        aArgs[],
-                        uint8_t       aCommandsLength,
-                        const Command aCommands[]);
+                               uint8_t       aArgsLength,
+                               char *        aArgs[],
+                               uint8_t       aCommandsLength,
+                               const Command aCommands[]);
 
 #if OPENTHREAD_RADIO
     /**

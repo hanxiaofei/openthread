@@ -77,10 +77,10 @@ void otCRPCAppendResult(otError aError);
  * @retval \ref OT_ERROR_NONE if a matching command was found and the handler was called
  *
  */
-otError otCRPCHandleCommand(void *        aContext,
-                            uint8_t       aArgsLength,
-                            char *        aArgs[],
-                            uint8_t       aCommandsLength,
+otError otCRPCHandleCommand(void *             aContext,
+                            uint8_t            aArgsLength,
+                            char *             aArgs[],
+                            uint8_t            aCommandsLength,
                             const otCliCommand aCommands[]);
 
 /**

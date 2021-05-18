@@ -195,19 +195,12 @@ Error RPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t 
     SetOutputBuffer(aOutput, aOutputMaxLen);
 
     // Check built-in commands
-    for (const Command &command : sCommands)
-    {
-        if (strcmp(aArgs[0], command.mName) == 0)
-        {
-            command.mCommand(NULL, aArgsLength, aArgs);
-            error = kErrorNone;
-            break;
-        }
-    }
-    VerifyOrExit(error != kErrorNone);
+    VerifyOrExit(kErrorNone !=
+                 (error = HandleCommand(NULL, aArgsLength, aArgs, OT_ARRAY_LENGTH(sCommands), sCommands)));
 
     // Check user commands
-    SuccessOrExit(error = HandleCommand(mUserCommandsContext, aArgsLength, aArgs, mUserCommandsLength, mUserCommands));
+    VerifyOrExit(kErrorNone !=
+                 (error = HandleCommand(mUserCommandsContext, aArgsLength, aArgs, mUserCommandsLength, mUserCommands)));
 
 exit:
     ClearOutputBuffer();
