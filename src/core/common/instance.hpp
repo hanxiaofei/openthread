@@ -416,11 +416,11 @@ private:
 #if OPENTHREAD_ENABLE_VENDOR_EXTENSION
     Extension::ExtensionBase &mExtension;
 #endif
-#if OPENTHREAD_CONFIG_DIAG_ENABLE
-    FactoryDiags::Diags mDiags;
-#endif
 #if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
     Coprocessor::RPC mCRPC;
+#endif
+#if OPENTHREAD_CONFIG_DIAG_ENABLE
+    FactoryDiags::Diags mDiags;
 #endif
     bool mIsInitialized;
 
