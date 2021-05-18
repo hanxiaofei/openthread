@@ -26,31 +26,31 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
-include(${PROJECT_SOURCE_DIR}/third_party/silabs/cmake/efr32mg1x.cmake)
+find_package(Doxygen)
 
-add_library(silabs-efr32mg13-sdk)
+if (DOXYGEN_FOUND)
+    set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in)
+    set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
 
-target_compile_definitions(silabs-efr32mg13-sdk
-    PRIVATE
-        ${COMMON_FLAG}
-)
+    set(PACKAGE_VERSION ${OT_PACKAGE_VERSION})
+    set(abs_srcdir ${CMAKE_CURRENT_SOURCE_DIR})
+    set(abs_builddir ${CMAKE_CURRENT_BINARY_DIR})
+    set(abs_top_srcdir ${PROJECT_SOURCE_DIR})
+    set(abs_top_builddir ${PROJECT_BINARY_DIR})
+    set(DOXYGEN_USE_DOT ${DOXYGEN_HAVE_DOT})
 
-target_include_directories(silabs-efr32mg13-sdk
-    PUBLIC
-        ${SILABS_COMMON_INCLUDES}
-        ${SILABS_GSDK_DIR}/platform/Device/SiliconLabs/EFR32MG13P/Include
-        ${SILABS_EFR32MG1X_INCLUDES}
-)
+    configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
 
-target_sources(silabs-efr32mg13-sdk
-    PRIVATE
-        ${SILABS_GSDK_COMMON_SOURCES}
-        ${SILABS_EFR32MG13_SOURCES}
-)
+    add_custom_target(ot-doc)
 
-target_link_libraries(silabs-efr32mg13-sdk
-    PUBLIC
-        silabs-mbedtls
-    PRIVATE
-        ${silabs-librail}
-        ot-config)
+    add_custom_target(ot-doxygen ALL
+        COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
+        COMMAND cmake -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/images ${CMAKE_CURRENT_BINARY_DIR}/html/doc/images
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Generating documentation with Doxygen"
+        VERBATIM)
+    add_dependencies(ot-doc ot-doxygen)
+
+else()
+    message("Doxygen must be installed to generate doxygen documentation")
+endif()

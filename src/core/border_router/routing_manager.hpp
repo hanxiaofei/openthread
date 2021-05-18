@@ -232,6 +232,7 @@ private:
                              uint32_t           aLifetime,
                              otRoutePreference  aRoutePreference = OT_ROUTE_PREFERENCE_MED);
     bool NetworkDataContainsOmrPrefix(const Ip6::Prefix &aPrefix) const;
+    bool UpdateRouterAdvMessage(const RouterAdv::RouterAdvMessage &aRouterAdvMessage);
 
     static bool     IsValidOmrPrefix(const NetworkData::OnMeshPrefixConfig &aOnMeshPrefixConfig);
     static bool     IsValidOmrPrefix(const Ip6::Prefix &aOmrPrefix);
@@ -281,6 +282,11 @@ private:
     // the same infra link.
     ExternalPrefix mDiscoveredPrefixes[kMaxDiscoveredPrefixNum];
     uint8_t        mDiscoveredPrefixNum;
+
+    // The RA header and parameters for the infra interface.
+    // This value is initialized with `RouterAdvMessage::SetToDefault`
+    // and updated with RA messages initiated from infra interface.
+    RouterAdv::RouterAdvMessage mRouterAdvMessage;
 
     TimerMilli mDiscoveredPrefixInvalidTimer;
 

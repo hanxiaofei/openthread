@@ -253,8 +253,6 @@ void RoutingManager::RecvIcmp6Message(uint32_t            aInfraIfIndex,
         HandleRouterAdvertisement(aSrcAddress, aBuffer, aBufferLength);
         break;
     case Ip6::Icmp::Header::kTypeRouterSolicit:
-        // Drop Router Solicitations initiated from infra interface.
-        VerifyOrExit(!otPlatInfraIfHasAddress(mInfraIfIndex, &aSrcAddress), error = kErrorDrop);
         HandleRouterSolicit(aSrcAddress, aBuffer, aBufferLength);
         break;
     default:
@@ -623,6 +621,8 @@ void RoutingManager::StartRouterSolicitationDelay(void)
 
     uint32_t randomDelay;
 
+    mRouterAdvMessage.SetToDefault();
+
     mRouterSolicitCount = 0;
 
     static_assert(kMaxRtrSolicitationDelay > 0, "invalid maximum Router Solicitation delay");
@@ -655,18 +655,12 @@ void RoutingManager::SendRouterAdvertisement(const Ip6::Prefix *aNewOmrPrefixes,
                                              uint8_t            aNewOmrPrefixNum,
                                              const Ip6::Prefix *aNewOnLinkPrefix)
 {
-    uint8_t                     buffer[kMaxRouterAdvMessageLength];
-    uint16_t                    bufferLength = 0;
-    RouterAdv::RouterAdvMessage routerAdv;
+    uint8_t  buffer[kMaxRouterAdvMessageLength];
+    uint16_t bufferLength = 0;
 
-    // Set zero Router Lifetime to indicate that the Border Router is not the default
-    // router for infra link so that hosts on infra link will not create default route
-    // to the Border Router when received RA.
-    routerAdv.SetRouterLifetime(0);
-
-    OT_ASSERT(bufferLength + sizeof(routerAdv) <= sizeof(buffer));
-    memcpy(buffer, &routerAdv, sizeof(routerAdv));
-    bufferLength += sizeof(routerAdv);
+    static_assert(sizeof(mRouterAdvMessage) <= sizeof(buffer), "RA buffer too small");
+    memcpy(buffer, &mRouterAdvMessage, sizeof(mRouterAdvMessage));
+    bufferLength += sizeof(mRouterAdvMessage);
 
     if (aNewOnLinkPrefix != nullptr)
     {
@@ -750,7 +744,7 @@ void RoutingManager::SendRouterAdvertisement(const Ip6::Prefix *aNewOmrPrefixes,
     }
 
     // Send the message only when there are options.
-    if (bufferLength > sizeof(routerAdv))
+    if (bufferLength > sizeof(mRouterAdvMessage))
     {
         Error        error;
         Ip6::Address destAddress;
@@ -763,6 +757,9 @@ void RoutingManager::SendRouterAdvertisement(const Ip6::Prefix *aNewOmrPrefixes,
         if (error == kErrorNone)
         {
             otLogInfoBr("sent Router Advertisement on interface %u", mInfraIfIndex);
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+            otDumpCertBr("[BR-CERT] direction=send | type=RA |", buffer, bufferLength);
+#endif
         }
         else
         {
@@ -924,6 +921,9 @@ void RoutingManager::HandleRouterAdvertisement(const Ip6::Address &aSrcAddress,
 
     otLogInfoBr("received Router Advertisement from %s on interface %u", aSrcAddress.ToString().AsCString(),
                 mInfraIfIndex);
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+    otDumpCertBr("[BR-CERT] direction=recv | type=RA |", aBuffer, aBufferLength);
+#endif
 
     routerAdvMessage = reinterpret_cast<const RouterAdvMessage *>(aBuffer);
     optionsBegin     = aBuffer + sizeof(RouterAdvMessage);
@@ -959,6 +959,13 @@ void RoutingManager::HandleRouterAdvertisement(const Ip6::Address &aSrcAddress,
         default:
             break;
         }
+    }
+
+    // Remember the header and parameters of RA messages which are
+    // initiated from the infra interface.
+    if (otPlatInfraIfHasAddress(mInfraIfIndex, &aSrcAddress))
+    {
+        needReevaluate |= UpdateRouterAdvMessage(*routerAdvMessage);
     }
 
     if (needReevaluate)
@@ -1186,6 +1193,27 @@ bool RoutingManager::NetworkDataContainsOmrPrefix(const Ip6::Prefix &aPrefix) co
     }
 
     return contain;
+}
+
+// Update the `mRouterAdvMessage` with given Router Advertisement message.
+// Returns a boolean which indicates whether there are changes of `mRouterAdvMessage`.
+bool RoutingManager::UpdateRouterAdvMessage(const RouterAdv::RouterAdvMessage &aRouterAdvMessage)
+{
+    RouterAdv::RouterAdvMessage oldRouterAdvMessage;
+
+    oldRouterAdvMessage = mRouterAdvMessage;
+    if (aRouterAdvMessage.GetRouterLifetime() == 0)
+    {
+        mRouterAdvMessage.SetToDefault();
+    }
+    else
+    {
+        mRouterAdvMessage = aRouterAdvMessage;
+        // TODO: add a timer for invalidating the learned RA parameters
+        // for cases that the other RA daemon crashed or is force killed.
+    }
+
+    return (mRouterAdvMessage != oldRouterAdvMessage);
 }
 
 } // namespace BorderRouter
