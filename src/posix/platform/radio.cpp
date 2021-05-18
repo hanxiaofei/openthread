@@ -118,12 +118,7 @@ void platformRadioInit(otUrl *aRadioUrl)
     VerifyOrDie(iidString == nullptr, OT_EXIT_INVALID_ARGUMENTS);
 #endif
 
-#if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC
-    uint8_t id = 90;
-    SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(id));
-#else
     SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(radioUrl));
-#endif
     sRadioSpinel.Init(resetRadio, restoreDataset, skipCompatibilityCheck, iid);
 
     parameterValue = radioUrl.GetValue("fem-lnagain");
