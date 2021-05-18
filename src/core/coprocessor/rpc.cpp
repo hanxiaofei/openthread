@@ -424,6 +424,7 @@ extern "C" void otCRPCAppendResult(otError aError)
 {
     RPC::GetRPC().OutputResult(aError);
 }
+#endif
 
 extern "C" Error otCRPCHandleCommand(void *        aContext,
                                      uint8_t       aArgsLength,
@@ -434,6 +435,7 @@ extern "C" Error otCRPCHandleCommand(void *        aContext,
     return RPC::HandleCommand(aContext, aArgsLength, aArgs, aCommandsLength, aCommands);
 }
 
+#if OPENTHREAD_RADIO
 extern "C" void otCRPCOutputBytes(const uint8_t *aBytes, uint8_t aLength)
 {
     RPC::GetRPC().OutputBytes(aBytes, aLength);
@@ -461,10 +463,6 @@ extern "C" void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t
 {
     RPC::GetRPC().SetUserCommands(aUserCommands, aLength, aContext);
 }
-#else
-#define otCRPCOutputBytes otCliOutputBytes
-#define otCRPCOutputFormat otCliOutputFormat
-#define otCRPCAppendResult otCliAppendResult
 #endif
 } // namespace Coprocessor
 } // namespace ot
