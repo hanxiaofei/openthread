@@ -1335,6 +1335,30 @@ exit:
 // ----------------------------------------------------------------------------
 // MARK: Individual Property Getters and Setters
 // ----------------------------------------------------------------------------
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+otError NcpBase::HandlePropertySet_SPINEL_PROP_COPROCESSOR_RPC(uint8_t aHeader)
+{
+    const char *string = nullptr;
+    char        output[OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE];
+    otError     error = OT_ERROR_NONE;
+
+    error = mDecoder.ReadUtf8(string);
+
+    VerifyOrExit(error == OT_ERROR_NONE, error = WriteLastStatusFrame(aHeader, ThreadErrorToSpinelStatus(error)));
+
+    output[sizeof(output) - 1] = '\0';
+
+    otCRPCProcessCmdLine(string, output, sizeof(output) - 1);
+
+    // Prepare the response
+    SuccessOrExit(error = mEncoder.BeginFrame(aHeader, SPINEL_CMD_PROP_VALUE_IS, SPINEL_PROP_COPROCESSOR_RPC));
+    SuccessOrExit(error = mEncoder.WriteUtf8(output));
+    SuccessOrExit(error = mEncoder.EndFrame());
+
+exit:
+    return error;
+}
+#endif // OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
 
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
 
@@ -1371,33 +1395,6 @@ exit:
 }
 
 #endif // OPENTHREAD_CONFIG_DIAG_ENABLE
-
-#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-
-otError NcpBase::HandlePropertySet_SPINEL_PROP_COPROCESSOR_RPC(uint8_t aHeader)
-{
-    const char *string = nullptr;
-    char        output[OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE];
-    otError     error = OT_ERROR_NONE;
-
-    error = mDecoder.ReadUtf8(string);
-
-    VerifyOrExit(error == OT_ERROR_NONE, error = WriteLastStatusFrame(aHeader, ThreadErrorToSpinelStatus(error)));
-
-    output[sizeof(output) - 1] = '\0';
-
-    otCRPCProcessCmdLine(string, output, sizeof(output) - 1);
-
-    // Prepare the response
-    SuccessOrExit(error = mEncoder.BeginFrame(aHeader, SPINEL_CMD_PROP_VALUE_IS, SPINEL_PROP_COPROCESSOR_RPC));
-    SuccessOrExit(error = mEncoder.WriteUtf8(output));
-    SuccessOrExit(error = mEncoder.EndFrame());
-
-exit:
-    return error;
-}
-
-#endif // OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
 
 template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_PHY_ENABLED>(void)
 {

@@ -207,14 +207,14 @@ RadioSpinel<InterfaceType, ProcessContextType>::RadioSpinel(void)
     , mRcpFailed(false)
     , mEnergyScanning(false)
 #endif
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+    , mCRPCOutput(nullptr)
+    , mCRPCOutputMaxLen(0)
+#endif
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     , mDiagMode(false)
     , mDiagOutput(nullptr)
     , mDiagOutputMaxLen(0)
-#endif
-#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-    , mCRPCOutput(nullptr)
-    , mCRPCOutputMaxLen(0)
 #endif
     , mTxRadioEndUs(UINT64_MAX)
     , mRadioTimeRecalcStart(UINT64_MAX)
