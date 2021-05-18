@@ -73,15 +73,15 @@ void otCRPCAppendResult(otError aError);
  * @param[in]  aCommandsLength  number of commands in @p aCommands
  * @param[in]  aCommands        list of commands
  *
- * @retval false if no matching command was found
- * @retval true if a matching command was found and the handler was called
+ * @retval \ref OT_ERROR_INVALID_COMMAND if no matching command was found
+ * @retval \ref OT_ERROR_NONE if a matching command was found and the handler was called
  *
  */
-void otCRPCHandleCommand(void *        aContext,
-                         uint8_t       aArgsLength,
-                         char *        aArgs[],
-                         uint8_t       aCommandsLength,
-                         const otCliCommand aCommands[]);
+otError otCRPCHandleCommand(void *        aContext,
+                            uint8_t       aArgsLength,
+                            char *        aArgs[],
+                            uint8_t       aCommandsLength,
+                            const otCliCommand aCommands[]);
 
 /**
  * Output a byte array as hex to the output buffer

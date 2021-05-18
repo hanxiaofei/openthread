@@ -425,13 +425,13 @@ extern "C" void otCRPCAppendResult(otError aError)
     RPC::GetRPC().OutputResult(aError);
 }
 
-extern "C" void otCRPCHandleCommand(void *        aContext,
-                         uint8_t       aArgsLength,
-                         char *        aArgs[],
-                         uint8_t       aCommandsLength,
-                         const otCliCommand aCommands[])
+extern "C" Error otCRPCHandleCommand(void *        aContext,
+                                     uint8_t       aArgsLength,
+                                     char *        aArgs[],
+                                     uint8_t       aCommandsLength,
+                                     const otCliCommand aCommands[])
 {
-    RPC::HandleCommand(aContext, aArgsLength, aArgs, aCommandsLength, aCommands);
+    return RPC::HandleCommand(aContext, aArgsLength, aArgs, aCommandsLength, aCommands);
 }
 
 extern "C" void otCRPCOutputBytes(const uint8_t *aBytes, uint8_t aLength)
