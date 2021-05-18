@@ -1761,18 +1761,6 @@ exit:
     return error;
 }
 
-#if OPENTHREAD_POSIX && !defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
-otError Interpreter::ProcessExit(uint8_t aArgsLength, Arg aArgs[])
-{
-    OT_UNUSED_VARIABLE(aArgsLength);
-    OT_UNUSED_VARIABLE(aArgs);
-
-    exit(EXIT_SUCCESS);
-
-    return OT_ERROR_NONE;
-}
-#endif
-
 otError Interpreter::ProcessLog(uint8_t aArgsLength, Arg aArgs[])
 {
     otError error = OT_ERROR_NONE;
@@ -2649,6 +2637,22 @@ otError Interpreter::ProcessMasterKey(uint8_t aArgsLength, Arg aArgs[])
 exit:
     return error;
 }
+
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+otError Interpreter::ProcessMlIid(uint8_t aArgsLength, Arg aArgs[])
+{
+    otError                  error = OT_ERROR_NONE;
+    otIp6InterfaceIdentifier iid;
+
+    VerifyOrExit(aArgsLength == 1, error = OT_ERROR_INVALID_ARGS);
+
+    SuccessOrExit(error = aArgs[0].ParseAsHexString(iid.mFields.m8));
+    SuccessOrExit(error = otIp6SetMeshLocalIid(mInstance, &iid));
+
+exit:
+    return error;
+}
+#endif
 
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE && OPENTHREAD_CONFIG_COMMISSIONER_ENABLE
 
@@ -4862,17 +4866,20 @@ void Interpreter::ProcessLine(char *aBuf)
     Arg            args[kMaxArgs];
     uint8_t        argsLength;
     const Command *command;
-    otError        error;
+    otError        error = OT_ERROR_NONE;
 
-    VerifyOrExit(aBuf != nullptr && StringLength(aBuf, kMaxLineLength) <= kMaxLineLength - 1);
+    OT_ASSERT(aBuf != nullptr);
 
-    VerifyOrExit(Utils::CmdLineParser::ParseCmd(aBuf, argsLength, args, kMaxArgs) == OT_ERROR_NONE,
-                 OutputLine("Error: too many args (max %d)", kMaxArgs));
+    VerifyOrExit(StringLength(aBuf, kMaxLineLength) <= kMaxLineLength - 1, error = OT_ERROR_PARSE);
+
+    SuccessOrExit(error = Utils::CmdLineParser::ParseCmd(aBuf, argsLength, args, kMaxArgs));
     VerifyOrExit(argsLength >= 1);
 
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
-    VerifyOrExit((!otDiagIsEnabled(mInstance) || (args[0] == "diag")),
-                 OutputLine("under diagnostics mode, execute 'diag stop' before running any other commands."));
+    VerifyOrExit((!otDiagIsEnabled(mInstance) || (args[0] == "diag")), {
+        OutputLine("under diagnostics mode, execute 'diag stop' before running any other commands.");
+        error = OT_ERROR_INVALID_STATE;
+    });
 #endif
 
     command = Utils::LookupTable::Find(args[0].GetCString(), sCommands);
@@ -4885,10 +4892,12 @@ void Interpreter::ProcessLine(char *aBuf)
     {
         error = ProcessUserCommands(argsLength, args);
     }
-    OutputResult(error);
 
 exit:
-    return;
+    if (error != OT_ERROR_NONE || argsLength > 0)
+    {
+        OutputResult(error);
+    }
 }
 
 otError Interpreter::ProcessUserCommands(uint8_t aArgsLength, Arg aArgs[])

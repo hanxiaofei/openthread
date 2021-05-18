@@ -81,11 +81,45 @@ static_assert(kLineBufferSize >= sizeof("Error "), "kLineBufferSize is too small
 
 int sSessionFd = -1;
 
+void QuitOnExit(const char *aBuffer)
+{
+    constexpr char kExit[] = "exit";
+
+    while (*aBuffer == ' ' || *aBuffer == '\t')
+    {
+        ++aBuffer;
+    }
+
+    VerifyOrExit(strstr(aBuffer, kExit) == aBuffer);
+
+    aBuffer += sizeof(kExit) - 1;
+
+    while (*aBuffer == ' ' || *aBuffer == '\t')
+    {
+        ++aBuffer;
+    }
+
+    switch (*aBuffer)
+    {
+    case '\0':
+    case '\r':
+    case '\n':
+        exit(OT_EXIT_SUCCESS);
+        break;
+    default:
+        break;
+    }
+
+exit:
+    return;
+}
+
 #if OPENTHREAD_USE_READLINE
 void InputCallback(char *aLine)
 {
     if (aLine != nullptr)
     {
+        QuitOnExit(aLine);
         add_history(aLine);
         dprintf(sSessionFd, "%s\n", aLine);
         free(aLine);
@@ -197,9 +231,9 @@ void PrintUsage(const char *aProgramName, FILE *aStream, int aExitCode)
     exit(aExitCode);
 }
 
-bool IsSeparator(char aChar)
+static bool ShouldEscape(char aChar)
 {
-    return (aChar == ' ') || (aChar == '\t') || (aChar == '\r') || (aChar == '\n');
+    return (aChar == ' ') || (aChar == '\t') || (aChar == '\r') || (aChar == '\n') || (aChar == '\\');
 }
 
 Config ParseArg(int &aArgCount, char **&aArgVector)
@@ -208,7 +242,7 @@ Config ParseArg(int &aArgCount, char **&aArgVector)
 
     optind = 1;
 
-    for (int index, option; (option = getopt_long(aArgCount, aArgVector, "I:h", kOptions, &index)) != -1;)
+    for (int index, option; (option = getopt_long(aArgCount, aArgVector, "+I:h", kOptions, &index)) != -1;)
     {
         switch (option)
         {
@@ -253,20 +287,27 @@ int main(int argc, char *argv[])
 
         for (int i = 0; i < argc; i++)
         {
-            for (const char *c = argv[i]; *c; ++c)
+            for (const char *c = argv[i]; *c && count < sizeof(buffer);)
             {
-                if (IsSeparator(*c))
+                if (ShouldEscape(*c))
                 {
                     buffer[count++] = '\\';
+
+                    VerifyOrExit(count < sizeof(buffer), ret = OT_EXIT_INVALID_ARGUMENTS);
                 }
-                buffer[count++] = *c;
+
+                buffer[count++] = *c++;
             }
+
+            VerifyOrExit(count < sizeof(buffer), ret = OT_EXIT_INVALID_ARGUMENTS);
             buffer[count++] = ' ';
         }
 
-        // replace the trailing space with newline
-        buffer[count - 1] = '\n';
-        VerifyOrExit(DoWrite(sSessionFd, buffer, count), ret = OT_EXIT_FAILURE);
+        // ignore the trailing space
+        if (--count)
+        {
+            VerifyOrExit(DoWrite(sSessionFd, buffer, count), ret = OT_EXIT_FAILURE);
+        }
 
         isInteractive = false;
     }
@@ -316,6 +357,7 @@ int main(int argc, char *argv[])
 #else
             VerifyOrExit(fgets(buffer, sizeof(buffer), stdin) != nullptr, ret = OT_EXIT_FAILURE);
 
+            QuitOnExit(buffer);
             VerifyOrExit(DoWrite(sSessionFd, buffer, strlen(buffer)), ret = OT_EXIT_FAILURE);
 #endif
         }

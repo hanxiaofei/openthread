@@ -2052,10 +2052,8 @@ Error MleRouter::UpdateChildAddresses(const Message &aMessage, uint16_t aOffset,
 
                 if (oldDuaPtr != nullptr)
                 {
-                    if (oldDua != address)
-                    {
-                        Get<DuaManager>().UpdateChildDomainUnicastAddress(aChild, ChildDuaState::kChanged);
-                    }
+                    Get<DuaManager>().UpdateChildDomainUnicastAddress(
+                        aChild, oldDua != address ? ChildDuaState::kChanged : ChildDuaState::kUnchanged);
                 }
                 else
                 {
@@ -2314,9 +2312,7 @@ exit:
     LogProcessError(kTypeChildIdRequest, error);
 }
 
-void MleRouter::HandleChildUpdateRequest(const Message &         aMessage,
-                                         const Ip6::MessageInfo &aMessageInfo,
-                                         uint32_t                aKeySequence)
+void MleRouter::HandleChildUpdateRequest(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo)
 {
     static const uint8_t kMaxResponseTlvs = 10;
 
@@ -2354,17 +2350,15 @@ void MleRouter::HandleChildUpdateRequest(const Message &         aMessage,
         ExitNow(error = kErrorParse);
     }
 
-    // Find Child
+    tlvs[tlvslength++] = Tlv::kSourceAddress;
+
     aMessageInfo.GetPeerAddr().GetIid().ConvertToExtAddress(extAddr);
     child = mChildTable.FindChild(extAddr, Child::kInStateAnyExceptInvalid);
 
-    tlvs[tlvslength++] = Tlv::kSourceAddress;
-
-    // Not proceed if the Child Update Request is from the peer which is not the device's child or
-    // which was the device's child but becomes invalid.
-    if (child == nullptr || child->IsStateInvalid())
+    if (child == nullptr)
     {
-        // For invalid non-sleepy child, Send Child Update Response with status TLV (error)
+        // For invalid non-sleepy child, send Child Update Response with
+        // Status TLV (error).
         if (mode.IsRxOnWhenIdle())
         {
             tlvs[tlvslength++] = Tlv::kStatus;
@@ -2373,6 +2367,14 @@ void MleRouter::HandleChildUpdateRequest(const Message &         aMessage,
 
         ExitNow();
     }
+
+    // Ignore "Child Update Request" from a child that is present in the
+    // child table but it is not yet in valid state. For example, a
+    // child which is being restored (due to parent reset) or is in the
+    // middle of the attach process (in `kStateParentRequest` or
+    // `kStateChildIdRequest`).
+
+    VerifyOrExit(child->IsStateValid());
 
     oldMode = child->GetDeviceMode();
     child->SetDeviceMode(mode);
@@ -2493,17 +2495,9 @@ void MleRouter::HandleChildUpdateRequest(const Message &         aMessage,
         Get<IndirectSender>().HandleChildModeChange(*child, oldMode);
     }
 
-    if (child->IsStateRestoring())
+    if (childDidChange)
     {
-        SetChildStateToValid(*child);
-        child->SetKeySequence(aKeySequence);
-    }
-    else if (child->IsStateValid())
-    {
-        if (childDidChange)
-        {
-            IgnoreError(mChildTable.StoreChild(*child));
-        }
+        IgnoreError(mChildTable.StoreChild(*child));
     }
 
 #if OPENTHREAD_CONFIG_MULTI_RADIO
@@ -3702,10 +3696,13 @@ exit:
     InformPreviousChannel();
 }
 
-bool MleRouter::IsExpectedToBecomeRouter(void) const
+bool MleRouter::IsExpectedToBecomeRouterSoon(void) const
 {
+    static constexpr uint8_t kMaxDelay = 10;
+
     return IsRouterEligible() && IsChild() && !mAddressSolicitRejected &&
-           (GetRouterSelectionJitterTimeout() != 0 || mAddressSolicitPending);
+           ((GetRouterSelectionJitterTimeout() != 0 && GetRouterSelectionJitterTimeout() <= kMaxDelay) ||
+            mAddressSolicitPending);
 }
 
 void MleRouter::HandleAddressSolicit(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo)

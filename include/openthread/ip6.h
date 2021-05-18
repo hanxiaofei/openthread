@@ -427,7 +427,7 @@ typedef struct otIp6AddressInfo
     const otIp6Address *mAddress;       ///< A pointer to the IPv6 address.
     uint8_t             mPrefixLength;  ///< The prefix length of mAddress if it is a unicast address.
     uint8_t             mScope : 4;     ///< The scope of this address.
-    bool                mIsAnycast : 1; ///< Whether this is an anycast address.
+    bool                mPreferred : 1; ///< Whether this is a preferred address.
 } otIp6AddressInfo;
 
 /**
@@ -718,6 +718,20 @@ otError otIp6RegisterMulticastListeners(otInstance *                            
                                         const uint32_t *                        aTimeout,
                                         otIp6RegisterMulticastListenersCallback aCallback,
                                         void *                                  aContext);
+
+/**
+ * This function sets the Mesh Local IID (for test purpose).
+ *
+ * Only available when `OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE` is enabled.
+ *
+ * @param[in]   aInstance   A pointer to an OpenThread instance.
+ * @param[in]   aIid        A pointer to the Mesh Local IID to set.
+ *
+ * @retval  OT_ERROR_NONE           Successfully set the Mesh Local IID.
+ * @retval  OT_ERROR_INVALID_STATE  Thread protocols are enabled.
+ *
+ */
+otError otIp6SetMeshLocalIid(otInstance *aInstance, const otIp6InterfaceIdentifier *aIid);
 
 /**
  * @}
