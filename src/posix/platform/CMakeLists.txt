@@ -79,11 +79,6 @@ add_library(openthread-posix
     virtual_time.cpp
 )
 
-if(OT_POSIX_CONFIG_RCP_BUS EQUAL "CPC")
-    message(FATAL_ERROR "Adding cpc_interface.cpp")
-    target_sources(openthread-posix PRIVATE cpc_interface.cpp)
-endif()
-
 set_target_properties(
     openthread-posix
     PROPERTIES
@@ -100,10 +95,6 @@ target_link_libraries(openthread-posix
         util
         $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:rt>
 )
-
-if(OT_POSIX_CONFIG_RCP_BUS EQUAL "CPC")
-    target_link_libraries(openthread-posix PRIVATE cpc)
-endif()
 
 target_compile_definitions(openthread-posix
     PUBLIC
@@ -126,3 +117,12 @@ target_include_directories(openthread-posix PRIVATE
     PUBLIC
         ${PROJECT_SOURCE_DIR}/src/posix/platform/include
 )
+
+if(OT_POSIX_CONFIG_RCP_BUS MATCHES "CPC")
+    target_sources(openthread-posix PRIVATE cpc_interface.cpp)
+    target_link_libraries(openthread-posix PRIVATE cpc)
+    target_include_directories(openthread-posix PRIVATE
+        ${PROJECT_SOURCE_DIR}/../../../platform/service/cpc/daemon/lib
+        ${PROJECT_SOURCE_DIR}/../../../platform/service/cpc/daemon/misc
+    )
+endif()

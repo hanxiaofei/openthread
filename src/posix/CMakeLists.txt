@@ -32,8 +32,6 @@ set(COMMON_INCLUDES
     ${PROJECT_SOURCE_DIR}/src/core
     ${PROJECT_SOURCE_DIR}/src/posix/platform
     ${PROJECT_SOURCE_DIR}/src/posix/platform/include
-    ${PROJECT_SOURCE_DIR}/../../../platform/service/cpc/daemon/lib
-    ${PROJECT_SOURCE_DIR}/../../../platform/service/cpc/daemon/misc
 )
 
 set(OT_READLINE_VALUES
