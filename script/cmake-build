@@ -81,6 +81,7 @@ OT_CMAKE_NINJA_TARGET=${OT_CMAKE_NINJA_TARGET:-}
 readonly OT_SRCDIR="$(pwd)"
 readonly OT_PLATFORMS=(cc1352 cc2538 cc2650 cc2652 efr32mg1 efr32mg12 efr32mg13 efr32mg21 kw41z nrf52811 nrf52833 nrf52840 gp712 qpg7015m qpg6095 qpg6100 samr21 simulation posix)
 readonly OT_NRF528XX_BUILD_TYPES=(UART_trans USB_trans_bl SPI_trans_NCP soft_crypto soft_crypto_threading)
+readonly OT_POSIX_BUILD_TYPES=(multipan_rcp)
 readonly OT_POSIX_SIM_COMMON_OPTIONS=(
     "-DOT_BORDER_AGENT=ON"
     "-DOT_BORDER_ROUTER=ON"
@@ -165,6 +166,15 @@ readonly OT_efr32mg21_OPTIONS=(
     "${OT_efr32_OPTIONS[@]:0}"
 )
 
+readonly OT_POSIX_MULTIPAN_RCP_OPTIONS=(
+    "-DOT_MULTIPAN_RCP=ON"
+    "-DOT_RCP_RESTORATION_MAX_COUNT=100"
+    "-DOT_POSIX_MAX_POWER_TABLE=OFF"
+    "-DOT_CHANNEL_MANAGER=OFF"
+    "-DOT_CHANNEL_MONITOR=OFF"
+    "-DOT_THREAD_VERSION=1.2"
+)
+
 die()
 {
     echo " ** ERROR: Openthread CMake doesn't support platform \"$1\""
@@ -209,6 +219,13 @@ main()
         shift
     fi
 
+    local posix_build_type=""
+    if [[ ${platform} == posix* ]] && [ "$#" -ge 2 ]; then
+        posix_build_type="$2"
+        echo "${OT_POSIX_BUILD_TYPES[@]}" | grep -wq "${posix_build_type}" || die "${posix_build_type}"
+        shift
+    fi
+
     shift
     local local_options=()
     local options=(
@@ -223,6 +240,12 @@ main()
                 "-DOT_POSIX_MAX_POWER_TABLE=ON"
             )
             options+=("${OT_POSIX_SIM_COMMON_OPTIONS[@]}" "${local_options[@]}")
+
+            case "${posix_build_type}" in
+                multipan_rcp)
+                    options+=("${local_options[@]}" "${OT_POSIX_MULTIPAN_RCP_OPTIONS[@]}")
+                    ;;
+            esac
             ;;
         simulation)
             local_options=("-DOT_LINK_RAW=ON")

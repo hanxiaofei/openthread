@@ -257,6 +257,11 @@ if(OT_MULTIPLE_INSTANCE)
     target_compile_definitions(ot-config INTERFACE "OPENTHREAD_CONFIG_MULTIPLE_INSTANCE_ENABLE=1")
 endif()
 
+option(OT_MULTIPAN_RCP "enable multi-PAN RCP")
+if(OT_MULTIPAN_RCP)
+    target_compile_definitions(ot-config INTERFACE "OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE=1")
+endif()
+
 option(OT_PING_SENDER "enable ping sender support" ${OT_APP_CLI})
 if(OT_PING_SENDER)
     target_compile_definitions(ot-config INTERFACE "OPENTHREAD_CONFIG_PING_SENDER_ENABLE=1")
