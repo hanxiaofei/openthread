@@ -54,16 +54,51 @@ extern "C" {
  */
 
 /**
- * Set a user command table.
+ * Append an error code to the output buffer
  *
- * @param[in]  aUserCommands  A pointer to an array with user commands.
- * @param[in]  aLength        @p aUserCommands length.
- * @param[in]  aContext       @p The context passed to the handler.
+ * @param[in] aError
+ */
+void otCRPCAppendResult(otError aError);
+
+/**
+ * Call the corresponding handler for a command
+ *
+ * This function will look through @p aCommands to find a command that matches
+ * @p aArgs[0]. If found, the handler function for the command will be called
+ * with the remaining args passed to it.
+ *
+ * @param[in]  aContext         a context
+ * @param[in]  aArgsLength      number of args
+ * @param[in]  aArgs            list of args
+ * @param[in]  aCommandsLength  number of commands in @p aCommands
+ * @param[in]  aCommands        list of commands
+ *
+ * @retval false if no matching command was found
+ * @retval true if a matching command was found and the handler was called
  *
  */
-void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext);
+void otCRPCHandleCommand(void *        aContext,
+                         uint8_t       aArgsLength,
+                         char *        aArgs[],
+                         uint8_t       aCommandsLength,
+                         const otCliCommand aCommands[]);
 
-void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[]);
+/**
+ * Output a byte array as hex to the output buffer
+ *
+ * @param[in] aBytes            Bytes to output
+ * @param[in] aLength           Number of bytes
+ */
+void otCRPCOutputBytes(const uint8_t *aBytes, uint8_t aLength);
+
+/**
+ * Output all command names in a @ref Command array to the output buffer
+ *
+ * @param[in] aCommands         an array of commands
+ * @param[in] aCommandsLength   length of @p aCommands
+ */
+void otCRPCOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength);
+
 /**
  * Write formatted string to the output buffer
  *
@@ -74,7 +109,7 @@ void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[]);
 void otCRPCOutputFormat(const char *aFmt, ...);
 
 /**
- * This function processes a command line.
+ * Process a command line
  *
  * @param[in]   aArgsLength     The number of elements in @p aArgs.
  * @param[in]   aArgs           An array of arguments.
@@ -89,7 +124,7 @@ void otCRPCOutputFormat(const char *aFmt, ...);
 otError otCRPCProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen);
 
 /**
- * This function processes a command-line string.
+ * Process a command-line string
  *
  * @param[in]   aString         A NULL-terminated input string.
  * @param[out]  aOutput         The execution result.
@@ -97,6 +132,25 @@ otError otCRPCProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size
  *
  */
 void otCRPCProcessCmdLine(const char *aString, char *aOutput, size_t aOutputMaxLen);
+
+/**
+ * Output all available CRPC built-in commands and user commands
+ *
+ * @param aContext
+ * @param aArgsLength
+ * @param aArgs
+ */
+void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[]);
+
+/**
+ * Set a user command table.
+ *
+ * @param[in]  aUserCommands  A pointer to an array with user commands.
+ * @param[in]  aLength        @p aUserCommands length.
+ * @param[in]  aContext       @p The context passed to the handler.
+ *
+ */
+void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext);
 
 /**
  * @}

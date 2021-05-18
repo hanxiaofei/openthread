@@ -119,7 +119,6 @@ public:
      *
      */
     Error ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen);
-#if OPENTHREAD_RADIO
 
     /**
      * Call the corresponding handler for a command
@@ -138,13 +137,13 @@ public:
      * @retval true if a matching command was found and the handler was called
      *
      */
-    // TODO: Add a C API for this so that commands with subcommands can use it
-    Error HandleCommand(void *        aContext,
+    static Error HandleCommand(void *        aContext,
                         uint8_t       aArgsLength,
                         char *        aArgs[],
                         uint8_t       aCommandsLength,
                         const Command aCommands[]);
 
+#if OPENTHREAD_RADIO
     /**
      * This method writes a number of bytes to the CLI console as a hex string.
      *

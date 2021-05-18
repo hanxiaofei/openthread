@@ -245,8 +245,6 @@ exit:
 }
 #endif
 
-#if OPENTHREAD_RADIO
-
 Error RPC::HandleCommand(void *        aContext,
                          uint8_t       aArgsLength,
                          char *        aArgs[],
@@ -272,6 +270,7 @@ exit:
     return error;
 }
 
+#if OPENTHREAD_RADIO
 void RPC::OutputResult(otError aError)
 {
     switch (aError)
@@ -421,14 +420,28 @@ extern "C" otError otCRPCProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aO
 
 #if OPENTHREAD_RADIO
 
-extern "C" void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
+extern "C" void otCRPCAppendResult(otError aError)
 {
-    RPC::GetRPC().SetUserCommands(aUserCommands, aLength, aContext);
+    RPC::GetRPC().OutputResult(aError);
+}
+
+extern "C" void otCRPCHandleCommand(void *        aContext,
+                         uint8_t       aArgsLength,
+                         char *        aArgs[],
+                         uint8_t       aCommandsLength,
+                         const otCliCommand aCommands[])
+{
+    RPC::HandleCommand(aContext, aArgsLength, aArgs, aCommandsLength, aCommands);
 }
 
 extern "C" void otCRPCOutputBytes(const uint8_t *aBytes, uint8_t aLength)
 {
     RPC::GetRPC().OutputBytes(aBytes, aLength);
+}
+
+extern "C" void otCRPCOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength)
+{
+    RPC::GetRPC().OutputCommands(aCommands, aCommandsLength);
 }
 
 extern "C" void otCRPCOutputFormat(const char *aFmt, ...)
@@ -439,14 +452,14 @@ extern "C" void otCRPCOutputFormat(const char *aFmt, ...)
     va_end(aAp);
 }
 
-extern "C" void otCRPCAppendResult(otError aError)
-{
-    RPC::GetRPC().OutputResult(aError);
-}
-
 extern "C" void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
 {
     RPC::GetRPC().ProcessHelp(aContext, aArgsLength, aArgs);
+}
+
+extern "C" void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
+{
+    RPC::GetRPC().SetUserCommands(aUserCommands, aLength, aContext);
 }
 #else
 #define otCRPCOutputBytes otCliOutputBytes
