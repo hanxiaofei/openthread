@@ -41,7 +41,64 @@
 #include "common/locator_getters.hpp"
 
 namespace ot {
-
+namespace Coprocessor {
+extern "C" void otCRPCProcessCmdLine(const char *aString, char *aOutput, size_t aOutputMaxLen)
+{
+    RPC::GetRPC().ProcessLine(aString, aOutput, aOutputMaxLen);
 }
+
+extern "C" otError otCRPCProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
+{
+    return RPC::GetRPC().ProcessCmd(aArgsLength, aArgs, aOutput, aOutputMaxLen);
+}
+
+#if OPENTHREAD_RADIO
+extern "C" void otCRPCAppendResult(otError aError)
+{
+    RPC::GetRPC().OutputResult(aError);
+}
+#endif
+
+extern "C" Error otCRPCHandleCommand(void *             aContext,
+                                     uint8_t            aArgsLength,
+                                     char *             aArgs[],
+                                     uint8_t            aCommandsLength,
+                                     const otCliCommand aCommands[])
+{
+    return RPC::HandleCommand(aContext, aArgsLength, aArgs, aCommandsLength, aCommands);
+}
+
+#if OPENTHREAD_RADIO
+extern "C" void otCRPCOutputBytes(const uint8_t *aBytes, uint8_t aLength)
+{
+    RPC::GetRPC().OutputBytes(aBytes, aLength);
+}
+
+extern "C" void otCRPCOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength)
+{
+    RPC::GetRPC().OutputCommands(aCommands, aCommandsLength);
+}
+
+extern "C" void otCRPCOutputFormat(const char *aFmt, ...)
+{
+    va_list aAp;
+    va_start(aAp, aFmt);
+    RPC::GetRPC().OutputFormatV(aFmt, aAp);
+    va_end(aAp);
+}
+
+extern "C" void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
+{
+    RPC::GetRPC().ProcessHelp(aContext, aArgsLength, aArgs);
+}
+
+extern "C" void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
+{
+    RPC::GetRPC().SetUserCommands(aUserCommands, aLength, aContext);
+}
+#endif
+
+} // namespace Coprocessor
+} // namespace ot
 
 #endif // OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
