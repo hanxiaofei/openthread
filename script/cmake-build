@@ -101,57 +101,6 @@ readonly OT_POSIX_SIM_COMMON_OPTIONS=(
     "-DOT_RCP_RESTORATION_MAX_COUNT=2"
 )
 
-<<<<<<< HEAD
-readonly OT_nrf52811_OPTIONS=(
-    "-DOT_BORDER_ROUTER=ON"
-    "-DOT_COAP=ON"
-    "-DOT_DNS_CLIENT=ON"
-    "-DOT_LINK_RAW=ON"
-    "-DOT_MAC_FILTER=ON"
-    "-DOT_MTD_NETDIAG=ON"
-)
-
-readonly OT_nrf52833_OPTIONS=(
-    "-DOT_BORDER_AGENT=ON"
-    "-DOT_BORDER_ROUTER=ON"
-    "-DOT_COAP=ON"
-    "-DOT_COAPS=ON"
-    "-DOT_ECDSA=ON"
-    "-DOT_FULL_LOGS=ON"
-    "-DOT_IP6_FRAGM=ON"
-    "-DOT_LINK_RAW=ON"
-    "-DOT_MAC_FILTER=ON"
-    "-DOT_MTD_NETDIAG=ON"
-    "-DOT_SERVICE=ON"
-    "-DOT_SNTP_CLIENT=ON"
-    "-DOT_UDP_FORWARD=ON"
-)
-
-readonly OT_nrf52840_OPTIONS=("${OT_nrf52833_OPTIONS[@]:0}")
-
-readonly OT_efr32_OPTIONS=(
-    "-DOT_DIAGNOSTIC=ON"
-    "-DOT_EXTERNAL_HEAP=ON"
-    "-DOT_EXTERNAL_MBEDTLS=silabs-mbedtls"
-    "-DOT_BUILTIN_MBEDTLS_MANAGEMENT=OFF"
-)
-
-readonly OT_efr32mg1_OPTIONS=(
-    "${OT_efr32_OPTIONS[@]:0}"
-)
-
-readonly OT_efr32mg12_OPTIONS=(
-    "${OT_efr32_OPTIONS[@]:0}"
-)
-
-readonly OT_efr32mg13_OPTIONS=(
-    "${OT_efr32_OPTIONS[@]:0}"
-)
-
-readonly OT_efr32mg21_OPTIONS=(
-    "${OT_efr32_OPTIONS[@]:0}"
-)
-
 readonly OT_POSIX_MULTIPAN_RCP_OPTIONS=(
     "-DOT_MULTIPAN_RCP=ON"
     "-DOT_RCP_RESTORATION_MAX_COUNT=100"
@@ -161,8 +110,6 @@ readonly OT_POSIX_MULTIPAN_RCP_OPTIONS=(
     "-DOT_THREAD_VERSION=1.2"
 )
 
-=======
->>>>>>> feature/multipan_rcp_cpc_integration
 die()
 {
     echo " ** ERROR: Openthread CMake doesn't support platform \"$1\""
