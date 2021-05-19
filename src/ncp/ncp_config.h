@@ -60,6 +60,16 @@
 #endif
 
 /**
+ * @def OPENTHREAD_CONFIG_NCP_CPC_ENABLE
+ *
+ * Define to 1 to enable NCP CPC support.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_NCP_CPC_ENABLE
+#define OPENTHREAD_CONFIG_NCP_CPC_ENABLE 0
+#endif
+
+/**
  * @def OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE
  *
  * The size of NCP message buffer in bytes.
@@ -77,6 +87,16 @@
  */
 #ifndef OPENTHREAD_CONFIG_NCP_HDLC_TX_CHUNK_SIZE
 #define OPENTHREAD_CONFIG_NCP_HDLC_TX_CHUNK_SIZE 2048
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_NCP_CPC_TX_CHUNK_SIZE
+ *
+ * The size of NCP UART TX chunk in bytes.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_NCP_CPC_TX_CHUNK_SIZE
+#define OPENTHREAD_CONFIG_NCP_CPC_TX_CHUNK_SIZE 2048
 #endif
 
 /**
@@ -187,6 +207,30 @@
  */
 #ifndef OPENTHREAD_ENABLE_NCP_VENDOR_HOOK
 #define OPENTHREAD_ENABLE_NCP_VENDOR_HOOK 0
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_NCP_SRP_CLIENT_MAX_SERVICES
+ *
+ * The maximum number of service entries supported by SRP client.
+ *
+ * This is only applicable when SRP client is enabled, i.e., OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE is set.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_NCP_SRP_CLIENT_MAX_SERVICES
+#define OPENTHREAD_CONFIG_NCP_SRP_CLIENT_MAX_SERVICES 2
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_NCP_SRP_CLIENT_MAX_HOST_ADDRESSES
+ *
+ * The maximum number of host IPv6 address entries supported by SRP client.
+ *
+ * This is only applicable when SRP client is enabled, i.e., OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE is set.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_NCP_SRP_CLIENT_MAX_HOST_ADDRESSES
+#define OPENTHREAD_CONFIG_NCP_SRP_CLIENT_MAX_HOST_ADDRESSES 2
 #endif
 
 #endif // CONFIG_NCP_H_
