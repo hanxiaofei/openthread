@@ -82,7 +82,7 @@ public:
      * @retval OT_ERROR_FAILED        The interface initialization was unsuccessful
      * 
      */
-    otError Init(const RadioUrl &aRadioUrl);
+    otError Init(const Url::Url &aRadioUrl);
 
     /**
      * This method deinitializes the interface to the RCP.

@@ -82,7 +82,7 @@ void CpcInterface::OnRcpReset(void)
     //mHdlcDecoder.Reset();
 }
 
-otError CpcInterface::Init(const RadioUrl &aRadioUrl)
+otError CpcInterface::Init(const Url::Url &aRadioUrl)
 {
     OT_UNUSED_VARIABLE(aRadioUrl);
 

@@ -37,8 +37,6 @@ libopenthread_posix_a_CPPFLAGS                                = \
     -I$(top_srcdir)/src/core                                    \
     -I$(top_srcdir)/src/posix/platform                          \
     -I$(top_srcdir)/src/posix/platform/include                  \
-    -I${top_srcdir}/../../../platform/service/cpc/daemon/lib    \
-    -I${top_srcdir}/../../../platform/service/cpc/daemon/misc   \
     -D_GNU_SOURCE                                               \
     -DOPENTHREAD_FTD=1                                          \
     -DOPENTHREAD_MTD=0                                          \
@@ -66,7 +64,6 @@ libopenthread_posix_a_SOURCES             = \
     trel_udp6.cpp                           \
     udp.cpp                                 \
     virtual_time.cpp                        \
-    cpc_interface.cpp                       \
     $(NULL)
 
 libopenthread_posix_a_LIBADD                                                        = \
@@ -76,13 +73,22 @@ libopenthread_posix_a_LIBADD                                                    
 
 noinst_HEADERS                            = \
     hdlc_interface.hpp                      \
-    cpc_interface.hpp                       \
     mainloop.hpp                            \
     multicast_routing.hpp                   \
     openthread-posix-config.h               \
     platform-posix.h                        \
     radio_url.hpp                           \
     $(NULL)
+
+if OPENTHREAD_ENABLE_CPC
+libopenthread_posix_a_CPPFLAGS                                += \
+    -I${top_srcdir}/../../../platform/service/cpc/daemon/lib    \
+    -I${top_srcdir}/../../../platform/service/cpc/daemon/misc   \
+    $(NULL)
+
+libopenthread_posix_a_SOURCES += cpc_interface.cpp
+noinst_HEADERS += cpc_interface.hpp
+endif
 
 openthread_HEADERS                        = \
     include/openthread/openthread-system.h  \
