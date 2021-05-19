@@ -47,12 +47,18 @@ static ot::Spinel::RadioSpinel<ot::Posix::HdlcInterface, VirtualTimeEvent> sRadi
 #else
 static ot::Spinel::RadioSpinel<ot::Posix::HdlcInterface, RadioProcessContext> sRadioSpinel;
 #endif // OPENTHREAD_POSIX_VIRTUAL_TIME
+
+#elif OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC
+#include "cpc_interface.hpp"
+
+static ot::Spinel::RadioSpinel<ot::Posix::CpcInterface, RadioProcessContext> sRadioSpinel;
+
 #elif OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_SPI
 #include "spi_interface.hpp"
 
 static ot::Spinel::RadioSpinel<ot::Posix::SpiInterface, RadioProcessContext> sRadioSpinel;
 #else
-#error "OPENTHREAD_POSIX_CONFIG_RCP_BUS only allows OT_POSIX_RCP_BUS_UART and OT_POSIX_RCP_BUS_SPI!"
+#error "OPENTHREAD_POSIX_CONFIG_RCP_BUS only allows OT_POSIX_RCP_BUS_UART, OT_POSIX_RCP_BUS_SPI and OT_POSIX_RCP_CPC!"
 #endif
 
 namespace ot {
