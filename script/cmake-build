@@ -147,14 +147,6 @@ main()
     # Check if the platform supports cmake.
     echo "${OT_PLATFORMS[@]}" | grep -wq "${platform}" || die "${platform}"
 
-<<<<<<< HEAD
-    local nrf_build_type=""
-    if [[ ${platform} == nrf528* ]]; then
-        nrf_build_type="$2"
-        echo "${OT_NRF528XX_BUILD_TYPES[@]}" | grep -wq "${nrf_build_type}" || die "${nrf_build_type}"
-        shift
-    fi
-
     local posix_build_type=""
     if [[ ${platform} == posix* ]] && [ "$#" -ge 2 ]; then
         posix_build_type="$2"
@@ -162,8 +154,6 @@ main()
         shift
     fi
 
-=======
->>>>>>> feature/multipan_rcp_cpc_integration
     shift
     local local_options=()
     local options=(
