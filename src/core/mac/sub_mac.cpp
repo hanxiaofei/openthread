@@ -41,7 +41,7 @@
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
 #include "common/instance.hpp"
-#include "common/locator-getters.hpp"
+#include "common/locator_getters.hpp"
 #include "common/logging.hpp"
 #include "common/random.hpp"
 #include "common/time.hpp"
@@ -67,10 +67,12 @@ SubMac::SubMac(Instance &aInstance)
     , mKeyId(0)
     , mTimer(aInstance, SubMac::HandleTimer)
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
-    , mCslTimeout(OPENTHREAD_CONFIG_CSL_TIMEOUT)
     , mCslPeriod(0)
     , mCslChannel(0)
     , mIsCslChannelSpecified(false)
+    , mCslLastSync(0)
+    , mCslParentDrift(kCslWorstCrystalPpm)
+    , mCslParentUncert(kCslWorstUncertainty)
     , mCslState(kCslIdle)
     , mCslTimer(aInstance, SubMac::HandleCslTimer)
 #endif
@@ -111,9 +113,14 @@ otRadioCaps SubMac::GetCaps(void) const
     caps |= OT_RADIO_CAPS_TRANSMIT_TIMING;
 #endif
 
+#if OPENTHREAD_CONFIG_MAC_SOFTWARE_RX_TIMING_ENABLE
+    caps |= OT_RADIO_CAPS_RECEIVE_TIMING;
+#endif
+
 #else
     caps = OT_RADIO_CAPS_ACK_TIMEOUT | OT_RADIO_CAPS_CSMA_BACKOFF | OT_RADIO_CAPS_TRANSMIT_RETRIES |
-           OT_RADIO_CAPS_ENERGY_SCAN | OT_RADIO_CAPS_TRANSMIT_SEC | OT_RADIO_CAPS_TRANSMIT_TIMING;
+           OT_RADIO_CAPS_ENERGY_SCAN | OT_RADIO_CAPS_TRANSMIT_SEC | OT_RADIO_CAPS_TRANSMIT_TIMING |
+           OT_RADIO_CAPS_RECEIVE_TIMING;
 #endif
 
     return caps;
@@ -261,14 +268,22 @@ void SubMac::HandleReceiveDone(RxFrame *aFrame, Error aError)
         UpdateFrameCounter(aFrame->mInfo.mRxInfo.mAckFrameCounter);
     }
 
-#if OPENTHREAD_CONFIG_MAC_CSL_DEBUG_ENABLE
+#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
     if (aFrame != nullptr && aError == kErrorNone)
     {
+        // Assuming the risk of the parent missing the Enh-ACK in favor of smaller CSL receive window
+        if ((mCslPeriod > 0) && aFrame->mInfo.mRxInfo.mAckedWithSecEnhAck)
+        {
+            mCslLastSync = TimeMicro(static_cast<uint32_t>(aFrame->mInfo.mRxInfo.mTimestamp));
+        }
+
+#if OPENTHREAD_CONFIG_MAC_CSL_DEBUG_ENABLE
         // Split the log into two lines for RTT to output
         otLogDebgMac("Received frame in state (SubMac %s, CSL %s), timestamp %u", StateToString(mState),
                      CslStateToString(mCslState), static_cast<uint32_t>(aFrame->mInfo.mRxInfo.mTimestamp));
         otLogDebgMac("Target sample start time %u, time drift %d", mCslSampleTime.GetValue(),
                      static_cast<uint32_t>(aFrame->mInfo.mRxInfo.mTimestamp) - mCslSampleTime.GetValue());
+#endif
     }
 #endif
 
@@ -487,7 +502,14 @@ void SubMac::HandleTransmitDone(TxFrame &aFrame, RxFrame *aAckFrame, Error aErro
         {
             mCallbacks.RecordCcaStatus(ccaSuccess, aFrame.GetChannel());
         }
-
+#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
+        // Actual synchronization timestamp should be from the sent frame instead of the current time.
+        // Assuming the error here since it is bounded and has very small effect on the final window duration.
+        if (mCslPeriod > 0)
+        {
+            mCslLastSync = TimeMicro(static_cast<uint32_t>(otPlatRadioGetNow(&GetInstance())));
+        }
+#endif
         break;
 
     default:
@@ -931,10 +953,8 @@ void SubMac::SetCslPeriod(uint16_t aPeriod)
 
     if (mCslPeriod > 0)
     {
-        mCslSampleTime = TimerMicro::GetNow();
-        Get<Radio>().UpdateCslSampleTime(mCslSampleTime.GetValue());
-
-        mCslState = kCslSample;
+        mCslSampleTime = TimeMicro(static_cast<uint32_t>(otPlatRadioGetNow(&GetInstance())));
+        mCslState      = kCslSleep;
         HandleCslTimer();
     }
     else
@@ -954,11 +974,6 @@ exit:
     return;
 }
 
-void SubMac::SetCslTimeout(uint32_t aTimeout)
-{
-    mCslTimeout = aTimeout;
-}
-
 void SubMac::HandleCslTimer(Timer &aTimer)
 {
     aTimer.Get<SubMac>().HandleCslTimer();
@@ -966,12 +981,26 @@ void SubMac::HandleCslTimer(Timer &aTimer)
 
 void SubMac::HandleCslTimer(void)
 {
+    /*
+     * CSL sample timing diagram
+     *    |<---------------------------------Sample--------------------------------->|<--------Sleep--------->|
+     *    |                                                                          |                        |
+     *    |<--Ahead-->|<--UnCert-->|<--Drift-->|<--Drift-->|<--UnCert-->|<--MinWin-->|                        |
+     *    |           |            |           |           |            |            |                        |
+     * ---|-----------|------------|-----------|-----------|------------|------------|----------//------------|---
+     * -timeAhead                           CslPhase                             +timeAfter             -timeAhead
+     */
+    uint32_t periodUs = mCslPeriod * kUsPerTenSymbols;
+    uint32_t timeAhead, timeAfter;
+
+    GetCslWindowEdges(timeAhead, timeAfter);
+
     switch (mCslState)
     {
     case kCslSample:
         mCslState = kCslSleep;
-        // kUsPerTenSymbols: computing CSL Phase using floor division.
-        mCslTimer.StartAt(mCslSampleTime, (mCslPeriod - kCslReceiveTimeAhead) * kUsPerTenSymbols);
+
+        mCslTimer.FireAt(mCslSampleTime - timeAhead);
         if (mState == kStateCslSample)
         {
 #if !OPENTHREAD_CONFIG_MAC_CSL_DEBUG_ENABLE
@@ -982,17 +1011,32 @@ void SubMac::HandleCslTimer(void)
         break;
 
     case kCslSleep:
-        mCslState = kCslSample;
+        mCslSampleTime += periodUs;
 
-        mCslSampleTime += mCslPeriod * kUsPerTenSymbols;
+        if (RadioSupportsReceiveTiming())
+        {
+            mCslTimer.FireAt(mCslSampleTime - timeAhead);
+            timeAhead -= kCslReceiveTimeAhead;
+        }
+        else
+        {
+            mCslTimer.FireAt(mCslSampleTime + timeAfter);
+            mCslState = kCslSample;
+        }
+
         Get<Radio>().UpdateCslSampleTime(mCslSampleTime.GetValue());
-
-        mCslTimer.StartAt(mCslSampleTime, kCslSampleWindow);
-
         if (mState == kStateCslSample)
         {
-            IgnoreError(Get<Radio>().Receive(mCslChannel));
-            otLogDebgMac("CSL sample %u", mCslTimer.GetNow().GetValue());
+            if (RadioSupportsReceiveTiming())
+            {
+                IgnoreError(Get<Radio>().ReceiveAt(mCslChannel, mCslSampleTime.GetValue() - periodUs - timeAhead,
+                                                   timeAhead + timeAfter));
+            }
+            else
+            {
+                IgnoreError(Get<Radio>().Receive(mCslChannel));
+                otLogDebgMac("CSL sample %u, duration %u", mCslTimer.GetNow().GetValue(), timeAhead + timeAfter);
+            }
         }
         break;
 
@@ -1003,6 +1047,28 @@ void SubMac::HandleCslTimer(void)
         OT_ASSERT(false);
         break;
     }
+}
+
+void SubMac::GetCslWindowEdges(uint32_t &ahead, uint32_t &after)
+{
+    uint32_t semiPeriod = mCslPeriod * kUsPerTenSymbols / 2;
+    uint64_t curTime    = otPlatRadioGetNow(&GetInstance());
+    uint32_t elapsed, semiWindow;
+
+    if (mCslLastSync.GetValue() > curTime)
+    {
+        elapsed = static_cast<uint32_t>(UINT64_MAX - mCslLastSync.GetValue() + curTime);
+    }
+    else
+    {
+        elapsed = static_cast<uint32_t>(curTime - mCslLastSync.GetValue());
+    }
+
+    semiWindow = elapsed * (Get<Radio>().GetCslAccuracy() + mCslParentDrift) / 1000000;
+    semiWindow += mCslParentUncert * kUsPerUncertUnit;
+
+    ahead = (semiWindow + kCslReceiveTimeAhead > semiPeriod) ? semiPeriod : semiWindow + kCslReceiveTimeAhead;
+    after = (semiWindow + kMinCslWindow > semiPeriod) ? semiPeriod : semiWindow + kMinCslWindow;
 }
 #endif // OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
 

@@ -75,13 +75,14 @@ public:
      *
      * @note This method should be called before reading and sending spinel frames to the interface.
      *
-     * @param[in] id    The endpoint ID to connect to.
+     * @param[in] aRadioUrl           Used to make definition consistent with other interfaces
+     *                                such as HDLC and SPI.
      *
      * @retval OT_ERROR_NONE          The interface is initialized successfully
      * @retval OT_ERROR_FAILED        The interface initialization was unsuccessful
      * 
      */
-    otError Init(uint8_t id);
+    otError Init(const RadioUrl &aRadioUrl);
 
     /**
      * This method deinitializes the interface to the RCP.
@@ -187,7 +188,7 @@ private:
 
     enum
     {
-        kMaxFrameSize = Spinel::SpinelInterface::kMaxFrameSize,
+        kMaxFrameSize = 128,
         kMaxWaitTime  = 2000, ///< Maximum wait time in Milliseconds for socket to become writable (see `SendFrame`).
         kResetCMDSize = 4
     };
@@ -203,9 +204,9 @@ private:
 
     // Hard Coded Reset Response
     // 0x72 -> STATUS_RESET_SOFTWARE
-    uint8_t mResetCMD[kResetCMDSize] = {0x80, 0x06, 0x00, 0x72};
+    uint8_t mResetResponse[kResetCMDSize] = {0x80, 0x06, 0x00, 0x72};
 
-    uint8_t             mId;
+    const uint8_t       mId = 90; //SL_CPC_ENDPOINT_USER_ID_0
     typedef uint8_t     cpcError;
 
     // Non-copyable, intentionally not implemented.

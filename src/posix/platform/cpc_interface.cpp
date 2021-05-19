@@ -82,14 +82,15 @@ void CpcInterface::OnRcpReset(void)
     //mHdlcDecoder.Reset();
 }
 
-otError CpcInterface::Init(uint8_t id)
+otError CpcInterface::Init(const RadioUrl &aRadioUrl)
 {
-    mId = id;
+    OT_UNUSED_VARIABLE(aRadioUrl);
+
     cpcError cpc_error = cpc_init(&mHandle, false);
 
     VerifyOrDie(cpc_error == 0, OT_EXIT_FAILURE);
 
-    cpc_error = cpc_open_endpoint(mHandle, &mEndpoint, id, 1);
+    cpc_error = cpc_open_endpoint(mHandle, &mEndpoint, mId, 1);
 
     return ((0 == cpc_error) ? OT_ERROR_NONE : OT_ERROR_FAILED);
 }
@@ -133,7 +134,7 @@ void CpcInterface::Read(uint64_t aTimeoutUs)
     }
 
 
-    bytesRead = cpc_read_endpoint(mEndpoint, buffer, sizeof(buffer), mReadFlags | SL_CPC_FLAG_NON_BLOCK);
+    bytesRead = cpc_read_endpoint(mEndpoint, buffer, sizeof(buffer), mReadFlags);
 
     if (bytesRead > 0)
     {
@@ -175,7 +176,7 @@ otError CpcInterface::Write(const uint8_t *aFrame, uint16_t aLength)
 
     while (aLength)
     {
-        ssize_t bytesWritten = cpc_write_endpoint(mEndpoint, aFrame, aLength, mWriteFlags);
+        ssize_t bytesWritten = cpc_write_endpoint(mEndpoint, aFrame, aLength, mWriteFlags | SL_CPC_FLAG_NON_BLOCK);
 
         if (bytesWritten == aLength)
         {
@@ -191,7 +192,6 @@ otError CpcInterface::Write(const uint8_t *aFrame, uint16_t aLength)
             VerifyOrDie((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR), OT_EXIT_ERROR_ERRNO);
         }
 
-        //SuccessOrExit(error = WaitForWritable());
     }
 
     return error;
@@ -208,6 +208,8 @@ otError CpcInterface::WaitForFrame(uint64_t aTimeoutUs)
 
 void CpcInterface::UpdateFdSet(fd_set &aReadFdSet, fd_set &aWriteFdSet, int &aMaxFd, struct timeval &aTimeout)
 {
+    // Add code to handle FD's once CPC daemon is updated
+    // to set FDs
     OT_UNUSED_VARIABLE(aReadFdSet);
     OT_UNUSED_VARIABLE(aWriteFdSet);
     OT_UNUSED_VARIABLE(aMaxFd);
@@ -222,96 +224,20 @@ void CpcInterface::Process(const RadioProcessContext &aContext)
 
 void CpcInterface::SendResetResponse(void)
 {
+
+    // Put CPC Reset call here
+
     for(int i=0; i<kResetCMDSize; ++i)
     {
         if(mReceiveFrameBuffer.CanWrite(sizeof(uint8_t)))
         {
-            IgnoreError(mReceiveFrameBuffer.WriteByte(mResetCMD[i]));
+            IgnoreError(mReceiveFrameBuffer.WriteByte(mResetResponse[i]));
         }
     }
 
     mReceiveFrameCallback(mReceiveFrameContext);
 }
 
-/**
-otError CpcInterface::WaitForWritable(void)
-{
-    otError        error   = OT_ERROR_NONE;
-    struct timeval timeout = {kMaxWaitTime / 1000, (kMaxWaitTime % 1000) * 1000};
-    uint64_t       now     = otPlatTimeGet();
-    uint64_t       end     = now + kMaxWaitTime * US_PER_MS;
-    fd_set         writeFds;
-    fd_set         errorFds;
-    int            rval;
-
-    while (true)
-    {
-        FD_ZERO(&writeFds);
-        FD_ZERO(&errorFds);
-        FD_SET(mSockFd, &writeFds);
-        FD_SET(mSockFd, &errorFds);
-
-        rval = select(mSockFd + 1, nullptr, &writeFds, &errorFds, &timeout);
-
-        if (rval > 0)
-        {
-            if (FD_ISSET(mSockFd, &writeFds))
-            {
-                ExitNow();
-            }
-            else if (FD_ISSET(mSockFd, &errorFds))
-            {
-                DieNow(OT_EXIT_FAILURE);
-            }
-            else
-            {
-                assert(false);
-            }
-        }
-        else if ((rval < 0) && (errno != EINTR))
-        {
-            DieNow(OT_EXIT_ERROR_ERRNO);
-        }
-
-        now = otPlatTimeGet();
-
-        if (end > now)
-        {
-            uint64_t remain = end - now;
-
-            timeout.tv_sec  = static_cast<time_t>(remain / US_PER_S);
-            timeout.tv_usec = static_cast<suseconds_t>(remain % US_PER_S);
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    error = OT_ERROR_FAILED;
-
-exit:
-    return error;
-}
-
-void CpcInterface::HandleHdlcFrame(void *aContext, otError aError)
-{
-    static_cast<CpcInterface *>(aContext)->HandleHdlcFrame(aError);
-}
-
-void CpcInterface::HandleHdlcFrame(otError aError)
-{
-    if (aError == OT_ERROR_NONE)
-    {
-        mReceiveFrameCallback(mReceiveFrameContext);
-    }
-    else
-    {
-        mReceiveFrameBuffer.DiscardFrame();
-        otLogWarnPlat("Error decoding hdlc frame: %s", otThreadErrorToString(aError));
-    }
-}
-*/
 } // namespace Posix
 } // namespace ot
 #endif // OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC
