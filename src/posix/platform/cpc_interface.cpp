@@ -102,7 +102,7 @@ CpcInterface::~CpcInterface(void)
 
 void CpcInterface::Deinit(void)
 {
-    VerifyOrExit(&mEndpoint != nullptr);
+    VerifyOrExit(mEndpoint != nullptr);
 
     VerifyOrExit(0 == cpc_close_endpoint(&mEndpoint), perror("close cpc endpoint"));
 
@@ -167,7 +167,7 @@ otError CpcInterface::Write(const uint8_t *aFrame, uint16_t aLength)
 
     // We are catching the SPINEL reset command and returning
     // a SPINEL reset response immediately
-    if(aLength == 2 && SPINEL_HEADER_GET_TID(*aFrame) == 0 && 
+    if(aLength == 2 && SPINEL_HEADER_GET_TID(*aFrame) == 0 &&
         *(aFrame + 1) == SPINEL_CMD_RESET)
     {
         SendResetResponse();
@@ -223,7 +223,7 @@ void CpcInterface::Process(const RadioProcessContext &aContext)
 }
 
 void CpcInterface::SendResetResponse(void)
-{   
+{
 
     // Put CPC Reset call here
 
