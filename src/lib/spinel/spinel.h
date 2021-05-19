@@ -4706,7 +4706,18 @@ enum
     SPINEL_PROP_NEST__END = 0x3C00,
 
     SPINEL_PROP_VENDOR__BEGIN = 0x3C00,
-    SPINEL_PROP_VENDOR__END   = 0x4000,
+
+    /// Remote Procedure Call (Host -> RCP)
+    /** Format: `D`.
+     *
+     *  `D`: command string
+     *
+     * The Spinel property is used to allow a Host to execute a CLI command on a RCP.
+     *
+     */
+    SPINEL_PROP_COPROCESSOR_RPC = SPINEL_PROP_VENDOR__BEGIN + 0,
+
+    SPINEL_PROP_VENDOR__END = 0x4000,
 
     SPINEL_PROP_DEBUG__BEGIN = 0x4000,
 

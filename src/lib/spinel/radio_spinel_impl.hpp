@@ -207,6 +207,10 @@ RadioSpinel<InterfaceType, ProcessContextType>::RadioSpinel(void)
     , mRcpFailed(false)
     , mEnergyScanning(false)
 #endif
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+    , mCRPCOutput(nullptr)
+    , mCRPCOutputMaxLen(0)
+#endif
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     , mDiagMode(false)
     , mDiagOutput(nullptr)
@@ -772,6 +776,17 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleWaitingResponse(uint3
         VerifyOrExit(unpacked > 0, mError = OT_ERROR_PARSE);
         mError = SpinelStatusToOtError(status);
     }
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+    else if (aKey == SPINEL_PROP_COPROCESSOR_RPC)
+    {
+        spinel_ssize_t unpacked;
+
+        VerifyOrExit(mCRPCOutput != nullptr);
+        unpacked =
+            spinel_datatype_unpack_in_place(aBuffer, aLength, SPINEL_DATATYPE_UTF8_S, mCRPCOutput, &mCRPCOutputMaxLen);
+        VerifyOrExit(unpacked > 0, mError = OT_ERROR_PARSE);
+    }
+#endif
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     else if (aKey == SPINEL_PROP_NEST_STREAM_MFG)
     {
@@ -2028,6 +2043,26 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::Disable(void)
 exit:
     return error;
 }
+
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+template <typename InterfaceType, typename ProcessContextType>
+otError RadioSpinel<InterfaceType, ProcessContextType>::PlatCRPCProcess(const char *aString,
+                                                                        char *      aOutput,
+                                                                        size_t      aOutputMaxLen)
+{
+    otError error;
+
+    mCRPCOutput       = aOutput;
+    mCRPCOutputMaxLen = aOutputMaxLen;
+
+    error = Set(SPINEL_PROP_COPROCESSOR_RPC, SPINEL_DATATYPE_UTF8_S, aString);
+
+    mCRPCOutput       = nullptr;
+    mCRPCOutputMaxLen = 0;
+
+    return error;
+}
+#endif
 
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
 template <typename InterfaceType, typename ProcessContextType>

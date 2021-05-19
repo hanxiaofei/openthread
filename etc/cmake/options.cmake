@@ -132,6 +132,11 @@ if(OT_COMMISSIONER)
     target_compile_definitions(ot-config INTERFACE "OPENTHREAD_CONFIG_COMMISSIONER_ENABLE=1")
 endif()
 
+option(OT_COPROCESSOR_RPC "enable co-processor rpc support")
+if(OT_COPROCESSOR_RPC)
+    target_compile_definitions(ot-config INTERFACE "OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE=1")
+endif()
+
 option(OT_CSL_RECEIVER "enable csl receiver")
 if(OT_CSL_RECEIVER)
     target_compile_definitions(ot-config INTERFACE "OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE=1")
