@@ -37,6 +37,7 @@
 #include "openthread-core-config.h"
 
 #include <openthread/platform/radio.h>
+#include <openthread/platform/radio_psa.h>
 
 #include "common/locator.hpp"
 #include "common/non_copyable.hpp"

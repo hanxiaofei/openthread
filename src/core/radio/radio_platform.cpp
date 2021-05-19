@@ -36,6 +36,7 @@
 #include "common/code_utils.hpp"
 #include "common/instance.hpp"
 #include "radio/radio.hpp"
+#include <openthread/platform/radio_psa.h>
 
 using namespace ot;
 
