@@ -54,14 +54,12 @@ extern "C" {
  *
  */
 
-#if OPENTHREAD_RADIO
 /**
  * Append an error code to the output buffer
  *
  * @param[in] aError
  */
 void otCRPCAppendResult(otError aError);
-#endif
 
 /**
  * Call the corresponding handler for a command
@@ -86,7 +84,6 @@ otError otCRPCHandleCommand(void *             aContext,
                             uint8_t            aCommandsLength,
                             const otCliCommand aCommands[]);
 
-#if OPENTHREAD_RADIO
 /**
  * Output a byte array as hex to the output buffer
  *
@@ -134,7 +131,6 @@ void otCRPCOutputFormat(const char *aFmt, ...);
  *
  */
 int otCRPCOutputIp6Address(const otIp6Address *aAddress);
-#endif
 
 /**
  * Process a command line
@@ -161,7 +157,6 @@ otError otCRPCProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size
  */
 void otCRPCProcessCmdLine(const char *aString, char *aOutput, size_t aOutputMaxLen);
 
-#if OPENTHREAD_RADIO
 /**
  * Output all available CRPC built-in commands and user commands
  *
@@ -180,7 +175,6 @@ void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[]);
  *
  */
 void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext);
-#endif
 
 /**
  * @}

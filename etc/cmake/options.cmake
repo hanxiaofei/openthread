@@ -132,7 +132,7 @@ if(OT_COMMISSIONER)
     target_compile_definitions(ot-config INTERFACE "OPENTHREAD_CONFIG_COMMISSIONER_ENABLE=1")
 endif()
 
-option(OT_COPROCESSOR_RPC "enable commissioner support")
+option(OT_COPROCESSOR_RPC "enable co-processor rpc support")
 if(OT_COPROCESSOR_RPC)
     target_compile_definitions(ot-config INTERFACE "OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE=1")
 endif()

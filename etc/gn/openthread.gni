@@ -111,7 +111,7 @@ if (openthread_enable_core_config_args) {
     # Enable commissioner support
     openthread_config_commissioner_enable = false
 
-    # Enable coprocessor RPC support
+    # Enable co-processor RPC support
     openthread_config_coprocessor_rpc_enable = false
 
     # Enable csl receiver
