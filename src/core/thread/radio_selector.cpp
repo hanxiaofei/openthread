@@ -33,13 +33,13 @@
 
 #include "radio_selector.hpp"
 
+#if OPENTHREAD_CONFIG_MULTI_RADIO
+
 #include "common/code_utils.hpp"
 #include "common/instance.hpp"
-#include "common/locator-getters.hpp"
+#include "common/locator_getters.hpp"
 #include "common/logging.hpp"
 #include "common/random.hpp"
-
-#if OPENTHREAD_CONFIG_MULTI_RADIO
 
 namespace ot {
 
@@ -361,6 +361,7 @@ void RadioSelector::Log(otLogLevel      aLogLevel,
                         const Neighbor &aNeighbor)
 {
     String<kRadioPreferenceStringSize> preferenceString;
+    StringWriter                       writer(preferenceString);
     bool                               isFirstEntry = true;
 
     VerifyOrExit(otLoggingGetLevel() >= aLogLevel);
@@ -369,8 +370,8 @@ void RadioSelector::Log(otLogLevel      aLogLevel,
     {
         if (aNeighbor.GetSupportedRadioTypes().Contains(radio))
         {
-            IgnoreError(preferenceString.Append("%s%s:%d", isFirstEntry ? "" : " ", RadioTypeToString(radio),
-                                                aNeighbor.GetRadioPreference(radio)));
+            writer.Append("%s%s:%d", isFirstEntry ? "" : " ", RadioTypeToString(radio),
+                          aNeighbor.GetRadioPreference(radio));
             isFirstEntry = false;
         }
     }

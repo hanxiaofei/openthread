@@ -53,6 +53,7 @@ libopenthread_posix_a_SOURCES             = \
     hdlc_interface.cpp                      \
     infra_if.cpp                            \
     logging.cpp                             \
+    mainloop.cpp                            \
     memory.cpp                              \
     misc.cpp                                \
     multicast_routing.cpp                   \
@@ -76,6 +77,7 @@ libopenthread_posix_a_LIBADD                                                    
 noinst_HEADERS                            = \
     hdlc_interface.hpp                      \
     cpc_interface.hpp                       \
+    mainloop.hpp                            \
     multicast_routing.hpp                   \
     openthread-posix-config.h               \
     platform-posix.h                        \

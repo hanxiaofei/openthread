@@ -40,7 +40,7 @@
 #include "common/code_utils.hpp"
 #include "common/encoding.hpp"
 #include "common/instance.hpp"
-#include "common/locator-getters.hpp"
+#include "common/locator_getters.hpp"
 #include "net/checksum.hpp"
 #include "net/ip6.hpp"
 
@@ -409,14 +409,17 @@ uint16_t Udp::GetEphemeralPort(void)
 {
     uint16_t rval = mEphemeralPort;
 
-    if (mEphemeralPort < kDynamicPortMax)
+    do
     {
-        mEphemeralPort++;
-    }
-    else
-    {
-        mEphemeralPort = kDynamicPortMin;
-    }
+        if (mEphemeralPort < kDynamicPortMax)
+        {
+            mEphemeralPort++;
+        }
+        else
+        {
+            mEphemeralPort = kDynamicPortMin;
+        }
+    } while (rval == Tmf::kUdpPort);
 
     return rval;
 }
@@ -527,6 +530,9 @@ exit:
 bool Udp::ShouldUsePlatformUdp(uint16_t aPort) const
 {
     return (aPort != Mle::kUdpPort && aPort != Tmf::kUdpPort
+#if OPENTHREAD_CONFIG_BORDER_AGENT_ENABLE
+            && aPort != Get<MeshCoP::BorderAgent>().GetUdpProxyPort()
+#endif
 #if OPENTHREAD_FTD
             && aPort != Get<MeshCoP::JoinerRouter>().GetJoinerUdpPort()
 #endif

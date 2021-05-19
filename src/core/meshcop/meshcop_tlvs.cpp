@@ -145,6 +145,29 @@ void SteeringDataTlv::CopyTo(SteeringData &aSteeringData) const
     memcpy(aSteeringData.GetData(), mSteeringData, GetSteeringDataLength());
 }
 
+bool SecurityPolicyTlv::IsValid(void) const
+{
+    return GetLength() >= sizeof(mRotationTime) && GetRotationTime() >= SecurityPolicy::kMinKeyRotationTime &&
+           GetFlagsLength() >= kThread11FlagsLength;
+}
+
+SecurityPolicy SecurityPolicyTlv::GetSecurityPolicy(void) const
+{
+    SecurityPolicy securityPolicy;
+    uint8_t        length = OT_MIN(static_cast<uint8_t>(sizeof(mFlags)), GetFlagsLength());
+
+    securityPolicy.mRotationTime = GetRotationTime();
+    securityPolicy.SetFlags(mFlags, length);
+
+    return securityPolicy;
+}
+
+void SecurityPolicyTlv::SetSecurityPolicy(const SecurityPolicy &aSecurityPolicy)
+{
+    SetRotationTime(aSecurityPolicy.mRotationTime);
+    aSecurityPolicy.GetFlags(mFlags, sizeof(mFlags));
+}
+
 bool ChannelTlv::IsValid(void) const
 {
     bool ret = false;
@@ -174,6 +197,14 @@ void ChannelTlv::SetChannel(uint16_t aChannel)
     if ((OT_RADIO_915MHZ_OQPSK_CHANNEL_MIN <= aChannel) && (aChannel <= OT_RADIO_915MHZ_OQPSK_CHANNEL_MAX))
     {
         channelPage = OT_RADIO_CHANNEL_PAGE_2;
+    }
+#endif
+
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_SUPPORT
+    if ((OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_CHANNEL_MIN <= aChannel) &&
+        (aChannel <= OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_CHANNEL_MAX))
+    {
+        channelPage = OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_CHANNEL_PAGE;
     }
 #endif
 
@@ -262,6 +293,18 @@ void ChannelMaskTlv::SetChannelMask(uint32_t aChannelMask)
     }
 #endif
 
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_SUPPORT
+    if (aChannelMask & OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_CHANNEL_MASK)
+    {
+        OT_ASSERT(entry != nullptr);
+        entry->Init();
+        entry->SetChannelPage(OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_CHANNEL_PAGE);
+        entry->SetMask(aChannelMask & OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_CHANNEL_MASK);
+
+        length += sizeof(MeshCoP::ChannelMaskEntry);
+    }
+#endif
+
     SetLength(length);
 }
 
@@ -292,6 +335,14 @@ uint32_t ChannelMaskTlv::GetChannelMask(void) const
         if (channelPage == OT_RADIO_CHANNEL_PAGE_0)
         {
             mask |= static_cast<const ChannelMaskEntry *>(cur)->GetMask() & OT_RADIO_2P4GHZ_OQPSK_CHANNEL_MASK;
+        }
+#endif
+
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_SUPPORT
+        if (channelPage == OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_CHANNEL_PAGE)
+        {
+            mask |= static_cast<const ChannelMaskEntry *>(cur)->GetMask() &
+                    OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_CHANNEL_MASK;
         }
 #endif
 
@@ -333,8 +384,14 @@ uint32_t ChannelMaskTlv::GetChannelMask(const Message &aMessage)
             mask |= entry.GetMask() & OT_RADIO_915MHZ_OQPSK_CHANNEL_MASK;
             break;
 #endif
-        }
 
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_SUPPORT
+        case OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_CHANNEL_PAGE:
+            IgnoreError(aMessage.Read(offset, entry));
+            mask |= entry.GetMask() & OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_CHANNEL_MASK;
+            break;
+#endif
+        }
         offset += entry.GetEntrySize();
     }
 
