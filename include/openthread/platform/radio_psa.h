@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2016, The OpenThread Authors.
+ *  Copyright (c) 2021, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -28,92 +28,67 @@
 
 /**
  * @file
- *   This file includes definitions for performing AES-ECB computations.
+ * @brief
+ *   This file defines the radio interface for OpenThread.
+ *   Applicable only when OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE feature is enabled.
+ *
  */
 
-#ifndef AES_ECB_HPP_
-#define AES_ECB_HPP_
+#ifndef OPENTHREAD_PLATFORM_RADIO_PSA_H_
+#define OPENTHREAD_PLATFORM_RADIO_PSA_H_
 
-#include "openthread-core-config.h"
+#include <stdint.h>
 
-#include <mbedtls/aes.h>
+#include <openthread/error.h>
+#include <openthread/instance.h>
+#include <openthread/platform/psa.h>
 
-namespace ot {
-namespace Crypto {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
- * @addtogroup core-security
+ * @addtogroup plat-radio
+ *
+ * @brief
+ *   This module includes the platform abstraction for radio communication.
  *
  * @{
  *
  */
 
 /**
- * This class implements AES ECB computation.
+ * Update MAC keys and key index
+ *
+ * This function is used when radio provides OT_RADIO_CAPS_TRANSMIT_SEC capability.
+ *
+ * @param[in]   aInstance    A pointer to an OpenThread instance.
+ * @param[in]   aKeyIdMode   The key ID mode.
+ * @param[in]   aKeyId       Current MAC key index.
+ * @param[in]   aPrevKeyRef  A Reference to the previous MAC key.
+ * @param[in]   aCurrKeyRef  A Reference to the current MAC key.
+ * @param[in]   aNextKeyRef  A Reference to the next MAC key.
  *
  */
-class AesEcb
-{
-public:
-    enum
-    {
-        kBlockSize = 16, ///< AES-128 block size (bytes).
-    };
-
-    /**
-     * Constructor to initialize the mbedtls_aes_context.
-     *
-     */
-    AesEcb(void);
-
-    /**
-     * Destructor to free the mbedtls_aes_context.
-     *
-     */
-    ~AesEcb(void);
-
-#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
-    /**
-     * This method sets the key.
-     *
-     * @param[in]  aKeyRef     Key Reference for ECB operation
-     *
-     */
-    void SetKey(const uint32_t aKeyRef);
-#else
-    /**
-     * This method sets the key.
-     *
-     * @param[in]  aKey        A pointer to the key.
-     * @param[in]  aKeyLength  The key length in bits.
-     *
-     */
-    void SetKey(const uint8_t *aKey, uint16_t aKeyLength);
-#endif
-
-    /**
-     * This method encrypts data.
-     *
-     * @param[in]   aInput   A pointer to the input buffer.
-     * @param[out]  aOutput  A pointer to the output buffer.
-     *
-     */
-    void Encrypt(const uint8_t aInput[kBlockSize], uint8_t aOutput[kBlockSize]);
-
-private:
-#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
-    uint32_t            mKeyRef;
-#else
-    mbedtls_aes_context mContext;
-#endif
-};
+void otPlatRadioSetMacKeyRef(otInstance *aInstance,
+                            uint8_t     aKeyIdMode,
+                            uint8_t     aKeyId,
+                            otMacKeyRef aPrevKeyRef,
+                            otMacKeyRef aCurrKeyRef,
+                            otMacKeyRef aNextKeyRef);
 
 /**
  * @}
  *
  */
 
-} // namespace Crypto
-} // namespace ot
+/**
+ * @}
+ *
+ */
 
-#endif // AES_ECB_HPP_
+#ifdef __cplusplus
+} // end of extern "C"
+#endif
+
+#endif // OPENTHREAD_PLATFORM_RADIO_PSA_H_
