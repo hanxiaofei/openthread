@@ -45,7 +45,7 @@ namespace Coprocessor {
 
 
 #if OPENTHREAD_RADIO
-extern "C" void otCRPCAppendResult(otError aError)
+extern "C" void otCliAppendResult(otError aError)
 {
     RPC::GetRPC().OutputResult(aError);
 }
@@ -61,17 +61,17 @@ extern "C" Error otCRPCHandleCommand(void *             aContext,
 }
 
 #if OPENTHREAD_RADIO
-extern "C" void otCRPCOutputBytes(const uint8_t *aBytes, uint8_t aLength)
+extern "C" void otCliOutputBytes(const uint8_t *aBytes, uint8_t aLength)
 {
     RPC::GetRPC().OutputBytes(aBytes, aLength);
 }
 
-extern "C" void otCRPCOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength)
+extern "C" void otCliOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength)
 {
     RPC::GetRPC().OutputCommands(aCommands, aCommandsLength);
 }
 
-extern "C" void otCRPCOutputFormat(const char *aFmt, ...)
+extern "C" void otCliOutputFormat(const char *aFmt, ...)
 {
     va_list aAp;
     va_start(aAp, aFmt);
@@ -79,7 +79,7 @@ extern "C" void otCRPCOutputFormat(const char *aFmt, ...)
     va_end(aAp);
 }
 
-extern "C" int otCRPCOutputIp6Address(const otIp6Address *aAddress)
+extern "C" int otCliOutputIp6Address(const otIp6Address *aAddress)
 {
     const otIp6Address &address = *aAddress;
 

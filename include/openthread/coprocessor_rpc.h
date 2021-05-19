@@ -59,7 +59,7 @@ extern "C" {
  *
  * @param[in] aError
  */
-void otCRPCAppendResult(otError aError);
+void otCliAppendResult(otError aError);
 
 /**
  * Call the corresponding handler for a command
@@ -90,7 +90,7 @@ otError otCRPCHandleCommand(void *             aContext,
  * @param[in] aBytes            Bytes to output
  * @param[in] aLength           Number of bytes
  */
-void otCRPCOutputBytes(const uint8_t *aBytes, uint8_t aLength);
+void otCliOutputBytes(const uint8_t *aBytes, uint8_t aLength);
 
 /**
  * Write all command names in @p aCommands to the output buffer
@@ -98,7 +98,7 @@ void otCRPCOutputBytes(const uint8_t *aBytes, uint8_t aLength);
  * @param[in] aCommands         an array of commands
  * @param[in] aCommandsLength   length of @p aCommands
  */
-void otCRPCOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength);
+void otCliOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength);
 
 /**
  * Write formatted output to the output buffer
@@ -109,7 +109,7 @@ void otCRPCOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength
  * @returns The number of bytes placed in the output buffer.
  *
  */
-int otCRPCOutputFormatV(const char *aFormat, va_list aArguments);
+int otCliOutputFormatV(const char *aFormat, va_list aArguments);
 
 /**
  * Write formatted string to the output buffer
@@ -118,7 +118,7 @@ int otCRPCOutputFormatV(const char *aFormat, va_list aArguments);
  * @param[in]  ...    A matching list of arguments.
  *
  */
-void otCRPCOutputFormat(const char *aFmt, ...);
+void otCliOutputFormat(const char *aFmt, ...);
 
 /**
  * Write an IPv6 address to the output buffer.
@@ -130,7 +130,7 @@ void otCRPCOutputFormat(const char *aFmt, ...);
  * @retval  -1  Driver is broken.
  *
  */
-int otCRPCOutputIp6Address(const otIp6Address *aAddress);
+int otCliOutputIp6Address(const otIp6Address *aAddress);
 
 /**
  * Process a command line
