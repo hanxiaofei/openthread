@@ -293,10 +293,11 @@ static otInstance *InitInstance(PosixConfig *aConfig)
 
     syslog(LOG_INFO, "Running %s", otGetVersionString());
     syslog(LOG_INFO, "Thread version: %hu", otThreadGetVersion());
-    IgnoreError(otLoggingSetLevel(aConfig->mLogLevel));
 
     instance = otSysInit(&aConfig->mPlatformConfig);
     syslog(LOG_INFO, "Thread interface: %s", otSysGetThreadNetifName());
+
+    IgnoreError(otLoggingSetLevel(aConfig->mLogLevel));
 
     atexit(otSysDeinit);
 
