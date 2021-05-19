@@ -78,6 +78,13 @@ extern "C" void otCRPCOutputFormat(const char *aFmt, ...)
     RPC::GetRPC().OutputFormatV(aFmt, aAp);
     va_end(aAp);
 }
+
+extern "C" int otCRPCOutputIp6Address(const otIp6Address *aAddress)
+{
+    const otIp6Address &address = *aAddress;
+
+    return RPC::GetRPC().OutputIp6Address(address);
+}
 #endif
 
 extern "C" void otCRPCProcessCmdLine(const char *aString, char *aOutput, size_t aOutputMaxLen)

@@ -126,14 +126,14 @@ void otCRPCOutputFormat(const char *aFmt, ...);
 /**
  * Write an IPv6 address to the output buffer.
  *
- * @param[in]  aAddress  A reference to the IPv6 address.
+ * @param[in]  aAddress  A pointer to the IPv6 address.
  *
  * @returns The number of bytes placed in the output queue.
  *
  * @retval  -1  Driver is broken.
  *
  */
-int otCRPCOutputIp6Address(const otIp6Address &aAddress);
+int otCRPCOutputIp6Address(const otIp6Address *aAddress);
 #endif
 
 /**
