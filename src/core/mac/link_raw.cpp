@@ -219,24 +219,6 @@ void LinkRaw::InvokeEnergyScanDone(int8_t aEnergyScanMaxRssi)
     }
 }
 
-#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
-Error LinkRaw::SetMacKeyRef(uint8_t           aKeyIdMode,
-                            uint8_t           aKeyId,
-                            const otMacKeyRef aPrevKeyRef,
-                            const otMacKeyRef aCurrKeyRef,
-                            const otMacKeyRef aNextKeyRef)
-{
-    Error error = kErrorNone;
-
-    VerifyOrExit(IsEnabled(), error = kErrorInvalidState);
-    mSubMac.SetMacKeyRef(aKeyIdMode, aKeyId, aPrevKeyRef, aCurrKeyRef, aNextKeyRef);
-
-exit:
-    return error;
-}
-#endif
-
-#if (!OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE || OPENTHREAD_RADIO)
 Error LinkRaw::SetMacKey(uint8_t    aKeyIdMode,
                          uint8_t    aKeyId,
                          const Key &aPrevKey,
@@ -251,7 +233,6 @@ Error LinkRaw::SetMacKey(uint8_t    aKeyIdMode,
 exit:
     return error;
 }
-#endif
 
 Error LinkRaw::SetMacFrameCounter(uint32_t aMacFrameCounter)
 {

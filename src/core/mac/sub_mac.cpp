@@ -870,9 +870,7 @@ void SubMac::SetMacKey(uint8_t      aKeyIdMode,
 exit:
     return;
 }
-#endif
-
-#if (!OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE || OPENTHREAD_RADIO)
+#else
 void SubMac::SetMacKey(uint8_t    aKeyIdMode,
                        uint8_t    aKeyId,
                        const Key &aPrevKey,

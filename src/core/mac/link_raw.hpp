@@ -244,25 +244,7 @@ public:
      */
     Error SetExtAddress(const ExtAddress &aExtAddress);
 
-#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
     /**
-     * This method updates MAC keys and key index.
-     *
-     * @param[in]   aKeyIdMode        The key ID mode.
-     * @param[in]   aKeyId            The key index.
-     * @param[in]   aPrevKeyRef       The previous MAC key Ref.
-     * @param[in]   aCurrKeyRef       The current MAC key Ref.
-     * @param[in]   aNextKeyRef       The next MAC key Ref.
-     *
-     * @retval kErrorNone            If successful.
-     * @retval kErrorInvalidState    If the raw link-layer isn't enabled.
-     *
-     */
-    Error SetMacKeyRef(uint8_t aKeyIdMode, uint8_t aKeyId, const otMacKeyRef aPrevKeyRef, const otMacKeyRef aCurrKeyRef, const otMacKeyRef aNextKeyRef);
-#endif
-
-#if (!OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE || OPENTHREAD_RADIO)
-     /**
      * This method updates MAC keys and key index.
      *
      * @param[in]   aKeyIdMode        The key ID mode.
@@ -276,7 +258,7 @@ public:
      *
      */
     Error SetMacKey(uint8_t aKeyIdMode, uint8_t aKeyId, const Key &aPrevKey, const Key &aCurrKey, const Key &aNextKey);
-#endif
+
     /**
      * This method sets the current MAC frame counter value.
      *
