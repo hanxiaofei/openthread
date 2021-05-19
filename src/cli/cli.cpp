@@ -37,6 +37,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+#include <openthread/coprocessor_rpc.h>
+#endif
 #include <openthread/diag.h>
 #include <openthread/dns.h>
 #include <openthread/icmp6.h>
@@ -4840,6 +4843,27 @@ exit:
 }
 #endif
 
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+otError Interpreter::ProcessCRPC(uint8_t aArgsLength, Arg aArgs[])
+{
+    otError error = OT_ERROR_INVALID_COMMAND;
+
+    char *args[kMaxArgs];
+    char  output[OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE];
+
+    output[0]                  = '\0';
+    output[sizeof(output) - 1] = '\0';
+
+    Arg::CopyArgsToStringArray(aArgs, aArgsLength, args);
+
+    error = otCRPCProcessCmd(aArgsLength, args, output, sizeof(output) - 1);
+
+    OutputFormat("%s", output);
+
+    return error;
+}
+#endif
+
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
 otError Interpreter::ProcessDiag(uint8_t aArgsLength, Arg aArgs[])
 {
@@ -4890,7 +4914,10 @@ void Interpreter::ProcessLine(char *aBuf)
     }
     else
     {
-        error = ProcessUserCommands(argsLength, args);
+        VerifyOrExit((error = ProcessUserCommands(argsLength, args)) != OT_ERROR_NONE);
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+        VerifyOrExit((error = ProcessCRPC(argsLength, args)) != OT_ERROR_NONE);
+#endif
     }
 
 exit:
