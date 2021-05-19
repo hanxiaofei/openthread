@@ -482,7 +482,9 @@ public:
      */
     otMacKeyRef GetNextMacKeyRef(void) { return mNextKeyRef; }
 
-#else
+#endif 
+
+#if (!OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE || OPENTHREAD_RADIO)
     /**
      * This method sets MAC keys and key index.
      *
