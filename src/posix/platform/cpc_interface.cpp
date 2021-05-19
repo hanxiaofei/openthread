@@ -102,7 +102,7 @@ CpcInterface::~CpcInterface(void)
 
 void CpcInterface::Deinit(void)
 {
-    VerifyOrExit(mEndpoint != nullptr);
+    VerifyOrExit(mEndpoint.ptr != nullptr);
 
     VerifyOrExit(0 == cpc_close_endpoint(&mEndpoint), perror("close cpc endpoint"));
 
