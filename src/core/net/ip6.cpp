@@ -39,7 +39,7 @@
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
 #include "common/instance.hpp"
-#include "common/locator-getters.hpp"
+#include "common/locator_getters.hpp"
 #include "common/logging.hpp"
 #include "common/message.hpp"
 #include "common/random.hpp"
@@ -1289,10 +1289,14 @@ start:
             sourcePort = HostSwap16(sourcePort);
             destPort   = HostSwap16(destPort);
 
+#if !OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
             if (nextHeader == kProtoUdp)
             {
                 VerifyOrExit(Get<Udp>().ShouldUsePlatformUdp(destPort), error = kErrorDrop);
             }
+#else
+            OT_UNUSED_VARIABLE(destPort);
+#endif
 
 #if OPENTHREAD_CONFIG_UNSECURE_TRAFFIC_MANAGED_BY_STACK_ENABLE
             // check whether source port is an unsecure port

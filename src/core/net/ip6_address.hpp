@@ -262,6 +262,17 @@ public:
     static uint8_t MatchLength(const uint8_t *aPrefixA, const uint8_t *aPrefixB, uint8_t aMaxSize);
 
     /**
+     * This method indicates whether or not the prefix has a valid length for use as a NAT64 prefix.
+     *
+     * A NAT64 prefix must have one of the following lengths: 32, 40, 48, 56, 64, or 96 (per RFC 6502).
+     *
+     * @retval TRUE   If the prefix has a valid length for use as a NAT64 prefix.
+     * @retval FALSE  If the prefix does not have a valid length for use as a NAT64 prefix.
+     *
+     */
+    bool IsValidNat64(void) const;
+
+    /**
      * This method converts the prefix to a string.
      *
      * @returns An `InfoString` containing the string representation of the Prefix.
@@ -421,7 +432,7 @@ public:
     bool IsAnycastLocator(void) const;
 
     /**
-     * This method indicates whether or not the Interface Identifier (IID) matches a Service Anycast  Locator (ALOC).
+     * This method indicates whether or not the Interface Identifier (IID) matches a Service Anycast Locator (ALOC).
      *
      * In addition to checking that the IID matches the locator pattern (`0000:00ff:fe00:xxxx`), this method also
      * checks that the locator value is a valid Service ALOC16 (0xfc10 – 0xfc2f).
@@ -892,7 +903,7 @@ public:
      * @param[in] aIp4Address  The IPv4 address to translate to IPv6.
      *
      */
-    void SetFromTranslatedIp4Address(const Prefix &aPrefix, const Ip4::Address &aIp4Address);
+    void SynthesizeFromIp4Address(const Prefix &aPrefix, const Ip4::Address &aIp4Address);
 
     /**
      * This method converts an IPv6 address string to binary.

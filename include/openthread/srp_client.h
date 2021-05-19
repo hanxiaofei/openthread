@@ -446,7 +446,7 @@ otError otSrpClientSetHostAddresses(otInstance *aInstance, const otIp6Address *a
 
  * @retval OT_ERROR_NONE          The addition of service started successfully. The `otSrpClientCallback` will be
  *                                called to report the status.
- * @retval OT_ERROR_ALREADY       The same service is already in the list.
+ * @retval OT_ERROR_ALREADY       A service with the same service and instance names is already in the list.
  * @retval OT_ERROR_INVALID_ARGS  The service structure is invalid (e.g., bad service name or `otDnsTxtEntry`).
  *
  */
@@ -560,6 +560,36 @@ otError otSrpClientSetDomainName(otInstance *aInstance, const char *aName);
  *
  */
 const char *otSrpClientItemStateToString(otSrpClientItemState aItemState);
+
+/**
+ * This function enables/disables "service key record inclusion" mode.
+ *
+ * When enabled, SRP client will include KEY record in Service Description Instructions in the SRP update messages
+ * that it sends.
+ *
+ * This function is available when `OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE` configuration is enabled.
+ *
+ * @note KEY record is optional in Service Description Instruction (it is required and always included in the Host
+ * Description Instruction). The default behavior of SRP client is to not include it. This function is intended to
+ * override the default behavior for testing only.
+ *
+ * @param[in] aInstance  A pointer to the OpenThread instance.
+ * @param[in] aEnabled   TRUE to enable, FALSE to disable the "service key record inclusion" mode.
+ *
+ */
+void otSrpClientSetServiceKeyRecordEnabled(otInstance *aInstance, bool aEnabled);
+
+/**
+ * This method indicates whether the "service key record inclusion" mode is enabled or disabled.
+ *
+ * This function is available when `OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE` configuration is enabled.
+ *
+ * @param[in] aInstance     A pointer to the OpenThread instance.
+ *
+ * @returns TRUE if "service key record inclusion" mode is enabled, FALSE otherwise.
+ *
+ */
+bool otSrpClientIsServiceKeyRecordEnabled(otInstance *aInstance);
 
 /**
  * @}

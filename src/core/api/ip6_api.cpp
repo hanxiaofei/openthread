@@ -36,7 +36,7 @@
 #include <openthread/ip6.h>
 
 #include "common/instance.hpp"
-#include "common/locator-getters.hpp"
+#include "common/locator_getters.hpp"
 #include "common/logging.hpp"
 #if OPENTHREAD_CONFIG_IP6_SLAAC_ENABLE
 #include "utils/slaac_address.hpp"
@@ -302,3 +302,14 @@ void otIp6SetSlaacPrefixFilter(otInstance *aInstance, otIp6SlaacPrefixFilter aFi
 }
 
 #endif // OPENTHREAD_CONFIG_IP6_SLAAC_ENABLE
+
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+
+otError otIp6SetMeshLocalIid(otInstance *aInstance, const otIp6InterfaceIdentifier *aIid)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+
+    return instance.Get<Mle::MleRouter>().SetMeshLocalIid(static_cast<const Ip6::InterfaceIdentifier &>(*aIid));
+}
+
+#endif
