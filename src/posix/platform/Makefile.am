@@ -37,8 +37,6 @@ libopenthread_posix_a_CPPFLAGS                                = \
     -I$(top_srcdir)/src/core                                    \
     -I$(top_srcdir)/src/posix/platform                          \
     -I$(top_srcdir)/src/posix/platform/include                  \
-    -I${top_srcdir}/../../../platform/service/cpc/daemon/lib    \
-    -I${top_srcdir}/../../../platform/service/cpc/daemon/misc   \
     -D_GNU_SOURCE                                               \
     -DOPENTHREAD_FTD=1                                          \
     -DOPENTHREAD_MTD=0                                          \
@@ -65,8 +63,16 @@ libopenthread_posix_a_SOURCES             = \
     trel_udp6.cpp                           \
     udp.cpp                                 \
     virtual_time.cpp                        \
-    cpc_interface.cpp                       \
     $(NULL)
+
+if OPENTHREAD_ENABLE_CPC
+libopenthread_posix_a_CPPFLAGS                                += \
+    -I${top_srcdir}/../../../platform/service/cpc/daemon/lib    \
+    -I${top_srcdir}/../../../platform/service/cpc/daemon/misc   \
+    $(NULL)
+
+libopenthread_posix_a_SOURCES += cpc_interface.cpp
+endif
 
 libopenthread_posix_a_LIBADD                                                        = \
     $(call ot_list_objects,$(top_builddir)/src/lib/url/libopenthread-url.a)           \
