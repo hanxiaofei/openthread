@@ -257,7 +257,6 @@ void KeyManager::SetPskc(const Pskc &aPskc)
 Error KeyManager::StoreMasterKey(bool aOverWriteExisting)
 {
     Error   error = kErrorNone;
-    psa_key_usage_t mKeyUsage = PSA_KEY_USAGE_SIGN_HASH;
     
     mMasterKeyRef = kMasterKeyPsaItsOffset;
 
@@ -273,14 +272,10 @@ Error KeyManager::StoreMasterKey(bool aOverWriteExisting)
 
     CheckAndDestroyStoredKey(mMasterKeyRef);
 
-#if OPENTHREAD_FTD
-    mKeyUsage |= PSA_KEY_USAGE_EXPORT;
-#endif
-
     error = otPlatPsaImportKey(&mMasterKeyRef,
                                PSA_KEY_TYPE_HMAC,
                                PSA_ALG_HMAC(PSA_ALG_SHA_256),
-                               mKeyUsage,
+                               PSA_KEY_USAGE_SIGN_HASH | PSA_KEY_USAGE_EXPORT,
                                PSA_KEY_LIFETIME_PERSISTENT,
                                mMasterKey.m8,
                                OT_MASTER_KEY_SIZE);
