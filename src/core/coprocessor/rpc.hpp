@@ -143,7 +143,7 @@ public:
                                uint8_t       aCommandsLength,
                                const Command aCommands[]);
 
-#if OPENTHREAD_RADIO
+#if OPENTHREAD_COPROCESSOR
     /**
      * Set the user command table.
      *
@@ -293,7 +293,7 @@ protected:
     static RPC *sRPC;
 
 private:
-#if OPENTHREAD_RADIO
+#if OPENTHREAD_COPROCESSOR
     char * mOutputBuffer;
     size_t mOutputBufferCount;
     size_t mOutputBufferMaxLen;
@@ -314,7 +314,7 @@ private:
     void ClearOutputBuffer(void);
 #endif
 
-#if OPENTHREAD_RADIO
+#if OPENTHREAD_COPROCESSOR
     const Command *mUserCommands;
     void *         mUserCommandsContext;
     uint8_t        mUserCommandsLength;

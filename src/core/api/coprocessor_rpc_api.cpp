@@ -44,7 +44,7 @@ namespace ot {
 namespace Coprocessor {
 
 
-#if OPENTHREAD_RADIO
+#if OPENTHREAD_COPROCESSOR
 extern "C" void otCliAppendResult(otError aError)
 {
     RPC::GetRPC().OutputResult(aError);
@@ -60,7 +60,7 @@ extern "C" Error otCRPCHandleCommand(void *             aContext,
     return RPC::HandleCommand(aContext, aArgsLength, aArgs, aCommandsLength, aCommands);
 }
 
-#if OPENTHREAD_RADIO
+#if OPENTHREAD_COPROCESSOR
 extern "C" void otCliOutputBytes(const uint8_t *aBytes, uint8_t aLength)
 {
     RPC::GetRPC().OutputBytes(aBytes, aLength);
@@ -97,7 +97,7 @@ extern "C" otError otCRPCProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aO
     return RPC::GetRPC().ProcessCmd(aArgsLength, aArgs, aOutput, aOutputMaxLen);
 }
 
-#if OPENTHREAD_RADIO
+#if OPENTHREAD_COPROCESSOR
 extern "C" void otCRPCProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
 {
     RPC::GetRPC().ProcessHelp(aContext, aArgsLength, aArgs);
