@@ -78,7 +78,7 @@ namespace Coprocessor {
 RPC *RPC::sRPC = nullptr;
 static OT_DEFINE_ALIGNED_VAR(sRPCRaw, sizeof(RPC), uint64_t);
 
-#if OPENTHREAD_RADIO
+#if OPENTHREAD_COPROCESSOR
 #include <openthread/ip6.h>
 #include "common/encoding.hpp"
 using ot::Encoding::BigEndian::HostSwap16;
@@ -95,7 +95,7 @@ uint8_t  RPC::mCachedCommandsLength = 0;
 
 RPC::RPC(Instance &aInstance)
     : InstanceLocator(aInstance)
-#if OPENTHREAD_RADIO
+#if OPENTHREAD_COPROCESSOR
     , mOutputBuffer(nullptr)
     , mOutputBufferCount(0)
     , mOutputBufferMaxLen(0)
@@ -122,7 +122,7 @@ void RPC::Initialize(Instance &aInstance)
     initStarted = true;
     RPC::sRPC   = new (&sRPCRaw) RPC(aInstance);
 
-#if !OPENTHREAD_RADIO
+#if !OPENTHREAD_COPROCESSOR
     // Initialize a response buffer
     memset(ot::Coprocessor::RPC::mCachedCommandsBuffer, 0, sizeof(ot::Coprocessor::RPC::mCachedCommandsBuffer));
 
@@ -187,7 +187,7 @@ exit:
     return error;
 }
 
-#if OPENTHREAD_RADIO
+#if OPENTHREAD_COPROCESSOR
 
 Error RPC::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutput, size_t aOutputMaxLen)
 {
@@ -267,7 +267,7 @@ exit:
     return error;
 }
 
-#if OPENTHREAD_RADIO
+#if OPENTHREAD_COPROCESSOR
 
 void RPC::OutputBytes(const uint8_t *aBytes, uint16_t aLength)
 {
