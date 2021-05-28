@@ -261,7 +261,7 @@ Error KeyManager::StoreMasterKey(bool aOverWriteExisting)
     mMasterKeyRef = kMasterKeyPsaItsOffset;
 
     if(!aOverWriteExisting) {
-        psa_key_attributes_t mKeyAttributes;
+        psa_key_attributes_t mKeyAttributes = PSA_KEY_ATTRIBUTES_INIT;
 
         error = otPlatPsaGetKeyAttributes(mMasterKeyRef, &mKeyAttributes);
         //We will be able to retrieve the key_attributes only if there is 
