@@ -57,8 +57,13 @@ LIBTOOLFLAGS_COMMON = --preserve-dup-deps
 LDADD_COMMON                                                           = \
     $(top_builddir)/src/posix/platform/libopenthread-posix.a             \
     -lutil                                                               \
+    $(NULL)
+
+if OPENTHREAD_ENABLE_CPC
+LDADD_COMMON                                                          += \
     -lcpc                                                                \
     $(NULL)
+endif
 
 if OPENTHREAD_TARGET_LINUX
 LDADD_COMMON                                                          += \

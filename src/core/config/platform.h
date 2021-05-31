@@ -108,6 +108,16 @@
 #endif
 
 /**
+ * @def OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
+ *
+ * Define to 1 if you want to use PSA Crypto APIs.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
+#define OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE 0
+#endif
+
+/**
  * @def OPENTHREAD_CONFIG_PLATFORM_RADIO_SPINEL_RX_FRAME_BUFFER_SIZE
  *
  * Specifies the rx frame buffer size used by `SpinelInterface` in RCP host (posix) code. This is applicable/used when
@@ -140,6 +150,10 @@
  OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_CHANNEL_MASK\
  to be defined by Platform."
 #endif
+
+ #if OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_CHANNEL_PAGE > 31
+ #error "Maximum Proprietary Channel Page value currently supported is 31."
+ #endif
 #endif
 
 #endif // CONFIG_PLATFORM_H_

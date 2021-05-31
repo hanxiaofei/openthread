@@ -116,7 +116,7 @@ void Radio::Init(void)
 #endif
 
     SuccessOrDie(sRadioSpinel.GetSpinelInterface().Init(mRadioUrl));
-    sRadioSpinel.Init(resetRadio, restoreDataset, skipCompatibilityCheck);
+    sRadioSpinel.Init(resetRadio, restoreDataset, skipCompatibilityCheck, iid);
 
     parameterValue = mRadioUrl.GetValue("fem-lnagain");
     if (parameterValue != nullptr)
@@ -488,6 +488,35 @@ otError otPlatRadioGetCoexMetrics(otInstance *aInstance, otRadioCoexMetrics *aCo
 
 exit:
     return error;
+}
+#endif
+
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+otError otPlatCRPCProcess(otInstance *aInstance,
+                          uint8_t     aArgsLength,
+                          char *      aArgs[],
+                          char *      aOutput,
+                          size_t      aOutputMaxLen)
+{
+    OT_UNUSED_VARIABLE(aInstance);
+    char  cmd[OPENTHREAD_CONFIG_COPROCESSOR_RPC_CMD_LINE_BUFFER_SIZE] = {'\0'};
+    char *cur                                                         = cmd;
+    char *end                                                         = cmd + sizeof(cmd);
+
+    for (uint8_t index = 0; (index < aArgsLength) && (cur < end); index++)
+    {
+        int ret = snprintf(cur, static_cast<size_t>(end - cur), "%s ", aArgs[index]);
+        if (ret >= 0)
+        {
+            cur += ret;
+        }
+        else
+        {
+            return OT_ERROR_FAILED;
+        }
+    }
+
+    return sRadioSpinel.PlatCRPCProcess(cmd, aOutput, aOutputMaxLen);
 }
 #endif
 

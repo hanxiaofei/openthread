@@ -40,6 +40,7 @@
 
 #include <openthread/error.h>
 #include <openthread/instance.h>
+#include <openthread/platform/psa.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -88,7 +89,6 @@ enum
     OT_RADIO_CHANNEL_PAGE_0_MASK = (1U << OT_RADIO_CHANNEL_PAGE_0), ///< 2.4 GHz IEEE 802.15.4-2006
     OT_RADIO_CHANNEL_PAGE_2      = 2,                               ///< 915 MHz IEEE 802.15.4-2006
     OT_RADIO_CHANNEL_PAGE_2_MASK = (1U << OT_RADIO_CHANNEL_PAGE_2), ///< 915 MHz IEEE 802.15.4-2006
-    OT_RADIO_CHANNEL_PAGE_MAX    = OT_RADIO_CHANNEL_PAGE_2,         ///< Maximum supported channel page value
 };
 
 /**
@@ -195,9 +195,17 @@ struct otMacKey
 
 /**
  * This structure represents a MAC Key.
+ * Applicable only when OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE feature is enabled.
  *
  */
 typedef struct otMacKey otMacKey;
+
+/**
+ * This enum represents a MAC Key Ref used by PSA.
+ *
+ */
+typedef uint32_t otMacKeyRef;
+
 
 /**
  * This structure represents the IEEE 802.15.4 Header IE (Information Element) related information of a radio frame.
@@ -237,7 +245,10 @@ typedef struct otRadioFrame
             uint32_t        mTxDelayBaseTime; ///< The base time for the transmission delay.
             uint8_t         mMaxCsmaBackoffs; ///< Maximum number of backoffs attempts before declaring CCA failure.
             uint8_t         mMaxFrameRetries; ///< Maximum number of retries allowed after a transmission failure.
-
+            
+            //Applicable only when OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE feature is enabled.
+            otMacKeyRef     mAesKeyRef;       ///< The key reference used for AES-CCM frame security.
+            
             /**
              * Indicates whether the frame is a retransmission or not.
              *

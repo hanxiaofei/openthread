@@ -38,15 +38,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#if OPENTHREAD_POSIX_CONFIG_RCP_PTY_ENABLE
-#if defined(__APPLE__) || defined(__NetBSD__)
-#include <util.h>
-#elif defined(__FreeBSD__)
-#include <libutil.h>
-#else
-#include <pty.h>
-#endif
-#endif
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/resource.h>
@@ -82,7 +73,7 @@ void CpcInterface::OnRcpReset(void)
     //mHdlcDecoder.Reset();
 }
 
-otError CpcInterface::Init(const RadioUrl &aRadioUrl)
+otError CpcInterface::Init(const Url::Url &aRadioUrl)
 {
     OT_UNUSED_VARIABLE(aRadioUrl);
 

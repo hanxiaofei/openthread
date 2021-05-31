@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2016, The OpenThread Authors.
+ *  Copyright (c) 2021, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -28,92 +28,61 @@
 
 /**
  * @file
- *   This file includes definitions for performing AES-ECB computations.
+ * @brief
+ *   This file defines the platform Co-processor RPC (CRPC) interface.
+ *
  */
 
-#ifndef AES_ECB_HPP_
-#define AES_ECB_HPP_
+#ifndef OPENTHREAD_PLATFORM_COPROCESSOR_RPC_H_
+#define OPENTHREAD_PLATFORM_COPROCESSOR_RPC_H_
 
-#include "openthread-core-config.h"
+#include <stddef.h>
+#include <stdint.h>
 
-#include <mbedtls/aes.h>
+#include <openthread/error.h>
+#include <openthread/platform/radio.h>
 
-namespace ot {
-namespace Crypto {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
- * @addtogroup core-security
+ * @addtogroup plat-coprocessor-rpc
+ *
+ * @brief
+ *   This module includes the platform abstraction for Co-processor RPC (CRPC) features.
  *
  * @{
  *
  */
 
 /**
- * This class implements AES ECB computation.
+ * This function processes a Co-processor RPC command line.
+ *
+ * @param[in]   aInstance       The OpenThread instance for current request.
+ * @param[in]   aArgsLength     The number of arguments in @p aArgs.
+ * @param[in]   aArgs           The arguments of command line.
+ * @param[out]  aOutput         The execution result.
+ * @param[in]   aOutputMaxLen   The output buffer size.
+ *
+ * @retval  OT_ERROR_INVALID_ARGS       The command is supported but invalid arguments provided.
+ * @retval  OT_ERROR_NONE               The command is successfully process.
+ * @retval  OT_ERROR_INVALID_COMMAND    The command is not valid or not supported.
  *
  */
-class AesEcb
-{
-public:
-    enum
-    {
-        kBlockSize = 16, ///< AES-128 block size (bytes).
-    };
-
-    /**
-     * Constructor to initialize the mbedtls_aes_context.
-     *
-     */
-    AesEcb(void);
-
-    /**
-     * Destructor to free the mbedtls_aes_context.
-     *
-     */
-    ~AesEcb(void);
-
-#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
-    /**
-     * This method sets the key.
-     *
-     * @param[in]  aKeyRef     Key Reference for ECB operation
-     *
-     */
-    void SetKey(const uint32_t aKeyRef);
-#else
-    /**
-     * This method sets the key.
-     *
-     * @param[in]  aKey        A pointer to the key.
-     * @param[in]  aKeyLength  The key length in bits.
-     *
-     */
-    void SetKey(const uint8_t *aKey, uint16_t aKeyLength);
-#endif
-
-    /**
-     * This method encrypts data.
-     *
-     * @param[in]   aInput   A pointer to the input buffer.
-     * @param[out]  aOutput  A pointer to the output buffer.
-     *
-     */
-    void Encrypt(const uint8_t aInput[kBlockSize], uint8_t aOutput[kBlockSize]);
-
-private:
-#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
-    uint32_t            mKeyRef;
-#else
-    mbedtls_aes_context mContext;
-#endif
-};
+otError otPlatCRPCProcess(otInstance *aInstance,
+                          uint8_t     aArgsLength,
+                          char *      aArgs[],
+                          char *      aOutput,
+                          size_t      aOutputMaxLen);
 
 /**
  * @}
  *
  */
 
-} // namespace Crypto
-} // namespace ot
+#ifdef __cplusplus
+} // end of extern "C"
+#endif
 
-#endif // AES_ECB_HPP_
+#endif // OPENTHREAD_PLATFORM_COPROCESSOR_RPC_H_
