@@ -210,20 +210,15 @@ void KeyManager::Stop(void)
 #if OPENTHREAD_MTD || OPENTHREAD_FTD
 void KeyManager::SetPskc(const Pskc &aPskc)
 {
-    Error   error = kErrorNone;
+    Error error = kErrorNone;
 
     mPskcRef = kPkscPsaItsOffset;
 
     CheckAndDestroyStoredKey(mPskcRef);
     IgnoreError(Get<Notifier>().Update(mPskc, aPskc, kEventPskcChanged));
 
-    error = otPlatPsaImportKey(&mPskcRef,
-                               PSA_KEY_TYPE_RAW_DATA,
-                               PSA_ALG_VENDOR_FLAG,
-                               PSA_KEY_USAGE_EXPORT,
-                               PSA_KEY_LIFETIME_PERSISTENT,
-                               mPskc.m8,
-                               OT_PSKC_MAX_SIZE);
+    error = otPlatPsaImportKey(&mPskcRef, PSA_KEY_TYPE_RAW_DATA, PSA_ALG_VENDOR_FLAG, PSA_KEY_USAGE_EXPORT,
+                               PSA_KEY_LIFETIME_PERSISTENT, mPskc.m8, OT_PSKC_MAX_SIZE);
 
     OT_ASSERT(error == kErrorNone);
 
@@ -232,14 +227,18 @@ void KeyManager::SetPskc(const Pskc &aPskc)
 }
 #endif // OPENTHREAD_MTD || OPENTHREAD_FTD
 
-Pskc & KeyManager::GetPskc(void)
+Pskc &KeyManager::GetPskc(void)
 {
-  size_t aKeySize = 0;
+    size_t aKeySize = 0;
 
-  Error error = otPlatPsaExportKey(mPskcRef, mPskc.m8, OT_PSKC_MAX_SIZE, &aKeySize);
-  OT_ASSERT(error == kErrorNone);
+    Error error = otPlatPsaExportKey(mPskcRef, mPskc.m8, OT_PSKC_MAX_SIZE, &aKeySize);
 
-  return mPskc;
+    if (error != kErrorNone)
+    {
+        mPskc.Clear();
+    }
+
+    return mPskc;
 }
 
 #else
@@ -256,29 +255,26 @@ void KeyManager::SetPskc(const Pskc &aPskc)
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
 Error KeyManager::StoreMasterKey(bool aOverWriteExisting)
 {
-    Error   error = kErrorNone;
-    
+    Error error = kErrorNone;
+
     mMasterKeyRef = kMasterKeyPsaItsOffset;
 
-    if(!aOverWriteExisting) {
+    if (!aOverWriteExisting)
+    {
         psa_key_attributes_t mKeyAttributes = PSA_KEY_ATTRIBUTES_INIT;
 
         error = otPlatPsaGetKeyAttributes(mMasterKeyRef, &mKeyAttributes);
-        //We will be able to retrieve the key_attributes only if there is 
-        //already a master key stored in ITS. If stored, and we are not 
-        //overwriting the existing key, return without doing anything.
+        // We will be able to retrieve the key_attributes only if there is
+        // already a master key stored in ITS. If stored, and we are not
+        // overwriting the existing key, return without doing anything.
         SuccessOrExit(error != OT_ERROR_NONE);
     }
 
     CheckAndDestroyStoredKey(mMasterKeyRef);
 
-    error = otPlatPsaImportKey(&mMasterKeyRef,
-                               PSA_KEY_TYPE_HMAC,
-                               PSA_ALG_HMAC(PSA_ALG_SHA_256),
-                               PSA_KEY_USAGE_SIGN_HASH | PSA_KEY_USAGE_EXPORT,
-                               PSA_KEY_LIFETIME_PERSISTENT,
-                               mMasterKey.m8,
-                               OT_MASTER_KEY_SIZE);
+    error = otPlatPsaImportKey(&mMasterKeyRef, PSA_KEY_TYPE_HMAC, PSA_ALG_HMAC(PSA_ALG_SHA_256),
+                               PSA_KEY_USAGE_SIGN_HASH | PSA_KEY_USAGE_EXPORT, PSA_KEY_LIFETIME_PERSISTENT,
+                               mMasterKey.m8, OT_MASTER_KEY_SIZE);
 
     OT_ASSERT(error == kErrorNone);
 
@@ -296,9 +292,9 @@ Error KeyManager::SetMasterKey(const MasterKey &aKey)
 
     SuccessOrExit(Get<Notifier>().Update(mMasterKey, aKey, kEventMasterKeyChanged));
     Get<Notifier>().Signal(kEventThreadKeySeqCounterChanged);
-#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE    
+#if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
     StoreMasterKey(true);
-#endif    
+#endif
     mKeySequence = 0;
     UpdateKeyMaterial();
 
@@ -334,12 +330,16 @@ exit:
 }
 
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
-MasterKey & KeyManager::GetMasterKey(void)
+MasterKey &KeyManager::GetMasterKey(void)
 {
     size_t aKeySize = 0;
 
-    Error error = otPlatPsaExportKey(mMasterKeyRef, mMasterKey.m8, mKek.kSize, &aKeySize);
-    OT_ASSERT(error == kErrorNone);
+    Error error = otPlatPsaExportKey(mMasterKeyRef, mMasterKey.m8, OT_MASTER_KEY_SIZE, &aKeySize);
+
+    if (error != kErrorNone)
+    {
+        mMasterKey.Clear();
+    }
 
     return mMasterKey;
 }
@@ -402,46 +402,30 @@ void KeyManager::UpdateKeyMaterial(void)
 
     ComputeKeys(mKeySequence, cur);
 
-    error = otPlatPsaImportKey( &curMacKeyRef,
-                                PSA_KEY_TYPE_AES,
-                                PSA_ALG_ECB_NO_PADDING,
-                                (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT),
-                                PSA_KEY_LIFETIME_VOLATILE,
-                                cur.mKeys.mMacKey.GetKey(),
-                                cur.mKeys.mMacKey.kSize);
+    error = otPlatPsaImportKey(&curMacKeyRef, PSA_KEY_TYPE_AES, PSA_ALG_ECB_NO_PADDING,
+                               (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT), PSA_KEY_LIFETIME_VOLATILE,
+                               cur.mKeys.mMacKey.GetKey(), cur.mKeys.mMacKey.kSize);
     OT_ASSERT(error == kErrorNone);
 
     CheckAndDestroyStoredKey(mMleKeyRef);
 
-    error = otPlatPsaImportKey( &mMleKeyRef,
-                                PSA_KEY_TYPE_AES,
-                                PSA_ALG_ECB_NO_PADDING,
-                                (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT),
-                                PSA_KEY_LIFETIME_VOLATILE,
-                                cur.mKeys.mMleKey.m8,
-                                cur.mKeys.mMleKey.kSize);
+    error = otPlatPsaImportKey(&mMleKeyRef, PSA_KEY_TYPE_AES, PSA_ALG_ECB_NO_PADDING,
+                               (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT), PSA_KEY_LIFETIME_VOLATILE,
+                               cur.mKeys.mMleKey.m8, cur.mKeys.mMleKey.kSize);
     OT_ASSERT(error == kErrorNone);
 
 #if OPENTHREAD_CONFIG_RADIO_LINK_IEEE_802_15_4_ENABLE
     ComputeKeys(mKeySequence - 1, prev);
     ComputeKeys(mKeySequence + 1, next);
 
-    error = otPlatPsaImportKey(&prevMacKeyRef,
-                                PSA_KEY_TYPE_AES,
-                                PSA_ALG_ECB_NO_PADDING,
-                                (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT),
-                                PSA_KEY_LIFETIME_VOLATILE,
-                                prev.mKeys.mMacKey.m8,
-                                prev.mKeys.mMleKey.kSize);
+    error = otPlatPsaImportKey(&prevMacKeyRef, PSA_KEY_TYPE_AES, PSA_ALG_ECB_NO_PADDING,
+                               (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT), PSA_KEY_LIFETIME_VOLATILE,
+                               prev.mKeys.mMacKey.m8, prev.mKeys.mMleKey.kSize);
     OT_ASSERT(error == kErrorNone);
 
-    error = otPlatPsaImportKey(&nextMacKeyRef,
-                                PSA_KEY_TYPE_AES,
-                                PSA_ALG_ECB_NO_PADDING,
-                                (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT),
-                                PSA_KEY_LIFETIME_VOLATILE,
-                                next.mKeys.mMleKey.m8,
-                                next.mKeys.mMleKey.kSize);
+    error = otPlatPsaImportKey(&nextMacKeyRef, PSA_KEY_TYPE_AES, PSA_ALG_ECB_NO_PADDING,
+                               (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT), PSA_KEY_LIFETIME_VOLATILE,
+                               next.mKeys.mMleKey.m8, next.mKeys.mMleKey.kSize);
     OT_ASSERT(error == kErrorNone);
 
     cur.mKeys.mMacKey.Clear();
@@ -451,8 +435,8 @@ void KeyManager::UpdateKeyMaterial(void)
     next.mKeys.mMacKey.Clear();
     next.mKeys.mMacKey.Clear();
 
-    Get<Mac::SubMac>().SetMacKey(Mac::Frame::kKeyIdMode1, (mKeySequence & 0x7f) + 1, prevMacKeyRef,
-                                 curMacKeyRef, nextMacKeyRef);
+    Get<Mac::SubMac>().SetMacKey(Mac::Frame::kKeyIdMode1, (mKeySequence & 0x7f) + 1, prevMacKeyRef, curMacKeyRef,
+                                 nextMacKeyRef);
 
 #endif
 
@@ -524,13 +508,9 @@ KeyRef KeyManager::GetTemporaryMleKeyRef(uint32_t aKeySequence)
     CheckAndDestroyStoredKey(mTemporaryMleKeyRef);
     mTemporaryMleKeyRef = 0;
 
-    Error error = otPlatPsaImportKey(&mTemporaryMleKeyRef,
-                                    PSA_KEY_TYPE_AES,
-                                    PSA_ALG_ECB_NO_PADDING,
-                                    (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT),
-                                    PSA_KEY_LIFETIME_VOLATILE,
-                                    hashKeys.mKeys.mMleKey.m8,
-                                    hashKeys.mKeys.mMleKey.kSize);
+    Error error = otPlatPsaImportKey(&mTemporaryMleKeyRef, PSA_KEY_TYPE_AES, PSA_ALG_ECB_NO_PADDING,
+                                     (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT), PSA_KEY_LIFETIME_VOLATILE,
+                                     hashKeys.mKeys.mMleKey.m8, hashKeys.mKeys.mMleKey.kSize);
     OT_ASSERT(error == kErrorNone);
 
     return mTemporaryMleKeyRef;
@@ -607,34 +587,30 @@ void KeyManager::IncrementMleFrameCounter(void)
 
 void KeyManager::CheckAndDestroyStoredKey(psa_key_id_t aKeyRef)
 {
-  if(aKeyRef != 0) {
-      otPlatPsaDestroyKey(aKeyRef);
-  }
+    if (aKeyRef != 0)
+    {
+        otPlatPsaDestroyKey(aKeyRef);
+    }
 }
 
 Error KeyManager::ImportKek(const uint8_t *aKey, uint8_t aKeyLen)
 {
-  Error error = kErrorNone;
-  psa_key_usage_t mKeyUsage = (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT | PSA_KEY_USAGE_EXPORT);
+    Error           error     = kErrorNone;
+    psa_key_usage_t mKeyUsage = (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT | PSA_KEY_USAGE_EXPORT);
 
-  CheckAndDestroyStoredKey(mKekRef);
+    CheckAndDestroyStoredKey(mKekRef);
 
-  error = otPlatPsaImportKey( &mKekRef,
-                               PSA_KEY_TYPE_AES,
-                               PSA_ALG_ECB_NO_PADDING,
-                               mKeyUsage,
-                               PSA_KEY_LIFETIME_VOLATILE,
-                               aKey,
-                               aKeyLen);
+    error = otPlatPsaImportKey(&mKekRef, PSA_KEY_TYPE_AES, PSA_ALG_ECB_NO_PADDING, mKeyUsage, PSA_KEY_LIFETIME_VOLATILE,
+                               aKey, aKeyLen);
 
-  return error;
+    return error;
 }
 
 void KeyManager::SetKek(const Kek &aKek)
 {
     Error error = kErrorNone;
 
-    error = ImportKek(aKek.m8, aKek.kSize);
+    error            = ImportKek(aKek.m8, aKek.kSize);
     mKekFrameCounter = 0;
     OT_ASSERT(error == kErrorNone);
 }
@@ -643,15 +619,15 @@ void KeyManager::SetKek(const uint8_t *aKek)
 {
     Error error;
 
-    error = ImportKek(aKek, 16);
+    error            = ImportKek(aKek, 16);
     mKekFrameCounter = 0;
     OT_ASSERT(error == kErrorNone);
 }
 
-const Kek& KeyManager::GetKek(void)
+const Kek &KeyManager::GetKek(void)
 {
     size_t aKeySize = 0;
-    Error error = otPlatPsaExportKey(mKekRef, mKek.m8, mKek.kSize, &aKeySize);
+    Error  error    = otPlatPsaExportKey(mKekRef, mKek.m8, mKek.kSize, &aKeySize);
     OT_ASSERT(error == kErrorNone);
 
     return mKek;
