@@ -36,9 +36,8 @@
 
 #include "openthread-posix-config.h"
 #include "platform-posix.h"
-#include "sl_cpc.h"
 #include "lib/spinel/spinel_interface.hpp"
-#include <errno.h>
+#include "sl_cpc.h"
 
 #if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC
 
@@ -206,7 +205,7 @@ private:
     // 0x72 -> STATUS_RESET_SOFTWARE
     uint8_t mResetResponse[kResetCMDSize] = {0x80, 0x06, 0x00, 0x72};
 
-    const uint8_t       mId = 90; //SL_CPC_ENDPOINT_USER_ID_0
+    const uint8_t       mId = SL_CPC_ENDPOINT_15_4;
     typedef uint8_t     cpcError;
 
     // Non-copyable, intentionally not implemented.

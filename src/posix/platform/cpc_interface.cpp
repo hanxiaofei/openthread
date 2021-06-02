@@ -77,7 +77,7 @@ otError CpcInterface::Init(const Url::Url &aRadioUrl)
 {
     OT_UNUSED_VARIABLE(aRadioUrl);
 
-    cpcError cpc_error = cpc_init(&mHandle, false);
+    int cpc_error = cpc_init(&mHandle, false, NULL);
 
     VerifyOrDie(cpc_error == 0, OT_EXIT_FAILURE);
 

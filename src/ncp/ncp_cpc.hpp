@@ -34,6 +34,7 @@
 #include "openthread-core-config.h"
 
 #include "sl_cpc.h"
+#include "sli_cpc.h"
 #include "ncp/ncp_base.hpp"
 
 namespace ot {

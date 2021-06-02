@@ -72,10 +72,10 @@ NcpCPC::NcpCPC(Instance *aInstance)
     , mIsWriting(false)
     , mCpcSendTask(*aInstance, SendToCPC)
 {
-    sl_status_t status = sl_cpc_open_user_endpoint(&mUserEp, 
-                                                   SL_CPC_ENDPOINT_USER_ID_0, 
-                                                   0, 
-                                                   1);
+    sl_status_t status = sli_cpc_open_service_endpoint(&mUserEp, 
+                                                       SL_CPC_ENDPOINT_15_4, 
+                                                       0, 
+                                                       1);
 
     OT_ASSERT(status == SL_STATUS_ALREADY_EXISTS || status == SL_STATUS_OK);
 
