@@ -237,7 +237,11 @@ Pskc & KeyManager::GetPskc(void)
   size_t aKeySize = 0;
 
   Error error = otPlatPsaExportKey(mPskcRef, mPskc.m8, OT_PSKC_MAX_SIZE, &aKeySize);
-  OT_ASSERT(error == kErrorNone);
+
+  if(error != kErrorNone)
+  {
+    memset(mPskc.m8, 0x00, OT_PSKC_MAX_SIZE);
+  }
 
   return mPskc;
 }
@@ -338,8 +342,12 @@ MasterKey & KeyManager::GetMasterKey(void)
 {
     size_t aKeySize = 0;
 
-    Error error = otPlatPsaExportKey(mMasterKeyRef, mMasterKey.m8, mKek.kSize, &aKeySize);
-    OT_ASSERT(error == kErrorNone);
+    Error error = otPlatPsaExportKey(mMasterKeyRef, mMasterKey.m8, OT_MASTER_KEY_SIZE, &aKeySize);
+    
+    if(error != kErrorNone)
+    {
+        memset(mMasterKey.m8, 0x00, OT_MASTER_KEY_SIZE);
+    }
 
     return mMasterKey;
 }
