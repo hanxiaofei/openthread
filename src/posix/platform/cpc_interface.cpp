@@ -210,7 +210,7 @@ void CpcInterface::UpdateFdSet(fd_set &aReadFdSet, fd_set &aWriteFdSet, int &aMa
 void CpcInterface::Process(const RadioProcessContext &aContext)
 {
     OT_UNUSED_VARIABLE(aContext);
-    Read(0);
+    Read(5);
 }
 
 void CpcInterface::SendResetResponse(void)
