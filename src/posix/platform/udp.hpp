@@ -25,75 +25,30 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef OT_POSIX_PLATFORM_UDP_HPP_
+#define OT_POSIX_PLATFORM_UDP_HPP_
 
-/**
- * @file
- *   This file implements IPv4 address related functionality.
- */
-
-#include "ip4_address.hpp"
-
-#include "common/code_utils.hpp"
-#include "common/numeric_limits.hpp"
+#include "core/common/non_copyable.hpp"
+#include "posix/platform/mainloop.hpp"
 
 namespace ot {
-namespace Ip4 {
+namespace Posix {
 
-Error Address::FromString(const char *aString)
+class Udp : public Mainloop::Source, private NonCopyable
 {
-    enum : char
-    {
-        kSeperatorChar = '.',
-        kNullChar      = '\0',
-    };
+public:
+    static Udp &Get(void);
 
-    Error error = kErrorParse;
+    void Init(otInstance *aInstance, const char *aIfName);
+    void Deinit(void);
+    void Update(otSysMainloopContext &aContext) override;
+    void Process(const otSysMainloopContext &aContext) override;
 
-    for (uint8_t index = 0;; index++)
-    {
-        uint16_t value         = 0;
-        uint8_t  hasFirstDigit = false;
+private:
+    otInstance *mInstance = nullptr;
+};
 
-        for (char digitChar = *aString;; ++aString, digitChar = *aString)
-        {
-            if ((digitChar < '0') || (digitChar > '9'))
-            {
-                break;
-            }
-
-            value = static_cast<uint16_t>((value * 10) + static_cast<uint8_t>(digitChar - '0'));
-            VerifyOrExit(value <= NumericLimits<uint8_t>::Max());
-            hasFirstDigit = true;
-        }
-
-        VerifyOrExit(hasFirstDigit);
-
-        mBytes[index] = static_cast<uint8_t>(value);
-
-        if (index == sizeof(Address) - 1)
-        {
-            break;
-        }
-
-        VerifyOrExit(*aString == kSeperatorChar);
-        aString++;
-    }
-
-    VerifyOrExit(*aString == kNullChar);
-    error = kErrorNone;
-
-exit:
-    return error;
-}
-
-Address::InfoString Address::ToString(void) const
-{
-    InfoString string;
-
-    string.Append("%d.%d.%d.%d", mBytes[0], mBytes[1], mBytes[2], mBytes[3]);
-
-    return string;
-}
-
-} // namespace Ip4
+} // namespace Posix
 } // namespace ot
+
+#endif // OT_POSIX_PLATFORM_UDP_HPP_

@@ -334,11 +334,17 @@ void SubMac::ProcessTransmitSecurity(void)
     const ExtAddress *extAddress = nullptr;
     uint8_t           keyIdMode;
 
-    VerifyOrExit(ShouldHandleTransmitSecurity());
     VerifyOrExit(mTransmitFrame.GetSecurityEnabled());
     VerifyOrExit(!mTransmitFrame.IsSecurityProcessed());
 
     SuccessOrExit(mTransmitFrame.GetKeyIdMode(keyIdMode));
+
+    if (!mTransmitFrame.IsARetransmission())
+    {
+        mTransmitFrame.SetKeyId(mKeyId);
+    }
+
+    VerifyOrExit(ShouldHandleTransmitSecurity());
     VerifyOrExit(keyIdMode == Frame::kKeyIdMode1);
 
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
@@ -351,7 +357,6 @@ void SubMac::ProcessTransmitSecurity(void)
     {
         uint32_t frameCounter = GetFrameCounter();
 
-        mTransmitFrame.SetKeyId(mKeyId);
         mTransmitFrame.SetFrameCounter(frameCounter);
         UpdateFrameCounter(frameCounter + 1);
     }
