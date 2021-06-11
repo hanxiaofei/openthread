@@ -151,9 +151,9 @@
  to be defined by Platform."
 #endif
 
- #if OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_CHANNEL_PAGE > 31
- #error "Maximum Proprietary Channel Page value currently supported is 31."
- #endif
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_PROPRIETARY_CHANNEL_PAGE > 31
+#error "Maximum Proprietary Channel Page value currently supported is 31."
+#endif
 #endif
 
 #endif // CONFIG_PLATFORM_H_
