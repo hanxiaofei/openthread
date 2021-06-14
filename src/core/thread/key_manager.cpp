@@ -420,12 +420,12 @@ void KeyManager::UpdateKeyMaterial(void)
 
     error = otPlatPsaImportKey(&prevMacKeyRef, PSA_KEY_TYPE_AES, PSA_ALG_ECB_NO_PADDING,
                                (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT), PSA_KEY_LIFETIME_VOLATILE,
-                               prev.mKeys.mMacKey.m8, prev.mKeys.mMleKey.kSize);
+                               prev.mKeys.mMacKey.m8, prev.mKeys.mMacKey.kSize);
     OT_ASSERT(error == kErrorNone);
 
     error = otPlatPsaImportKey(&nextMacKeyRef, PSA_KEY_TYPE_AES, PSA_ALG_ECB_NO_PADDING,
                                (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT), PSA_KEY_LIFETIME_VOLATILE,
-                               next.mKeys.mMleKey.m8, next.mKeys.mMleKey.kSize);
+                               next.mKeys.mMacKey.m8, next.mKeys.mMacKey.kSize);
     OT_ASSERT(error == kErrorNone);
 
     cur.mKeys.mMacKey.Clear();
