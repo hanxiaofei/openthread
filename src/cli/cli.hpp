@@ -521,7 +521,6 @@ private:
     otError ProcessPartitionId(uint8_t aArgsLength, Arg aArgs[]);
     otError ProcessLeaderWeight(uint8_t aArgsLength, Arg aArgs[]);
 #endif
-    otError ProcessMasterKey(uint8_t aArgsLength, Arg aArgs[]);
 #if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
     otError ProcessMlIid(uint8_t aArgsLength, Arg aArgs[]);
 #endif
@@ -573,6 +572,7 @@ private:
 #if OPENTHREAD_FTD
     otError ProcessNetworkIdTimeout(uint8_t aArgsLength, Arg aArgs[]);
 #endif
+    otError ProcessNetworkKey(uint8_t aArgsLength, Arg aArgs[]);
     otError ProcessNetworkName(uint8_t aArgsLength, Arg aArgs[]);
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
     otError ProcessNetworkTime(uint8_t aArgsLength, Arg aArgs[]);
@@ -822,7 +822,6 @@ private:
 #if OPENTHREAD_CONFIG_MAC_FILTER_ENABLE
         {"macfilter", &Interpreter::ProcessMacFilter},
 #endif
-        {"masterkey", &Interpreter::ProcessMasterKey},
 #if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
         {"mliid", &Interpreter::ProcessMlIid},
 #endif
@@ -842,6 +841,7 @@ private:
 #if OPENTHREAD_FTD
         {"networkidtimeout", &Interpreter::ProcessNetworkIdTimeout},
 #endif
+        {"networkkey", &Interpreter::ProcessNetworkKey},
         {"networkname", &Interpreter::ProcessNetworkName},
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
         {"networktime", &Interpreter::ProcessNetworkTime},
