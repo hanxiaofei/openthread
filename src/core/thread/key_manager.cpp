@@ -274,7 +274,7 @@ Error KeyManager::StoreNetworkKey(bool aOverWriteExisting)
 
     error = otPlatPsaImportKey(&mNetworkKeyRef, PSA_KEY_TYPE_HMAC, PSA_ALG_HMAC(PSA_ALG_SHA_256),
                                PSA_KEY_USAGE_SIGN_HASH | PSA_KEY_USAGE_EXPORT, PSA_KEY_LIFETIME_PERSISTENT,
-                               mNetworkKey.m8, OT_MASTER_KEY_SIZE);
+                               mNetworkKey.m8, OT_NETWORK_KEY_SIZE);
 
     OT_ASSERT(error == kErrorNone);
 
@@ -334,7 +334,7 @@ NetworkKey &KeyManager::GetNetworkKey(void)
 {
     size_t aKeySize = 0;
 
-    Error error = otPlatPsaExportKey(mNetworkKeyRef, mNetworkKey.m8, OT_MASTER_KEY_SIZE, &aKeySize);
+    Error error = otPlatPsaExportKey(mNetworkKeyRef, mNetworkKey.m8, OT_NETWORK_KEY_SIZE, &aKeySize);
 
     if (error != kErrorNone)
     {
