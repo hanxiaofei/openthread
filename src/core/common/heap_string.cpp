@@ -28,72 +28,71 @@
 
 /**
  * @file
- *   This file implements IPv4 address related functionality.
+ *   This file implements the `HeapString` (a heap allocated string).
  */
 
-#include "ip4_address.hpp"
+#include "heap_string.hpp"
 
 #include "common/code_utils.hpp"
-#include "common/numeric_limits.hpp"
+#include "common/instance.hpp"
+#include "common/string.hpp"
 
 namespace ot {
-namespace Ip4 {
 
-Error Address::FromString(const char *aString)
+Error HeapString::Set(const char *aCString)
 {
-    enum : char
+    Error  error = kErrorNone;
+    size_t curSize;
+    size_t newSize;
+
+    VerifyOrExit(aCString != nullptr, Free());
+
+    curSize = (mStringBuffer != nullptr) ? strlen(mStringBuffer) + 1 : 0;
+    newSize = strlen(aCString) + 1;
+
+    if (curSize != newSize)
     {
-        kSeperatorChar = '.',
-        kNullChar      = '\0',
-    };
+        char *newBuffer = static_cast<char *>(Instance::HeapCAlloc(sizeof(char), newSize));
 
-    Error error = kErrorParse;
+        VerifyOrExit(newBuffer != nullptr, error = kErrorNoBufs);
 
-    for (uint8_t index = 0;; index++)
-    {
-        uint16_t value         = 0;
-        uint8_t  hasFirstDigit = false;
-
-        for (char digitChar = *aString;; ++aString, digitChar = *aString)
-        {
-            if ((digitChar < '0') || (digitChar > '9'))
-            {
-                break;
-            }
-
-            value = static_cast<uint16_t>((value * 10) + static_cast<uint8_t>(digitChar - '0'));
-            VerifyOrExit(value <= NumericLimits<uint8_t>::kMax);
-            hasFirstDigit = true;
-        }
-
-        VerifyOrExit(hasFirstDigit);
-
-        mBytes[index] = static_cast<uint8_t>(value);
-
-        if (index == sizeof(Address) - 1)
-        {
-            break;
-        }
-
-        VerifyOrExit(*aString == kSeperatorChar);
-        aString++;
+        Instance::HeapFree(mStringBuffer);
+        mStringBuffer = newBuffer;
     }
 
-    VerifyOrExit(*aString == kNullChar);
-    error = kErrorNone;
+    memcpy(mStringBuffer, aCString, newSize);
 
 exit:
     return error;
 }
 
-Address::InfoString Address::ToString(void) const
+Error HeapString::Set(HeapString &&aString)
 {
-    InfoString string;
+    VerifyOrExit(mStringBuffer != aString.mStringBuffer);
 
-    string.Append("%d.%d.%d.%d", mBytes[0], mBytes[1], mBytes[2], mBytes[3]);
+    Instance::HeapFree(mStringBuffer);
+    mStringBuffer         = aString.mStringBuffer;
+    aString.mStringBuffer = nullptr;
 
-    return string;
+exit:
+    return kErrorNone;
 }
 
-} // namespace Ip4
+void HeapString::Free(void)
+{
+    Instance::HeapFree(mStringBuffer);
+    mStringBuffer = nullptr;
+}
+
+bool HeapString::operator==(const char *aCString) const
+{
+    bool isEqual;
+
+    VerifyOrExit((aCString != nullptr) && (mStringBuffer != nullptr), isEqual = (mStringBuffer == aCString));
+    isEqual = (strcmp(mStringBuffer, aCString) == 0);
+
+exit:
+    return isEqual;
+}
+
 } // namespace ot
