@@ -316,10 +316,10 @@ void RPC::OutputFormat(uint8_t aIndentSize, const char *aFormat, ...)
 int RPC::OutputFormatV(const char *aFormat, va_list aArguments)
 {
     int rval = 0;
+    int remaining = mOutputBufferMaxLen - mOutputBufferCount;
 
-    VerifyOrExit(mOutputBuffer && (mOutputBufferCount < mOutputBufferMaxLen));
-
-    rval = vsnprintf(&mOutputBuffer[mOutputBufferCount], mOutputBufferMaxLen, aFormat, aArguments);
+    VerifyOrExit(mOutputBuffer && (remaining > 0));
+    rval = vsnprintf(&mOutputBuffer[mOutputBufferCount], remaining, aFormat, aArguments);
     if (rval > 0)
     {
         mOutputBufferCount += static_cast<size_t>(rval);
