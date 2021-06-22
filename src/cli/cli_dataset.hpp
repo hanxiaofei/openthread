@@ -90,8 +90,8 @@ private:
     otError ProcessDelay(uint8_t aArgsLength, Arg aArgs[]);
     otError ProcessExtPanId(uint8_t aArgsLength, Arg aArgs[]);
     otError ProcessInit(uint8_t aArgsLength, Arg aArgs[]);
-    otError ProcessMasterKey(uint8_t aArgsLength, Arg aArgs[]);
     otError ProcessMeshLocalPrefix(uint8_t aArgsLength, Arg aArgs[]);
+    otError ProcessNetworkKey(uint8_t aArgsLength, Arg aArgs[]);
     otError ProcessNetworkName(uint8_t aArgsLength, Arg aArgs[]);
     otError ProcessPanId(uint8_t aArgsLength, Arg aArgs[]);
     otError ProcessPending(uint8_t aArgsLength, Arg aArgs[]);
@@ -108,8 +108,8 @@ private:
     void        HandleDatasetUpdater(otError aError);
 #endif
 
-    void  OutputSecurityPolicy(const otSecurityPolicy &aSecurityPolicy);
-    Error ParseSecurityPolicy(otSecurityPolicy &aSecurityPolicy, uint8_t aArgsLength, Arg aArgs[]);
+    void    OutputSecurityPolicy(const otSecurityPolicy &aSecurityPolicy);
+    otError ParseSecurityPolicy(otSecurityPolicy &aSecurityPolicy, uint8_t aArgsLength, Arg aArgs[]);
 
     static constexpr Command sCommands[] = {
         {"active", &Dataset::ProcessActive},
@@ -122,10 +122,10 @@ private:
         {"extpanid", &Dataset::ProcessExtPanId},
         {"help", &Dataset::ProcessHelp},
         {"init", &Dataset::ProcessInit},
-        {"masterkey", &Dataset::ProcessMasterKey},
         {"meshlocalprefix", &Dataset::ProcessMeshLocalPrefix},
         {"mgmtgetcommand", &Dataset::ProcessMgmtGetCommand},
         {"mgmtsetcommand", &Dataset::ProcessMgmtSetCommand},
+        {"networkkey", &Dataset::ProcessNetworkKey},
         {"networkname", &Dataset::ProcessNetworkName},
         {"panid", &Dataset::ProcessPanId},
         {"pending", &Dataset::ProcessPending},

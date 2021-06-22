@@ -169,6 +169,7 @@ SOURCES_COMMON                                  = \
     coap/coap_secure.cpp                          \
     common/crc16.cpp                              \
     common/error.cpp                              \
+    common/heap_string.cpp                        \
     common/instance.cpp                           \
     common/logging.cpp                            \
     common/message.cpp                            \
@@ -388,6 +389,7 @@ HEADERS_COMMON                                  = \
     common/equatable.hpp                          \
     common/error.hpp                              \
     common/extension.hpp                          \
+    common/heap_string.hpp                        \
     common/instance.hpp                           \
     common/iterator_utils.hpp                     \
     common/linked_list.hpp                        \
@@ -403,6 +405,7 @@ HEADERS_COMMON                                  = \
     common/random.hpp                             \
     common/random_manager.hpp                     \
     common/settings.hpp                           \
+    common/settings_driver.hpp                    \
     common/string.hpp                             \
     common/tasklet.hpp                            \
     common/time.hpp                               \

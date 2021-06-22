@@ -219,6 +219,7 @@ LOCAL_SRC_FILES                                                  := \
     src/core/coap/coap_secure.cpp                                   \
     src/core/common/crc16.cpp                                       \
     src/core/common/error.cpp                                       \
+    src/core/common/heap_string.cpp                                 \
     src/core/common/instance.cpp                                    \
     src/core/common/logging.cpp                                     \
     src/core/common/message.cpp                                     \
@@ -541,7 +542,8 @@ LOCAL_LDLIBS                               := \
     -lutil
 
 LOCAL_SRC_FILES                            := \
-    src/posix/cli.cpp                         \
+    src/posix/cli_readline.cpp                \
+    src/posix/cli_stdio.cpp                   \
     src/posix/main.c                          \
     $(NULL)
 

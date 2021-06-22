@@ -83,6 +83,7 @@ openthread_headers                      = \
     openthread/srp_client_buffers.h       \
     openthread/srp_server.h               \
     openthread/tasklet.h                  \
+    openthread/tcp.h                      \
     openthread/thread.h                   \
     openthread/thread_ftd.h               \
     openthread/udp.h                      \

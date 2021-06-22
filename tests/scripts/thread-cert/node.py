@@ -1255,12 +1255,12 @@ class NodeImpl:
         self.send_command(cmd)
         self._expect_done()
 
-    def get_masterkey(self):
-        self.send_command('masterkey')
+    def get_networkkey(self):
+        self.send_command('networkkey')
         return self._expect_result('[0-9a-fA-F]{32}')
 
-    def set_masterkey(self, masterkey):
-        cmd = 'masterkey %s' % masterkey
+    def set_networkkey(self, networkkey):
+        cmd = 'networkkey %s' % networkkey
         self.send_command(cmd)
         self._expect_done()
 
@@ -1816,7 +1816,7 @@ class NodeImpl:
         panid=None,
         channel=None,
         channel_mask=None,
-        master_key=None,
+        network_key=None,
         security_policy=[],
     ):
         self.send_command('dataset clear')
@@ -1841,8 +1841,8 @@ class NodeImpl:
             self.send_command(cmd)
             self._expect_done()
 
-        if master_key is not None:
-            cmd = 'dataset masterkey %s' % master_key
+        if network_key is not None:
+            cmd = 'dataset networkkey %s' % network_key
             self.send_command(cmd)
             self._expect_done()
 
@@ -1929,7 +1929,7 @@ class NodeImpl:
         channel_mask=None,
         extended_panid=None,
         panid=None,
-        master_key=None,
+        network_key=None,
         mesh_local=None,
         network_name=None,
         security_policy=None,
@@ -1952,8 +1952,8 @@ class NodeImpl:
         if panid is not None:
             cmd += 'panid %d ' % panid
 
-        if master_key is not None:
-            cmd += 'masterkey %s ' % master_key
+        if network_key is not None:
+            cmd += 'networkkey %s ' % network_key
 
         if mesh_local is not None:
             cmd += 'localprefix %s ' % mesh_local
@@ -2008,7 +2008,7 @@ class NodeImpl:
         delay_timer=None,
         channel=None,
         panid=None,
-        master_key=None,
+        network_key=None,
         mesh_local=None,
         network_name=None,
     ):
@@ -2028,8 +2028,8 @@ class NodeImpl:
         if panid is not None:
             cmd += 'panid %d ' % panid
 
-        if master_key is not None:
-            cmd += 'masterkey %s ' % master_key
+        if network_key is not None:
+            cmd += 'networkkey %s ' % network_key
 
         if mesh_local is not None:
             cmd += 'localprefix %s ' % mesh_local
@@ -2823,8 +2823,8 @@ interface eth0
     AdvReachableTime 200;
     AdvRetransTimer 200;
     AdvDefaultLifetime 1800;
-    MinRtrAdvInterval 3;
-    MaxRtrAdvInterval 30;
+    MinRtrAdvInterval 1200;
+    MaxRtrAdvInterval 1800;
     AdvDefaultPreference low;
 
     prefix %s
@@ -2841,6 +2841,9 @@ EOF
 
     def stop_radvd_service(self):
         self.bash('service radvd stop')
+
+    def kill_radvd_service(self):
+        self.bash('pkill radvd')
 
 
 class OtbrNode(LinuxHost, NodeImpl, OtbrDocker):
@@ -2889,7 +2892,7 @@ class HostNode(LinuxHost, OtbrDocker):
 
         addrs = []
         for addr in self.get_ip6_address(config.ADDRESS_TYPE.ONLINK_ULA):
-            if addr.startswith(prefix.split('::')[0]):
+            if ipaddress.IPv6Address(addr) in ipaddress.IPv6Network(prefix):
                 addrs.append(addr)
 
         return addrs

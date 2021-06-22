@@ -64,14 +64,14 @@ void SecurityPolicy::SetToDefault(void)
 
 void SecurityPolicy::SetToDefaultFlags(void)
 {
-    mObtainMasterKeyEnabled         = true;
+    mObtainNetworkKeyEnabled        = true;
     mNativeCommissioningEnabled     = true;
     mRoutersEnabled                 = true;
     mExternalCommissioningEnabled   = true;
     mBeaconsEnabled                 = true;
     mCommercialCommissioningEnabled = false;
     mAutonomousEnrollmentEnabled    = false;
-    mMasterKeyProvisioningEnabled   = false;
+    mNetworkKeyProvisioningEnabled  = false;
     mTobleLinkEnabled               = true;
     mNonCcmRoutersEnabled           = false;
     mVersionThresholdForRouting     = 0;
@@ -83,14 +83,14 @@ void SecurityPolicy::SetFlags(const uint8_t *aFlags, uint8_t aFlagsLength)
 
     SetToDefaultFlags();
 
-    mObtainMasterKeyEnabled         = aFlags[0] & kObtainMasterKeyMask;
+    mObtainNetworkKeyEnabled        = aFlags[0] & kObtainNetworkKeyMask;
     mNativeCommissioningEnabled     = aFlags[0] & kNativeCommissioningMask;
     mRoutersEnabled                 = aFlags[0] & kRoutersMask;
     mExternalCommissioningEnabled   = aFlags[0] & kExternalCommissioningMask;
     mBeaconsEnabled                 = aFlags[0] & kBeaconsMask;
     mCommercialCommissioningEnabled = (aFlags[0] & kCommercialCommissioningMask) == 0;
     mAutonomousEnrollmentEnabled    = (aFlags[0] & kAutonomousEnrollmentMask) == 0;
-    mMasterKeyProvisioningEnabled   = (aFlags[0] & kMasterKeyProvisioningMask) == 0;
+    mNetworkKeyProvisioningEnabled  = (aFlags[0] & kNetworkKeyProvisioningMask) == 0;
 
     VerifyOrExit(aFlagsLength > sizeof(aFlags[0]));
     mTobleLinkEnabled           = aFlags[1] & kTobleLinkMask;
@@ -107,9 +107,9 @@ void SecurityPolicy::GetFlags(uint8_t *aFlags, uint8_t aFlagsLength) const
 
     memset(aFlags, 0, aFlagsLength);
 
-    if (mObtainMasterKeyEnabled)
+    if (mObtainNetworkKeyEnabled)
     {
-        aFlags[0] |= kObtainMasterKeyMask;
+        aFlags[0] |= kObtainNetworkKeyMask;
     }
 
     if (mNativeCommissioningEnabled)
@@ -142,9 +142,9 @@ void SecurityPolicy::GetFlags(uint8_t *aFlags, uint8_t aFlagsLength) const
         aFlags[0] |= kAutonomousEnrollmentMask;
     }
 
-    if (!mMasterKeyProvisioningEnabled)
+    if (!mNetworkKeyProvisioningEnabled)
     {
-        aFlags[0] |= kMasterKeyProvisioningMask;
+        aFlags[0] |= kNetworkKeyProvisioningMask;
     }
 
     VerifyOrExit(aFlagsLength > sizeof(aFlags[0]));
@@ -179,7 +179,7 @@ KeyManager::KeyManager(Instance &aInstance)
     , mKekFrameCounter(0)
     , mIsPskcSet(false)
 {
-    Error error = mMasterKey.GenerateRandom();
+    Error error = mNetworkKey.GenerateRandom();
 
     OT_ASSERT(error == kErrorNone);
     OT_UNUSED_VARIABLE(error);
@@ -189,8 +189,8 @@ KeyManager::KeyManager(Instance &aInstance)
 
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
     otPlatPsaInit();
-    mMasterKeyRef = 0;
-    StoreMasterKey(false);
+    mNetworkKeyRef = 0;
+    StoreNetworkKey(false);
 #endif
 }
 
@@ -253,47 +253,47 @@ void KeyManager::SetPskc(const Pskc &aPskc)
 #endif
 
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
-Error KeyManager::StoreMasterKey(bool aOverWriteExisting)
+Error KeyManager::StoreNetworkKey(bool aOverWriteExisting)
 {
     Error error = kErrorNone;
 
-    mMasterKeyRef = kMasterKeyPsaItsOffset;
+    mNetworkKeyRef = kNetworkKeyPsaItsOffset;
 
     if (!aOverWriteExisting)
     {
         psa_key_attributes_t mKeyAttributes = PSA_KEY_ATTRIBUTES_INIT;
 
-        error = otPlatPsaGetKeyAttributes(mMasterKeyRef, &mKeyAttributes);
+        error = otPlatPsaGetKeyAttributes(mNetworkKeyRef, &mKeyAttributes);
         // We will be able to retrieve the key_attributes only if there is
         // already a master key stored in ITS. If stored, and we are not
         // overwriting the existing key, return without doing anything.
         SuccessOrExit(error != OT_ERROR_NONE);
     }
 
-    CheckAndDestroyStoredKey(mMasterKeyRef);
+    CheckAndDestroyStoredKey(mNetworkKeyRef);
 
-    error = otPlatPsaImportKey(&mMasterKeyRef, PSA_KEY_TYPE_HMAC, PSA_ALG_HMAC(PSA_ALG_SHA_256),
+    error = otPlatPsaImportKey(&mNetworkKeyRef, PSA_KEY_TYPE_HMAC, PSA_ALG_HMAC(PSA_ALG_SHA_256),
                                PSA_KEY_USAGE_SIGN_HASH | PSA_KEY_USAGE_EXPORT, PSA_KEY_LIFETIME_PERSISTENT,
-                               mMasterKey.m8, OT_MASTER_KEY_SIZE);
+                               mNetworkKey.m8, OT_NETWORK_KEY_SIZE);
 
     OT_ASSERT(error == kErrorNone);
 
-    mMasterKey.Clear();
+    mNetworkKey.Clear();
 
 exit:
     return error;
 }
 #endif
 
-Error KeyManager::SetMasterKey(const MasterKey &aKey)
+Error KeyManager::SetNetworkKey(const NetworkKey &aKey)
 {
     Error   error = kErrorNone;
     Router *parent;
 
-    SuccessOrExit(Get<Notifier>().Update(mMasterKey, aKey, kEventMasterKeyChanged));
+    SuccessOrExit(Get<Notifier>().Update(mNetworkKey, aKey, kEventNetworkKeyChanged));
     Get<Notifier>().Signal(kEventThreadKeySeqCounterChanged);
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
-    StoreMasterKey(true);
+    StoreNetworkKey(true);
 #endif
     mKeySequence = 0;
     UpdateKeyMaterial();
@@ -330,18 +330,18 @@ exit:
 }
 
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
-MasterKey &KeyManager::GetMasterKey(void)
+NetworkKey &KeyManager::GetNetworkKey(void)
 {
     size_t aKeySize = 0;
 
-    Error error = otPlatPsaExportKey(mMasterKeyRef, mMasterKey.m8, OT_MASTER_KEY_SIZE, &aKeySize);
+    Error error = otPlatPsaExportKey(mNetworkKeyRef, mNetworkKey.m8, OT_NETWORK_KEY_SIZE, &aKeySize);
 
     if (error != kErrorNone)
     {
-        mMasterKey.Clear();
+        mNetworkKey.Clear();
     }
 
-    return mMasterKey;
+    return mNetworkKey;
 }
 
 void KeyManager::ComputeKeys(uint32_t aKeySequence, HashKeys &aHashKeys)
@@ -349,7 +349,7 @@ void KeyManager::ComputeKeys(uint32_t aKeySequence, HashKeys &aHashKeys)
     Crypto::HmacSha256 hmac;
     uint8_t            keySequenceBytes[sizeof(uint32_t)];
 
-    hmac.Start(mMasterKeyRef);
+    hmac.Start(mNetworkKeyRef);
 
     Encoding::BigEndian::WriteUint32(aKeySequence, keySequenceBytes);
     hmac.Update(keySequenceBytes);
@@ -363,7 +363,7 @@ void KeyManager::ComputeKeys(uint32_t aKeySequence, HashKeys &aHashKeys)
     Crypto::HmacSha256 hmac;
     uint8_t            keySequenceBytes[sizeof(uint32_t)];
 
-    hmac.Start(mMasterKey.m8, sizeof(mMasterKey.m8));
+    hmac.Start(mNetworkKey.m8, sizeof(mNetworkKey.m8));
 
     Encoding::BigEndian::WriteUint32(aKeySequence, keySequenceBytes);
     hmac.Update(keySequenceBytes);
@@ -382,7 +382,7 @@ void KeyManager::ComputeTrelKey(uint32_t aKeySequence, Mac::Key &aTrelKey)
     Encoding::BigEndian::WriteUint32(aKeySequence, salt);
     memcpy(salt + sizeof(uint32_t), kHkdfExtractSaltString, sizeof(kHkdfExtractSaltString));
 
-    hkdf.Extract(salt, sizeof(salt), mMasterKey.m8, sizeof(MasterKey));
+    hkdf.Extract(salt, sizeof(salt), mNetworkKey.m8, sizeof(NetworkKey));
     hkdf.Expand(kTrelInfoString, sizeof(kTrelInfoString), aTrelKey.m8, sizeof(Mac::Key));
 }
 #endif

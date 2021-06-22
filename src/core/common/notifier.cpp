@@ -212,7 +212,6 @@ void Notifier::LogEvents(Events aEvents) const
     bool                           addSpace = false;
     bool                           didLog   = false;
     String<kFlagsStringBufferSize> string;
-    StringWriter                   writer(string);
 
     for (uint8_t bit = 0; bit < sizeof(Events::Flags) * CHAR_BIT; bit++)
     {
@@ -220,16 +219,16 @@ void Notifier::LogEvents(Events aEvents) const
 
         if (flags & (1 << bit))
         {
-            if (writer.GetLength() >= kFlagsStringLineLimit)
+            if (string.GetLength() >= kFlagsStringLineLimit)
             {
                 otLogInfoCore("Notifier: StateChanged (0x%08x) %s%s ...", aEvents.GetAsFlags(), didLog ? "... " : "[",
                               string.AsCString());
-                writer.Clear();
+                string.Clear();
                 didLog   = true;
                 addSpace = false;
             }
 
-            writer.Append("%s%s", addSpace ? " " : "", EventToString(static_cast<Event>(1 << bit)));
+            string.Append("%s%s", addSpace ? " " : "", EventToString(static_cast<Event>(1 << bit)));
             addSpace = true;
 
             flags ^= (1 << bit);
@@ -267,7 +266,7 @@ const char *Notifier::EventToString(Event aEvent) const
         "PanId",             // kEventThreadPanIdChanged               (1 << 15)
         "NetName",           // kEventThreadNetworkNameChanged         (1 << 16)
         "ExtPanId",          // kEventThreadExtPanIdChanged            (1 << 17)
-        "MstrKey",           // kEventMasterKeyChanged                 (1 << 18)
+        "NetworkKey",        // kEventNetworkKeyChanged                (1 << 18)
         "PSKc",              // kEventPskcChanged                      (1 << 19)
         "SecPolicy",         // kEventSecurityPolicyChanged            (1 << 20)
         "CMNewChan",         // kEventChannelManagerNewChannelChanged  (1 << 21)

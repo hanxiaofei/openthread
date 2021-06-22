@@ -68,6 +68,7 @@
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
 #include "common/instance.hpp"
+#include "common/type_traits.hpp"
 #include "utils/lookup_table.hpp"
 #include "utils/parse_cmdline.hpp"
 
@@ -148,19 +149,6 @@ public:
      *
      */
     void ProcessLine(char *aBuf);
-
-    /**
-     * This method delivers raw characters to the client.
-     *
-     * @param[in]  aBuf        A pointer to a buffer.
-     * @param[in]  aBufLength  Number of bytes in the buffer.
-     *
-     * @returns The number of bytes placed in the output queue.
-     *
-     * @retval  -1  Driver is broken.
-     *
-     */
-    int Output(const char *aBuf, uint16_t aBufLength);
 
     /**
      * This method writes a number of bytes to the CLI console as a hex string.
@@ -326,6 +314,105 @@ private:
         otError (Interpreter::*mHandler)(uint8_t aArgsLength, Arg aArgs[]);
     };
 
+    template <typename ValueType> using GetHandler         = ValueType (&)(otInstance *);
+    template <typename ValueType> using SetHandler         = void (&)(otInstance *, ValueType);
+    template <typename ValueType> using SetHandlerFailable = otError (&)(otInstance *, ValueType);
+
+    // Returns format string to output a `ValueType` (e.g., "%u" for `uint16_t`).
+    template <typename ValueType> static constexpr const char *FormatStringFor(void);
+
+    template <typename ValueType> otError ProcessGet(uint8_t aArgsLength, GetHandler<ValueType> aGetHandler)
+    {
+        static_assert(
+            TypeTraits::IsSame<ValueType, uint8_t>::kValue || TypeTraits::IsSame<ValueType, uint16_t>::kValue ||
+                TypeTraits::IsSame<ValueType, uint32_t>::kValue || TypeTraits::IsSame<ValueType, int8_t>::kValue ||
+                TypeTraits::IsSame<ValueType, int16_t>::kValue || TypeTraits::IsSame<ValueType, int32_t>::kValue,
+            "ValueType must be an  8, 16, or 32 bit `int` or `uint` type");
+
+        otError error = OT_ERROR_NONE;
+
+        VerifyOrExit(aArgsLength == 0, error = OT_ERROR_INVALID_ARGS);
+        OutputLine(FormatStringFor<ValueType>(), aGetHandler(mInstance));
+
+    exit:
+        return error;
+    }
+
+    template <typename ValueType> otError ParseValue(uint8_t aArgsLength, Arg aArgs[], ValueType &aValue)
+    {
+        otError error = OT_ERROR_INVALID_ARGS;
+
+        VerifyOrExit(aArgsLength == 1);
+        error = aArgs[0].ParseAs<ValueType>(aValue);
+
+    exit:
+        return error;
+    }
+
+    template <typename ValueType>
+    otError ProcessSet(uint8_t aArgsLength, Arg aArgs[], SetHandler<ValueType> aSetHandler)
+    {
+        otError   error;
+        ValueType value;
+
+        SuccessOrExit(error = ParseValue(aArgsLength, aArgs, value));
+        aSetHandler(mInstance, value);
+
+    exit:
+        return error;
+    }
+
+    template <typename ValueType>
+    otError ProcessSet(uint8_t aArgsLength, Arg aArgs[], SetHandlerFailable<ValueType> aSetHandler)
+    {
+        otError   error;
+        ValueType value;
+
+        SuccessOrExit(error = ParseValue(aArgsLength, aArgs, value));
+        error = aSetHandler(mInstance, value);
+
+    exit:
+        return error;
+    }
+
+    template <typename ValueType>
+    otError ProcessGetSet(uint8_t               aArgsLength,
+                          Arg                   aArgs[],
+                          GetHandler<ValueType> aGetHandler,
+                          SetHandler<ValueType> aSetHandler)
+    {
+        otError error = ProcessGet(aArgsLength, aGetHandler);
+
+        VerifyOrExit(error != OT_ERROR_NONE);
+        error = ProcessSet(aArgsLength, aArgs, aSetHandler);
+
+    exit:
+        return error;
+    }
+
+    template <typename ValueType>
+    otError ProcessGetSet(uint8_t                       aArgsLength,
+                          Arg                           aArgs[],
+                          GetHandler<ValueType>         aGetHandler,
+                          SetHandlerFailable<ValueType> aSetHandler)
+    {
+        otError error = ProcessGet(aArgsLength, aGetHandler);
+
+        VerifyOrExit(error != OT_ERROR_NONE);
+        error = ProcessSet(aArgsLength, aArgs, aSetHandler);
+
+    exit:
+        return error;
+    }
+
+    void OutputTableHeader(uint8_t aNumColumns, const char *const aTitles[], const uint8_t aWidths[]);
+
+    template <uint8_t kTableNumColumns>
+    void OutputTableHeader(const char *const (&aTitles)[kTableNumColumns], const uint8_t (&aWidths)[kTableNumColumns])
+    {
+        OutputTableHeader(kTableNumColumns, &aTitles[0], aWidths);
+    }
+
 #if OPENTHREAD_CONFIG_PING_SENDER_ENABLE
     otError ParsePingInterval(const Arg &aArg, uint32_t &aInterval);
 #endif
@@ -434,7 +521,6 @@ private:
     otError ProcessPartitionId(uint8_t aArgsLength, Arg aArgs[]);
     otError ProcessLeaderWeight(uint8_t aArgsLength, Arg aArgs[]);
 #endif
-    otError ProcessMasterKey(uint8_t aArgsLength, Arg aArgs[]);
 #if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
     otError ProcessMlIid(uint8_t aArgsLength, Arg aArgs[]);
 #endif
@@ -474,12 +560,8 @@ private:
     otError ProcessNetworkDataRoute(void);
     otError ProcessNetworkDataService(void);
     void    OutputPrefix(const otMeshLocalPrefix &aPrefix);
-    void    OutputPrefix(const otBorderRouterConfig &aConfig);
-    void    OutputRoute(const otExternalRouteConfig &aConfig);
-    void    OutputService(const otServiceConfig &aConfig);
 
     otError ProcessNetstat(uint8_t aArgsLength, Arg aArgs[]);
-    int     OutputSocketAddress(const otSockAddr &aAddress);
 #if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     otError ProcessService(uint8_t aArgsLength, Arg aArgs[]);
     otError ProcessServiceList(void);
@@ -490,6 +572,7 @@ private:
 #if OPENTHREAD_FTD
     otError ProcessNetworkIdTimeout(uint8_t aArgsLength, Arg aArgs[]);
 #endif
+    otError ProcessNetworkKey(uint8_t aArgsLength, Arg aArgs[]);
     otError ProcessNetworkName(uint8_t aArgsLength, Arg aArgs[]);
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
     otError ProcessNetworkTime(uint8_t aArgsLength, Arg aArgs[]);
@@ -565,6 +648,7 @@ private:
     static void HandlePingReply(const otPingSenderReply *aReply, void *aContext);
     static void HandlePingStatistics(const otPingSenderStatistics *aStatistics, void *aContext);
 #endif
+    void        OutputScanTableHeader(void);
     static void HandleActiveScanResult(otActiveScanResult *aResult, void *aContext);
     static void HandleEnergyScanResult(otEnergyScanResult *aResult, void *aContext);
     static void HandleLinkPcapReceive(const otRadioFrame *aFrame, bool aIsTx, void *aContext);
@@ -738,7 +822,6 @@ private:
 #if OPENTHREAD_CONFIG_MAC_FILTER_ENABLE
         {"macfilter", &Interpreter::ProcessMacFilter},
 #endif
-        {"masterkey", &Interpreter::ProcessMasterKey},
 #if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
         {"mliid", &Interpreter::ProcessMlIid},
 #endif
@@ -758,6 +841,7 @@ private:
 #if OPENTHREAD_FTD
         {"networkidtimeout", &Interpreter::ProcessNetworkIdTimeout},
 #endif
+        {"networkkey", &Interpreter::ProcessNetworkKey},
         {"networkname", &Interpreter::ProcessNetworkName},
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
         {"networktime", &Interpreter::ProcessNetworkTime},
@@ -858,6 +942,38 @@ private:
     SrpServer mSrpServer;
 #endif
 };
+
+// Specializations of `FormatStringFor<ValueType>()`
+
+template <> inline constexpr const char *Interpreter::FormatStringFor<uint8_t>(void)
+{
+    return "%u";
+}
+
+template <> inline constexpr const char *Interpreter::FormatStringFor<uint16_t>(void)
+{
+    return "%u";
+}
+
+template <> inline constexpr const char *Interpreter::FormatStringFor<uint32_t>(void)
+{
+    return "%u";
+}
+
+template <> inline constexpr const char *Interpreter::FormatStringFor<int8_t>(void)
+{
+    return "%d";
+}
+
+template <> inline constexpr const char *Interpreter::FormatStringFor<int16_t>(void)
+{
+    return "%d";
+}
+
+template <> inline constexpr const char *Interpreter::FormatStringFor<int32_t>(void)
+{
+    return "%d";
+}
 
 } // namespace Cli
 } // namespace ot

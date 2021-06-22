@@ -632,15 +632,15 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::ThreadDatasetHandler(con
 
         switch (static_cast<spinel_prop_key_t>(propKey))
         {
-        case SPINEL_PROP_NET_MASTER_KEY:
+        case SPINEL_PROP_NET_NETWORK_KEY:
         {
             const uint8_t *key;
             uint16_t       len;
 
             SuccessOrExit(error = decoder.ReadData(key, len));
-            VerifyOrExit(len == OT_MASTER_KEY_SIZE, error = OT_ERROR_INVALID_ARGS);
-            memcpy(opDataset.mMasterKey.m8, key, len);
-            opDataset.mComponents.mIsMasterKeyPresent = true;
+            VerifyOrExit(len == OT_NETWORK_KEY_SIZE, error = OT_ERROR_INVALID_ARGS);
+            memcpy(opDataset.mNetworkKey.m8, key, len);
+            opDataset.mComponents.mIsNetworkKeyPresent = true;
             break;
         }
 
@@ -2359,7 +2359,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::RestoreProperties(void)
 
     if (mInstance != nullptr)
     {
-        SuccessOrDie(static_cast<Instance *>(mInstance)->template Get<Settings>().ReadNetworkInfo(networkInfo));
+        SuccessOrDie(static_cast<Instance *>(mInstance)->template Get<Settings>().Read(networkInfo));
         SuccessOrDie(
             Set(SPINEL_PROP_RCP_MAC_FRAME_COUNTER, SPINEL_DATATYPE_UINT32_S, networkInfo.GetMacFrameCounter()));
     }

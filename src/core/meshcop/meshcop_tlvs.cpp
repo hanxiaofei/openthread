@@ -62,8 +62,8 @@ bool Tlv::IsValid(const Tlv &aTlv)
         rval = static_cast<const NetworkNameTlv &>(aTlv).IsValid();
         break;
 
-    case Tlv::kNetworkMasterKey:
-        rval = static_cast<const NetworkMasterKeyTlv &>(aTlv).IsValid();
+    case Tlv::kNetworkKey:
+        rval = static_cast<const NetworkKeyTlv &>(aTlv).IsValid();
         break;
 
     case Tlv::kPskc:
@@ -173,6 +173,7 @@ bool ChannelTlv::IsValid(void) const
     bool ret = false;
 
     VerifyOrExit(GetLength() == sizeof(*this) - sizeof(Tlv));
+    VerifyOrExit(mChannelPage < sizeof(uint32_t) * CHAR_BIT);
     VerifyOrExit((1U << mChannelPage) & Radio::kSupportedChannelPages);
     VerifyOrExit(Radio::kChannelMin <= GetChannel() && GetChannel() <= Radio::kChannelMax);
     ret = true;

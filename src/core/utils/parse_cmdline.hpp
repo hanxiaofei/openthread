@@ -54,16 +54,6 @@ namespace CmdLineParser {
  */
 
 /**
- * This enumeration type represents the parse mode value used as a parameter in `ParseAsHexString()`.
- *
- */
-enum HexStringParseMode : uint8_t
-{
-    kDisallowTruncate, // Disallow truncation of hex string.
-    kAllowTruncate,    // Allow truncation of hex string.
-};
-
-/**
  * This function parses a string as a `uint8_t` value.
  *
  * The number in string is parsed as decimal or hex format (if contains `0x` or `0X` prefix).
@@ -217,6 +207,9 @@ otError ParseAsIp6Prefix(const char *aString, otIp6Prefix &aPrefix);
  * there are fewer or more bytes in hex string that @p aSize, the parsed bytes (up to @p aSize) are copied into the
  * `aBuffer` and `kErrorInvalidArgs` is returned.
  *
+ * This function correctly handles hex strings with even or odd length. For example, "AABBCCDD" (with even length) is
+ * parsed as {0xaa, 0xbb, 0xcc, 0xdd} and "123" (with odd length) is parsed as {0x01, 0x23}.
+ *
  * @param[in]  aString   The string to parse.
  * @param[out] aBuffer   A pointer to a buffer to output the parsed byte sequence.
  * @param[in]  aSize     The expected size of byte sequence (number of bytes after parsing).
@@ -233,6 +226,9 @@ otError ParseAsHexString(const char *aString, uint8_t *aBuffer, uint16_t aSize);
  * This function returns `kErrorNone` only when the hex string contains exactly @p kBufferSize bytes (after parsing).
  * If there are fewer or more bytes in hex string that @p kBufferSize, the parsed bytes (up to @p kBufferSize) are
  * copied into the `aBuffer` and `kErrorInvalidArgs` is returned.
+ *
+ * This function correctly handles hex strings with even or odd length. For example, "AABBCCDD" (with even length) is
+ * parsed as {0xaa, 0xbb, 0xcc, 0xdd} and "123" (with odd length) is parsed as {0x01, 0x23}.
  *
  * @tparam kBufferSize   The byte array size (number of bytes).
  *
@@ -251,24 +247,45 @@ template <uint16_t kBufferSize> static otError ParseAsHexString(const char *aStr
 /**
  * This function parses a hex string into a byte array.
  *
- * If @p aMode disallows truncation (`kDisallowTruncate`), this function verifies that parses hex string bytes fit in
- * @p aBuffer with its given size in @aSize. Otherwise when @p aMode allows truncation, extra bytes after @p aSize bytes
- * are ignored.
+ * This function verifies that the parsed hex string bytes fit in @p aBuffer with its given @p aSize.
+ *
+ * This function correctly handles hex strings with even or odd length. For example, "AABBCCDD" (with even length) is
+ * parsed as {0xaa, 0xbb, 0xcc, 0xdd} and "123" (with odd length) is parsed as {0x01, 0x23}.
  *
  * @param[in]     aString   The string to parse.
  * @param[inout]  aSize     On entry indicates the number of bytes in @p aBuffer (max size of @p aBuffer).
- *                          On exit provides number of bytes parsed and copied into @p aBuffer
+ *                          On exit provides number of bytes parsed and copied into @p aBuffer.
  * @param[out]    aBuffer   A pointer to a buffer to output the parsed byte sequence.
- * @param[in]     aMode     Indicates parsing mode whether to allow truncation or not.
  *
  * @retval kErrorNone        The string was parsed successfully.
- * @retval kErrorInvalidArgs The string does not contain valid format or too many bytes (if truncation not allowed)
+ * @retval kErrorInvalidArgs The string does not contain valid format or too many bytes.
  *
  */
-otError ParseAsHexString(const char *       aString,
-                         uint16_t &         aSize,
-                         uint8_t *          aBuffer,
-                         HexStringParseMode aMode = kDisallowTruncate);
+otError ParseAsHexString(const char *aString, uint16_t &aSize, uint8_t *aBuffer);
+
+/**
+ * This function parses a segment of a hex string up to a given size.
+ *
+ * This function allows a longer hex string to be parsed and read in smaller segments into a given buffer. If the
+ * entire hex string bytes can fit in the given @p aBuffer with its @p aSize, they are copied into @p aBuffer and
+ * function returns `kErrorNone`. Otherwise, @p aSize bytes are read and copied and function returns `kErrorPending`
+ * to indicate that there are more bytes to parse. The @p aString is also updated to skip over the parsed segment.
+ *
+ * This function correctly handles hex strings with even or odd length. For example, "AABBCCDD" (with even length) is
+ * parsed as {0xaa, 0xbb, 0xcc, 0xdd} and "123" (with odd length) is parsed as {0x01, 0x23}.
+ *
+ * @param[inout] aString     A reference to string to parse. On successful parse, updated to skip parsed digits.
+ * @param[inout] aSize       On entry indicates the segment size (number of bytes in @p aBuffer).
+ *                           On exit provides number of bytes parsed and copied into @p aBuffer.
+ * @param[out]   aBuffer     A pointer to a buffer to output the parsed byte sequence.
+ *
+ * @retval kErrorNone        The string was parsed successfully to the end of string.
+ * @retval kErrorPedning     The string segment was parsed successfully, but there are additional bytes remaining
+ *                           to be parsed.
+ * @retval kErrorInvalidArgs The string does not contain valid format hex digits.
+ *
+ */
+otError ParseAsHexStringSegment(const char *&aString, uint16_t &aSize, uint8_t *aBuffer);
 
 /**
  * This class represents a single argument from an argument list.
@@ -469,6 +486,19 @@ public:
 #endif // OPENTHREAD_FTD || OPENTHREAD_MTD
 
     /**
+     * This template method parses the argument as a specified value type.
+     *
+     * @tparam Type               The value type.
+     *
+     * @param[out] aValue         A reference to output the parsed value.
+     *
+     * @retval kErrorNone         The argument was parsed successfully.
+     * @retval kErrorInvalidArgs  The argument does not contain a valid value.
+     *
+     */
+    template <typename Type> otError ParseAs(Type &aValue) const;
+
+    /**
      * This method parses the argument as a hex string into a byte array of fixed expected size.
      *
      * This method returns `kErrorNone` only when the hex string contains exactly @p aSize bytes (after parsing). If
@@ -510,23 +540,19 @@ public:
     /**
      * This method parses the argument as a hex string into a byte array.
      *
-     * If @p aMode disallows truncation (`kDisallowTruncate`), this method verifies that parses hex string bytes fit in
-     * @p aBuffer with its given size in @aSize. Otherwise when @p aMode allows truncation, extra bytes after @p aSize
-     * bytes are ignored.
+     * This method verifies that the parsed hex string bytes fit in @p aBuffer with its given @p aSize.
      *
      * @param[inout]  aSize     On entry indicates the number of bytes in @p aBuffer (max size of @p aBuffer).
-     *                          On exit provides number of bytes parsed and copied into @p aBuffer
+     *                          On exit provides number of bytes parsed and copied into @p aBuffer.
      * @param[out]    aBuffer   A pointer to a buffer to output the parsed byte sequence.
-     * @param[in]     aMode     Indicates parsing mode whether to allow truncation or not.
      *
      * @retval kErrorNone        The argument was parsed successfully.
-     * @retval kErrorInvalidArgs The argument does not contain valid format or too many bytes (if truncation not
-     *                           allowed)
+     * @retval kErrorInvalidArgs The argument does not contain valid format or too many bytes.
      *
      */
-    otError ParseAsHexString(uint16_t &aSize, uint8_t *aBuffer, HexStringParseMode aMode = kDisallowTruncate)
+    otError ParseAsHexString(uint16_t &aSize, uint8_t *aBuffer)
     {
-        return CmdLineParser::ParseAsHexString(mString, aSize, aBuffer, aMode);
+        return CmdLineParser::ParseAsHexString(mString, aSize, aBuffer);
     }
 
     /**
@@ -561,6 +587,63 @@ private:
  *
  */
 otError ParseCmd(char *aCommandString, uint8_t &aArgsLength, Arg aArgs[], uint8_t aArgsLengthMax);
+
+//- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// Specializations of `Arg::ParseAs<Type>()` method.
+
+template <> inline otError Arg::ParseAs(uint8_t &aValue) const
+{
+    return ParseAsUint8(aValue);
+}
+
+template <> inline otError Arg::ParseAs(uint16_t &aValue) const
+{
+    return ParseAsUint16(aValue);
+}
+
+template <> inline otError Arg::ParseAs(uint32_t &aValue) const
+{
+    return ParseAsUint32(aValue);
+}
+
+template <> inline otError Arg::ParseAs(uint64_t &aValue) const
+{
+    return ParseAsUint64(aValue);
+}
+
+template <> inline otError Arg::ParseAs(bool &aValue) const
+{
+    return ParseAsBool(aValue);
+}
+
+template <> inline otError Arg::ParseAs(int8_t &aValue) const
+{
+    return ParseAsInt8(aValue);
+}
+
+template <> inline otError Arg::ParseAs(int16_t &aValue) const
+{
+    return ParseAsInt16(aValue);
+}
+
+template <> inline otError Arg::ParseAs(int32_t &aValue) const
+{
+    return ParseAsInt32(aValue);
+}
+
+#if OPENTHREAD_FTD || OPENTHREAD_MTD
+
+template <> inline otError Arg::ParseAs(otIp6Address &aValue) const
+{
+    return ParseAsIp6Address(aValue);
+}
+
+template <> inline otError Arg::ParseAs(otIp6Prefix &aValue) const
+{
+    return ParseAsIp6Prefix(aValue);
+}
+
+#endif
 
 /**
  * @}

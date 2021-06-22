@@ -79,6 +79,17 @@ uint16_t StringLength(const char *aString, uint16_t aMaxLength);
 const char *StringFind(const char *aString, char aChar);
 
 /**
+ * This function finds the first occurrence of a given sub-string in a null-terminated string.
+ *
+ * @param[in] aString     A pointer to the string.
+ * @param[in] aSubString  A sub-string to search for.
+ *
+ * @returns The pointer to first occurrence of the @p aSubString in @p aString, or nullptr if cannot be found.
+ *
+ */
+const char *StringFind(const char *aString, const char *aSubString);
+
+/**
  * This function checks whether a null-terminated string ends with a given character.
  *
  * @param[in] aString  A pointer to the string.
@@ -90,36 +101,17 @@ const char *StringFind(const char *aString, char aChar);
  */
 bool StringEndsWith(const char *aString, char aChar);
 
-class StringWriter;
-
 /**
- * This class defines a fixed-size string.
+ * This function checks whether a null-terminated string ends with a given sub-string.
+ *
+ * @param[in] aString      A pointer to the string.
+ * @param[in] aSubString   A sun-string to check against.
+ *
+ * @retval TRUE   If @p aString ends with sub-string @p aSubString.
+ * @retval FALSE  If @p aString does not end with sub-string @p aSubString.
  *
  */
-template <uint16_t kSize> class String
-{
-    friend class StringWriter;
-
-    static_assert(kSize > 0, "String buffer cannot be empty.");
-
-public:
-    /**
-     * This method clears the string (sets it to empty).
-     *
-     */
-    void Clear(void) { mBuffer[0] = '\0'; }
-
-    /**
-     * This method returns the string as a null-terminated C string.
-     *
-     * @returns The null-terminated C string.
-     *
-     */
-    const char *AsCString(void) const { return mBuffer; }
-
-private:
-    char mBuffer[kSize];
-};
+bool StringEndsWith(const char *aString, const char *aSubString);
 
 /**
  * This class implements writing to a string buffer.
@@ -131,18 +123,11 @@ public:
     /**
      * This constructor initializes the object as cleared on the provided buffer.
      *
-     */
-    StringWriter(char *aBuffer, uint16_t aSize);
-
-    /**
-     * This constructor initializes the object as cleared on a fixed-size string.
+     * @param[in] aBuffer  A pointer to the char buffer to write into.
+     * @param[in] aSize    The size of @p aBuffer.
      *
      */
-    template <uint16_t kSize>
-    explicit StringWriter(String<kSize> &aStringBuffer)
-        : StringWriter(aStringBuffer.mBuffer, kSize)
-    {
-    }
+    StringWriter(char *aBuffer, uint16_t aSize);
 
     /**
      * This method clears the string writer.
@@ -218,6 +203,36 @@ private:
     char *         mBuffer;
     uint16_t       mLength;
     const uint16_t mSize;
+};
+
+/**
+ * This class defines a fixed-size string.
+ *
+ */
+template <uint16_t kSize> class String : public StringWriter
+{
+    static_assert(kSize > 0, "String buffer cannot be empty.");
+
+public:
+    /**
+     * This constructor initializes the string as empty.
+     *
+     */
+    String(void)
+        : StringWriter(mBuffer, sizeof(mBuffer))
+    {
+    }
+
+    /**
+     * This method returns the string as a null-terminated C string.
+     *
+     * @returns The null-terminated C string.
+     *
+     */
+    const char *AsCString(void) const { return mBuffer; }
+
+private:
+    char mBuffer[kSize];
 };
 
 /**

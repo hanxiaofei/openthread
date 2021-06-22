@@ -112,14 +112,14 @@ private:
     enum : uint8_t
     {
         kDefaultFlags                   = 0xff,
-        kObtainMasterKeyMask            = 1 << 7,
+        kObtainNetworkKeyMask           = 1 << 7,
         kNativeCommissioningMask        = 1 << 6,
         kRoutersMask                    = 1 << 5,
         kExternalCommissioningMask      = 1 << 4,
         kBeaconsMask                    = 1 << 3,
         kCommercialCommissioningMask    = 1 << 2,
         kAutonomousEnrollmentMask       = 1 << 1,
-        kMasterKeyProvisioningMask      = 1 << 0,
+        kNetworkKeyProvisioningMask     = 1 << 0,
         kTobleLinkMask                  = 1 << 7,
         kNonCcmRoutersMask              = 1 << 6,
         kReservedMask                   = 0x38,
@@ -130,12 +130,12 @@ private:
 };
 
 /**
- * This class represents a Thread Master Key.
+ * This class represents a Thread Network Key.
  *
  */
 OT_TOOL_PACKED_BEGIN
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
-class MasterKey : public otMasterKey, public Equatable<MasterKey>, public Clearable<MasterKey>
+class NetworkKey : public otNetworkKey, public Equatable<NetworkKey>, public Clearable<NetworkKey>
 {
 public:
 #if !OPENTHREAD_RADIO
@@ -150,7 +150,7 @@ public:
 #endif
 } OT_TOOL_PACKED_END;
 #else
-class MasterKey : public otMasterKey, public Equatable<MasterKey>
+class NetworkKey : public otNetworkKey, public Equatable<NetworkKey>
 {
 public:
 #if !OPENTHREAD_RADIO
@@ -236,7 +236,7 @@ public:
      * @returns The Thread Master Key.
      *
      */
-    MasterKey &GetMasterKey(void);
+    NetworkKey &GetNetworkKey(void);
 #else
     /**
      * This method returns the Thread Master Key.
@@ -244,7 +244,7 @@ public:
      * @returns The Thread Master Key.
      *
      */
-    const MasterKey &GetMasterKey(void) const { return mMasterKey; }
+    const NetworkKey &GetNetworkKey(void) const { return mNetworkKey; }
 #endif
 
     /**
@@ -256,7 +256,7 @@ public:
      * @retval kErrorInvalidArgs  The @p aKeyLength value was invalid.
      *
      */
-    Error SetMasterKey(const MasterKey &aKey);
+    Error SetNetworkKey(const NetworkKey &aKey);
 
 #if OPENTHREAD_FTD || OPENTHREAD_MTD
     /**
@@ -573,7 +573,7 @@ private:
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
     enum
     {
-        kMasterKeyPsaItsOffset     = OPENTHREAD_CONFIG_PSA_ITS_NVM_OFFSET + 1,
+        kNetworkKeyPsaItsOffset     = OPENTHREAD_CONFIG_PSA_ITS_NVM_OFFSET + 1,
         kPkscPsaItsOffset          = OPENTHREAD_CONFIG_PSA_ITS_NVM_OFFSET + 2
     };
 #endif
@@ -600,7 +600,7 @@ private:
     void        StartKeyRotationTimer(void);
     static void HandleKeyRotationTimer(Timer &aTimer);
     void        HandleKeyRotationTimer(void);
-    Error       StoreMasterKey(bool aOverWriteExisting);
+    Error       StoreNetworkKey(bool aOverWriteExisting);
 
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
     Error ImportKek(const uint8_t *aKey, uint8_t aKeyLen);
@@ -614,7 +614,7 @@ private:
     static const uint8_t kTrelInfoString[];
 #endif
 
-    MasterKey mMasterKey;
+    NetworkKey mNetworkKey;
 
     uint32_t mKeySequence;
 #if !OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
@@ -647,7 +647,7 @@ private:
     bool           mIsPskcSet : 1;
 
 #if OPENTHREAD_CONFIG_PSA_CRYPTO_ENABLE
-    KeyRef mMasterKeyRef;
+    KeyRef mNetworkKeyRef;
     KeyRef mMleKeyRef;
     KeyRef mTemporaryMleKeyRef;
     KeyRef mKekRef;

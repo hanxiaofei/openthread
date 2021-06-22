@@ -2218,11 +2218,11 @@ enum
      */
     SPINEL_PROP_NET_XPANID = SPINEL_PROP_NET__BEGIN + 5,
 
-    /// Thread Network Master Key
+    /// Thread Network Key
     /** Format `D` - Read-write
      *
      */
-    SPINEL_PROP_NET_MASTER_KEY = SPINEL_PROP_NET__BEGIN + 6,
+    SPINEL_PROP_NET_NETWORK_KEY = SPINEL_PROP_NET__BEGIN + 6,
 
     /// Thread Network Key Sequence Counter
     /** Format `L` - Read-write
@@ -2676,7 +2676,7 @@ enum
      * Operational Dataset that it has stored locally and the one currently in use by the partition to which it is
      * attached. This property corresponds to the locally stored Dataset on the device.
      *
-     * Operational Dataset consists of a set of supported properties (e.g., channel, master key, network name, PAN id,
+     * Operational Dataset consists of a set of supported properties (e.g., channel, network key, network name, PAN id,
      * etc). Note that not all supported properties may be present (have a value) in a Dataset.
      *
      * The Dataset value is encoded as an array of structs containing pairs of property key (as `i`) followed by the
@@ -2689,7 +2689,7 @@ enum
      *   SPINEL_PROP_DATASET_ACTIVE_TIMESTAMP
      *   SPINEL_PROP_PHY_CHAN
      *   SPINEL_PROP_PHY_CHAN_SUPPORTED (Channel Mask Page 0)
-     *   SPINEL_PROP_NET_MASTER_KEY
+     *   SPINEL_PROP_NET_NETWORK_KEY
      *   SPINEL_PROP_NET_NETWORK_NAME
      *   SPINEL_PROP_NET_XPANID
      *   SPINEL_PROP_MAC_15_4_PANID
@@ -2954,7 +2954,7 @@ enum
      * This property allows host to request NCP to create and return a new Operation Dataset to use when forming a new
      * network.
      *
-     * Operational Dataset consists of a set of supported properties (e.g., channel, master key, network name, PAN id,
+     * Operational Dataset consists of a set of supported properties (e.g., channel, network key, network name, PAN id,
      * etc). Note that not all supported properties may be present (have a value) in a Dataset.
      *
      * The Dataset value is encoded as an array of structs containing pairs of property key (as `i`) followed by the
@@ -2965,7 +2965,7 @@ enum
      *   SPINEL_PROP_DATASET_ACTIVE_TIMESTAMP
      *   SPINEL_PROP_PHY_CHAN
      *   SPINEL_PROP_PHY_CHAN_SUPPORTED (Channel Mask Page 0)
-     *   SPINEL_PROP_NET_MASTER_KEY
+     *   SPINEL_PROP_NET_NETWORK_KEY
      *   SPINEL_PROP_NET_NETWORK_NAME
      *   SPINEL_PROP_NET_XPANID
      *   SPINEL_PROP_MAC_15_4_PANID
@@ -4113,7 +4113,9 @@ enum
     /** Format: `A(t(UUSSSd))` - Read/Insert/Remove
      * Required capability: `SPINEL_CAP_SRP_CLIENT`.
      *
-     * This property provide a list/array of services. Data per item is
+     * This property provides a list/array of services.
+     *
+     * Data per item for `SPINEL_CMD_PROP_VALUE_GET` and/or `SPINEL_CMD_PROP_VALUE_INSERT` operation is as follows:
      *
      *   `U` : The service name labels (e.g., "_chip._udp", not the full domain name.
      *   `U` : The service instance name label (not the full name).
@@ -4121,7 +4123,15 @@ enum
      *   `S` : The service priority.
      *   `S` : The service weight.
      *
-     * During remove operation, only service name and service instance name would be used.
+     * For `SPINEL_CMD_PROP_VALUE_REMOVE` command, the following format is used:
+     *
+     *   `U` : The service name labels (e.g., "_chip._udp", not the full domain name.
+     *   `U` : The service instance name label (not the full name).
+     *   `b` : Indicates whether to clear the service entry (optional).
+     *
+     * The last boolean (`b`) field is optional. When included it indicates on `true` to clear the service (clear it
+     * on client immediately with no interaction to server) and on `false` to remove the service (inform server and
+     * wait for the service entry to be removed on server). If it is not included, the value is `false`.
      *
      */
     SPINEL_PROP_SRP_CLIENT_SERVICES = SPINEL_PROP_OPENTHREAD__BEGIN + 23,
@@ -4130,12 +4140,12 @@ enum
     /** Format: `b` : Write only
      * Required capability: `SPINEL_CAP_SRP_CLIENT`.
      *
-     * Writing to this property starts the remove process of the host info and all services.
+     * Writing to this property with starts the remove process of the host info and all services.
      * Please see `otSrpClientRemoveHostAndServices()` for more details.
      *
      * Format is:
      *
-     *    `b` : A boolean indicating whether or not the host key lease should also be removed.
+     *    `b` : A boolean indicating whether or not the host key lease should also be cleared.
      *
      */
     SPINEL_PROP_SRP_CLIENT_HOST_SERVICES_REMOVE = SPINEL_PROP_OPENTHREAD__BEGIN + 24,
