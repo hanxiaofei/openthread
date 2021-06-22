@@ -56,7 +56,7 @@
 #endif
 
 /**
- * @def OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE
+ * @def OPENTHREAD_CONFIG_COPROCESSOR_RPC_COMMAND_CACHE_BUFFER_SIZE
  *
  * Define OpenThread Co-processor Remote Procedure Call output buffer size in bytes
  *
