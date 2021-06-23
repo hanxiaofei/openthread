@@ -79,9 +79,6 @@
 #endif
 
 #if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_OUTPUT_BUFFER_SIZE > OPENTHREAD_CONFIG_CLI_UART_TX_BUFFER_SIZE
-#error "Co-processor remote procedure call output buffer should be smaller than CLI UART tx buffer"
-#endif
 #if OPENTHREAD_CONFIG_COPROCESSOR_RPC_CMD_LINE_BUFFER_SIZE > OPENTHREAD_CONFIG_CLI_UART_RX_BUFFER_SIZE
 #error "Co-processor remote procedure call command line should be smaller than CLI UART rx buffer"
 #endif
