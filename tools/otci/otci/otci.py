@@ -29,7 +29,6 @@
 import ipaddress
 import logging
 import re
-import time
 from collections import Counter
 from typing import List, Collection, Union, Tuple, Optional, Dict, Pattern, Any
 
@@ -76,9 +75,11 @@ class OTCI(object):
 
             while duration > 0:
                 output = self.__otcmd.wait(1)
-                if match_line(expect_line, output):
+                if any(match_line(line, expect_line) for line in output):
                     success = True
                     break
+
+                duration -= 1
 
             if not success:
                 raise ExpectLineTimeoutError(expect_line)
@@ -105,7 +106,6 @@ class OTCI(object):
                 self.__logger and self.__logger.info('%s', line)
 
         if cmd in ('reset', 'factoryreset'):
-            self.__wait_reset()
             return output
 
         if output[-1] == 'Done':
@@ -918,6 +918,8 @@ class OTCI(object):
 
                     v = v[1:-1]
                     info['addresses'] = list(map(Ip6Addr, v.split(', ')))
+                elif k == 'subtypes':
+                    info[k] = list() if v == '(null)' else list(v.split(','))
                 elif k in ('port', 'weight', 'priority'):
                     info[k] = int(v)
                 elif k in ('host',):
@@ -1497,7 +1499,6 @@ class OTCI(object):
 
         netdata['prefixes'] = self.__parse_prefixes(prefixes_output)
 
-        print(prefixes_output, output)
         routes_output = []
         while True:
             line = output.pop(0)
@@ -1559,7 +1560,6 @@ class OTCI(object):
         routes = []
         for line in output:
             line = line.split()
-            print(line)
             if line[1] == 's':
                 prefix, _, prf, rloc16 = line
                 stable = True
@@ -2337,12 +2337,6 @@ class OTCI(object):
             s = s.replace(char, '\\%s' % char)
         return s
 
-    def __wait_reset(self):
-        # reset would restart the otbr-agent executable. It's risky to send commands after reset too quickly because
-        # it might cause ot-ctl to quit abnormally.
-        # So we sleep for a while after reset.
-        time.sleep(3)
-
     def __txt_to_hex(self, txt: Dict[str, Union[str, bytes, bool]]) -> str:
         txt_bin = b''
         for k, v in txt.items():
@@ -2382,8 +2376,8 @@ def connect_ncp_sim(executable: str, nodeid: int, simulator: Optional[Simulator]
     return OTCI(cmd_handler)
 
 
-def connect_otbr_ssh(host: str, port: int = 22, username='pi', password='raspberry'):
-    cmd_handler = OtbrSshCommandRunner(host, port, username, password)
+def connect_otbr_ssh(host: str, port: int = 22, username='pi', password='raspberry', sudo=True):
+    cmd_handler = OtbrSshCommandRunner(host, port, username, password, sudo=sudo)
     return OTCI(cmd_handler)
 
 
