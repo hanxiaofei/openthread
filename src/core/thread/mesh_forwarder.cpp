@@ -45,7 +45,7 @@
 #include "net/ip6.hpp"
 #include "net/ip6_filter.hpp"
 #include "net/netif.hpp"
-#include "net/tcp.hpp"
+#include "net/tcp6.hpp"
 #include "net/udp6.hpp"
 #include "radio/radio.hpp"
 #include "thread/mle.hpp"
@@ -1300,7 +1300,7 @@ void MeshForwarder::HandleFragment(const uint8_t *       aFrame,
         message->WriteBytes(message->GetOffset(), aFrame, aFrameLength);
         message->MoveOffset(aFrameLength);
         message->AddRss(aLinkInfo.GetRss());
-#if OPENTHREAD_CONFIG_MLE_LINK_METRICS_ENABLE
+#if OPENTHREAD_CONFIG_MLE_LINK_METRICS_SUBJECT_ENABLE
         message->AddLqi(aLinkInfo.GetLqi());
 #endif
         message->SetTimeout(kReassemblyTimeout);
@@ -1629,7 +1629,7 @@ uint16_t MeshForwarder::CalcFrameVersion(const Neighbor *aNeighbor, bool aIePres
         version = Mac::Frame::kFcfFrameVersion2015;
     }
 #endif
-#if OPENTHREAD_CONFIG_MLE_LINK_METRICS_ENABLE
+#if OPENTHREAD_CONFIG_MLE_LINK_METRICS_INITIATOR_ENABLE
     else if (aNeighbor != nullptr && aNeighbor->IsEnhAckProbingActive())
     {
         version = Mac::Frame::kFcfFrameVersion2015; ///< Set version to 2015 to fetch Link Metrics data in Enh-ACK.

@@ -202,6 +202,7 @@ LOCAL_SRC_FILES                                                  := \
     src/core/api/srp_client_buffers_api.cpp                         \
     src/core/api/srp_server_api.cpp                                 \
     src/core/api/tasklet_api.cpp                                    \
+    src/core/api/tcp_api.cpp                                        \
     src/core/api/thread_api.cpp                                     \
     src/core/api/thread_ftd_api.cpp                                 \
     src/core/api/udp_api.cpp                                        \
@@ -289,6 +290,7 @@ LOCAL_SRC_FILES                                                  := \
     src/core/net/socket.cpp                                         \
     src/core/net/srp_client.cpp                                     \
     src/core/net/srp_server.cpp                                     \
+    src/core/net/tcp6.cpp                                           \
     src/core/net/udp6.cpp                                           \
     src/core/radio/radio.cpp                                        \
     src/core/radio/radio_callbacks.cpp                              \

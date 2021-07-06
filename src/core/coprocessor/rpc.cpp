@@ -131,7 +131,7 @@ void RPC::Initialize(Instance &aInstance)
                                     RPC::sRPC->mCachedCommandsBuffer, sizeof(RPC::sRPC->mCachedCommandsBuffer)));
 
     // Parse response string into mCachedCommands to make it iterable
-    SuccessOrExit(Utils::CmdLineParser::ParseCmd(RPC::sRPC->mCachedCommandsBuffer, RPC::sRPC->mCachedCommandsLength,
+    SuccessOrExit(Utils::CmdLineParser::ParseCmd(RPC::sRPC->mCachedCommandsBuffer,
                                                  RPC::sRPC->mCachedCommands,
                                                  OT_ARRAY_LENGTH(RPC::sRPC->mCachedCommands)));
 #endif
@@ -180,8 +180,8 @@ Error RPC::ParseCmd(char *aString, uint8_t &aArgsLength, char *aArgs[])
     Error                     error;
     Utils::CmdLineParser::Arg args[kMaxArgs];
 
-    SuccessOrExit(error = Utils::CmdLineParser::ParseCmd(aString, aArgsLength, args, aArgsLength));
-    Utils::CmdLineParser::Arg::CopyArgsToStringArray(args, aArgsLength, aArgs);
+    SuccessOrExit(error = Utils::CmdLineParser::ParseCmd(aString, args, aArgsLength));
+    Utils::CmdLineParser::Arg::CopyArgsToStringArray(args, aArgs);
 
 exit:
     return error;
