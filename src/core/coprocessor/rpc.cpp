@@ -131,7 +131,7 @@ void RPC::Initialize(Instance &aInstance)
                                     RPC::sRPC->mCachedCommandsBuffer, sizeof(RPC::sRPC->mCachedCommandsBuffer)));
 
     // Parse response string into mCachedCommands to make it iterable
-    SuccessOrExit(Utils::CmdLineParser::ParseCmd(RPC::sRPC->mCachedCommandsBuffer, RPC::sRPC->mCachedCommandsLength,
+    SuccessOrExit(Utils::CmdLineParser::ParseCmd(RPC::sRPC->mCachedCommandsBuffer,
                                                  RPC::sRPC->mCachedCommands,
                                                  OT_ARRAY_LENGTH(RPC::sRPC->mCachedCommands)));
 #endif
