@@ -180,8 +180,8 @@ Error RPC::ParseCmd(char *aString, uint8_t &aArgsLength, char *aArgs[])
     Error                     error;
     Utils::CmdLineParser::Arg args[kMaxArgs];
 
-    SuccessOrExit(error = Utils::CmdLineParser::ParseCmd(aString, aArgsLength, args, aArgsLength));
-    Utils::CmdLineParser::Arg::CopyArgsToStringArray(args, aArgsLength, aArgs);
+    SuccessOrExit(error = Utils::CmdLineParser::ParseCmd(aString, args, aArgsLength));
+    Utils::CmdLineParser::Arg::CopyArgsToStringArray(args, aArgs);
 
 exit:
     return error;
