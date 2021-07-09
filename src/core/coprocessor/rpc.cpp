@@ -248,7 +248,7 @@ Error RPC::HandleCommand(void *        aContext,
                          uint8_t       aCommandsLength,
                          const Command aCommands[])
 {
-    return otCRPCHandleCommand(aContext, aArgsLength, aArgs[], aCommandsLength, aCommands);
+    return otCRPCHandleCommand(aContext, aArgsLength, aArgs, aCommandsLength, aCommands);
 }
 
 #if OPENTHREAD_COPROCESSOR
