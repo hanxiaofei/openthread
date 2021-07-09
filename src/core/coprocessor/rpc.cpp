@@ -248,23 +248,7 @@ Error RPC::HandleCommand(void *        aContext,
                          uint8_t       aCommandsLength,
                          const Command aCommands[])
 {
-    Error error = kErrorInvalidCommand;
-
-    VerifyOrExit(aArgsLength != 0);
-
-    for (size_t i = 0; i < aCommandsLength; i++)
-    {
-        if (strcmp(aArgs[0], aCommands[i].mName) == 0)
-        {
-            // Command found, call command handler
-            (aCommands[i].mCommand)(aContext, aArgsLength - 1, (aArgsLength > 1) ? &aArgs[1] : nullptr);
-            error = kErrorNone;
-            ExitNow();
-        }
-    }
-
-exit:
-    return error;
+    return otCRPCHandleCommand(aContext, aArgsLength, aArgs[], aCommandsLength, aCommands);
 }
 
 #if OPENTHREAD_COPROCESSOR

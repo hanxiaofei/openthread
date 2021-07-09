@@ -33,23 +33,14 @@
 
 #include "openthread-core-config.h"
 
-#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
-
 #include <openthread/coprocessor_rpc.h>
 
+#include "common/error.hpp"
 #include "common/instance.hpp"
 #include "common/locator_getters.hpp"
 
 namespace ot {
 namespace Coprocessor {
-
-
-#if OPENTHREAD_COPROCESSOR
-extern "C" void otCliAppendResult(otError aError)
-{
-    RPC::GetRPC().OutputResult(aError);
-}
-#endif
 
 extern "C" Error otCRPCHandleCommand(void *             aContext,
                                      uint8_t            aArgsLength,
@@ -57,10 +48,32 @@ extern "C" Error otCRPCHandleCommand(void *             aContext,
                                      uint8_t            aCommandsLength,
                                      const otCliCommand aCommands[])
 {
-    return RPC::HandleCommand(aContext, aArgsLength, aArgs, aCommandsLength, aCommands);
+    Error error = kErrorInvalidCommand;
+
+    VerifyOrExit(aArgs && aArgsLength != 0 && aCommands && aCommandsLength != 0);
+
+    for (size_t i = 0; i < aCommandsLength; i++)
+    {
+        if (strcmp(aArgs[0], aCommands[i].mName) == 0)
+        {
+            // Command found, call command handler
+            (aCommands[i].mCommand)(aContext, aArgsLength - 1, (aArgsLength > 1) ? &aArgs[1] : nullptr);
+            error = kErrorNone;
+            ExitNow();
+        }
+    }
+
+exit:
+    return error;
 }
 
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
 #if OPENTHREAD_COPROCESSOR
+extern "C" void otCliAppendResult(otError aError)
+{
+    RPC::GetRPC().OutputResult(aError);
+}
+
 extern "C" void otCliOutputBytes(const uint8_t *aBytes, uint8_t aLength)
 {
     RPC::GetRPC().OutputBytes(aBytes, aLength);
@@ -109,7 +122,7 @@ extern "C" void otCRPCSetUserCommands(const otCliCommand *aUserCommands, uint8_t
 }
 #endif
 
+#endif // OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+
 } // namespace Coprocessor
 } // namespace ot
-
-#endif // OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
