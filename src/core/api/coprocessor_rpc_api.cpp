@@ -50,7 +50,7 @@ extern "C" Error otCRPCHandleCommand(void *             aContext,
 {
     Error error = kErrorInvalidCommand;
 
-    VerifyOrExit(aArgsLength != 0);
+    VerifyOrExit(aArgs && aArgsLength != 0 && aCommands && aCommandsLength != 0);
 
     for (size_t i = 0; i < aCommandsLength; i++)
     {
