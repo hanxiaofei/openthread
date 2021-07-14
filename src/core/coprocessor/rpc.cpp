@@ -134,6 +134,9 @@ void RPC::Initialize(Instance &aInstance)
     SuccessOrExit(Utils::CmdLineParser::ParseCmd(RPC::sRPC->mCachedCommandsBuffer,
                                                  RPC::sRPC->mCachedCommands,
                                                  OT_ARRAY_LENGTH(RPC::sRPC->mCachedCommands)));
+
+    // Get the number of supported commands
+    mCachedCommandsLength = Arg::GetArgsLength(RPC::sRPC->mCachedCommands);
 #endif
 exit:
     return;

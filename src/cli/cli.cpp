@@ -4560,7 +4560,10 @@ void Interpreter::ProcessLine(char *aBuf)
     }
     else
     {
-        error = ProcessUserCommands(args);
+        VerifyOrExit((error = ProcessUserCommands(args)) != OT_ERROR_NONE);
+#if OPENTHREAD_CONFIG_COPROCESSOR_RPC_ENABLE
+        VerifyOrExit((error = ProcessCRPC(args)) != OT_ERROR_NONE);
+#endif
     }
 
 exit:
