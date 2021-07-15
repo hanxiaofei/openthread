@@ -183,8 +183,12 @@ Error RPC::ParseCmd(char *aString, uint8_t &aArgsLength, char *aArgs[])
     Error                     error;
     Utils::CmdLineParser::Arg args[kMaxArgs];
 
+    // Parse command string to a string array
     SuccessOrExit(error = Utils::CmdLineParser::ParseCmd(aString, args, aArgsLength));
     Utils::CmdLineParser::Arg::CopyArgsToStringArray(args, aArgs);
+
+    // Get number of args parsed
+    aArgsLength = Arg::GetArgsLength(args);
 
 exit:
     return error;
