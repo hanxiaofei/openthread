@@ -285,8 +285,6 @@ public:
      */
     static otError ParseEnableOrDisable(const Arg &aArg, bool &aEnable);
 
-    static otError ParseJoinerDiscerner(Arg &aArg, otJoinerDiscerner &aDiscerner);
-
     /**
      * This method sets the user command table.
      *

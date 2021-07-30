@@ -162,26 +162,6 @@ otError InterpreterCore::ParseEnableOrDisable(const Arg &aArg, bool &aEnable)
     return error;
 }
 
-otError InterpreterCore::ParseJoinerDiscerner(Arg &aArg, otJoinerDiscerner &aDiscerner)
-{
-    otError error;
-    char *  separator;
-
-    VerifyOrExit(!aArg.IsEmpty(), error = OT_ERROR_INVALID_ARGS);
-
-    separator = strstr(aArg.GetCString(), "/");
-
-    VerifyOrExit(separator != nullptr, error = OT_ERROR_NOT_FOUND);
-
-    SuccessOrExit(error = Utils::CmdLineParser::ParseAsUint8(separator + 1, aDiscerner.mLength));
-    VerifyOrExit(aDiscerner.mLength > 0 && aDiscerner.mLength <= 64, error = OT_ERROR_INVALID_ARGS);
-    *separator = '\0';
-    error      = aArg.ParseAsUint64(aDiscerner.mValue);
-
-exit:
-    return error;
-}
-
 otError InterpreterCore::ProcessUserCommands(uint8_t aArgsLength, Arg aArgs[])
 {
     otError error = OT_ERROR_INVALID_COMMAND;

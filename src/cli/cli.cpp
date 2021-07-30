@@ -132,6 +132,26 @@ Interpreter::Interpreter(Instance *aInstance, otCliOutputCallback aCallback, voi
 #endif
 }
 
+otError Interpreter::ParseJoinerDiscerner(Arg &aArg, otJoinerDiscerner &aDiscerner)
+{
+    otError error;
+    char *  separator;
+
+    VerifyOrExit(!aArg.IsEmpty(), error = OT_ERROR_INVALID_ARGS);
+
+    separator = strstr(aArg.GetCString(), "/");
+
+    VerifyOrExit(separator != nullptr, error = OT_ERROR_NOT_FOUND);
+
+    SuccessOrExit(error = Utils::CmdLineParser::ParseAsUint8(separator + 1, aDiscerner.mLength));
+    VerifyOrExit(aDiscerner.mLength > 0 && aDiscerner.mLength <= 64, error = OT_ERROR_INVALID_ARGS);
+    *separator = '\0';
+    error      = aArg.ParseAsUint64(aDiscerner.mValue);
+
+exit:
+    return error;
+}
+
 #if OPENTHREAD_CONFIG_PING_SENDER_ENABLE
 
 otError Interpreter::ParsePingInterval(const Arg &aArg, uint32_t &aInterval)
