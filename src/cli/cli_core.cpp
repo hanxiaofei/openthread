@@ -164,8 +164,12 @@ otError InterpreterCore::ParseEnableOrDisable(const Arg &aArg, bool &aEnable)
 
 otError InterpreterCore::ParseJoinerDiscerner(Arg &aArg, otJoinerDiscerner &aDiscerner)
 {
-    otError error     = OT_ERROR_NONE;
-    char *  separator = strstr(aArg.GetCString(), "/");
+    otError error;
+    char *  separator;
+
+    VerifyOrExit(!aArg.IsEmpty(), error = OT_ERROR_INVALID_ARGS);
+
+    separator = strstr(aArg.GetCString(), "/");
 
     VerifyOrExit(separator != nullptr, error = OT_ERROR_NOT_FOUND);
 
@@ -263,7 +267,98 @@ void InterpreterCore::OutputSpaces(uint8_t aCount)
 
 int InterpreterCore::OutputFormatV(const char *aFormat, va_list aArguments)
 {
-    return mOutputCallback(mOutputContext, aFormat, aArguments);
+    int rval;
+#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
+    va_list args;
+    int     charsWritten;
+    bool    truncated = false;
+
+    va_copy(args, aArguments);
+#endif
+
+    rval = mOutputCallback(mOutputContext, aFormat, aArguments);
+
+#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
+    VerifyOrExit(!IsLogging());
+
+    charsWritten = vsnprintf(&mOutputString[mOutputLength], sizeof(mOutputString) - mOutputLength, aFormat, args);
+
+    VerifyOrExit(charsWritten >= 0, mOutputLength = 0);
+
+    if (static_cast<uint32_t>(charsWritten) >= sizeof(mOutputString) - mOutputLength)
+    {
+        truncated     = true;
+        mOutputLength = sizeof(mOutputString) - 1;
+    }
+    else
+    {
+        mOutputLength += charsWritten;
+    }
+
+    while (true)
+    {
+        char *lineEnd = strchr(mOutputString, '\r');
+
+        if (lineEnd == nullptr)
+        {
+            break;
+        }
+
+        *lineEnd = '\0';
+
+        if (lineEnd > mOutputString)
+        {
+            otLogNoteCli("Output: %s", mOutputString);
+        }
+
+        lineEnd++;
+
+        while ((*lineEnd == '\n') || (*lineEnd == '\r'))
+        {
+            lineEnd++;
+        }
+
+        // Example of the pointers and lengths.
+        //
+        // - mOutputString = "hi\r\nmore"
+        // - mOutputLength = 8
+        // - lineEnd       = &mOutputString[4]
+        //
+        //
+        //   0    1    2    3    4    5    6    7    8    9
+        // +----+----+----+----+----+----+----+----+----+---
+        // | h  | i  | \r | \n | m  | o  | r  | e  | \0 |
+        // +----+----+----+----+----+----+----+----+----+---
+        //                       ^                   ^
+        //                       |                   |
+        //                    lineEnd    mOutputString[mOutputLength]
+        //
+        //
+        // New length is `&mOutputString[8] - &mOutputString[4] -> 4`.
+        //
+        // We move (newLen + 1 = 5) chars from `lineEnd` to start of
+        // `mOutputString` which will include the `\0` char.
+        //
+        // If `lineEnd` and `mOutputString[mOutputLength]` are the same
+        // the code works correctly as well  (new length set to zero and
+        // the `\0` is copied).
+
+        mOutputLength = static_cast<uint16_t>(&mOutputString[mOutputLength] - lineEnd);
+        memmove(mOutputString, lineEnd, mOutputLength + 1);
+    }
+
+    if (truncated)
+    {
+        otLogNoteCli("Output: %s ...", mOutputString);
+        mOutputLength = 0;
+    }
+
+exit:
+    va_end(args);
+
+#endif // OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
+
+    return rval;
 }
 
 void InterpreterCore::Initialize(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext)
@@ -313,8 +408,20 @@ extern "C" void otCliPlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, cons
 
     VerifyOrExit(InterpreterCore::IsInitialized());
 
+#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
+    // CLI output can be used for logging. The `IsLogging` flag is
+    // used to indicate whether it is being used for a CLI command
+    // output or for logging.
+    InterpreterCore::GetInterpreter().SetIsLogging(true);
+#endif
+
     InterpreterCore::GetInterpreter().OutputFormatV(aFormat, aArgs);
     InterpreterCore::GetInterpreter().OutputLine("");
+
+#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
+    InterpreterCore::GetInterpreter().SetIsLogging(false);
+#endif
+
 exit:
     return;
 }
@@ -325,7 +432,16 @@ extern "C" void otCliPlatLogLine(otLogLevel aLogLevel, otLogRegion aLogRegion, c
     OT_UNUSED_VARIABLE(aLogRegion);
 
     VerifyOrExit(InterpreterCore::IsInitialized());
+
+#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
+    InterpreterCore::GetInterpreter().SetIsLogging(true);
+#endif
+
     InterpreterCore::GetInterpreter().OutputLine(aLogLine);
+
+#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
+    InterpreterCore::GetInterpreter().SetIsLogging(false);
+#endif
 
 exit:
     return;

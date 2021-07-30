@@ -316,7 +316,7 @@ protected:
     // Returns format string to output a `ValueType` (e.g., "%u" for `uint16_t`).
     template <typename ValueType> static constexpr const char *FormatStringFor(void);
 
-    template <typename ValueType> otError ProcessGet(uint8_t aArgsLength, GetHandler<ValueType> aGetHandler)
+    template <typename ValueType> otError ProcessGet(Arg aArgs[], GetHandler<ValueType> aGetHandler)
     {
         static_assert(
             TypeTraits::IsSame<ValueType, uint8_t>::kValue || TypeTraits::IsSame<ValueType, uint16_t>::kValue ||
@@ -326,44 +326,35 @@ protected:
 
         otError error = OT_ERROR_NONE;
 
-        VerifyOrExit(aArgsLength == 0, error = OT_ERROR_INVALID_ARGS);
+        VerifyOrExit(aArgs[0].IsEmpty(), error = OT_ERROR_INVALID_ARGS);
         OutputLine(FormatStringFor<ValueType>(), aGetHandler(mInstance));
 
     exit:
         return error;
     }
 
-    template <typename ValueType> otError ParseValue(uint8_t aArgsLength, Arg aArgs[], ValueType &aValue)
-    {
-        otError error = OT_ERROR_INVALID_ARGS;
-
-        VerifyOrExit(aArgsLength == 1);
-        error = aArgs[0].ParseAs<ValueType>(aValue);
-
-    exit:
-        return error;
-    }
-
-    template <typename ValueType>
-    otError ProcessSet(uint8_t aArgsLength, Arg aArgs[], SetHandler<ValueType> aSetHandler)
+    template <typename ValueType> otError ProcessSet(Arg aArgs[], SetHandler<ValueType> aSetHandler)
     {
         otError   error;
         ValueType value;
 
-        SuccessOrExit(error = ParseValue(aArgsLength, aArgs, value));
+        SuccessOrExit(error = aArgs[0].ParseAs<ValueType>(value));
+        VerifyOrExit(aArgs[1].IsEmpty(), error = OT_ERROR_INVALID_ARGS);
+
         aSetHandler(mInstance, value);
 
     exit:
         return error;
     }
 
-    template <typename ValueType>
-    otError ProcessSet(uint8_t aArgsLength, Arg aArgs[], SetHandlerFailable<ValueType> aSetHandler)
+    template <typename ValueType> otError ProcessSet(Arg aArgs[], SetHandlerFailable<ValueType> aSetHandler)
     {
         otError   error;
         ValueType value;
 
-        SuccessOrExit(error = ParseValue(aArgsLength, aArgs, value));
+        SuccessOrExit(error = aArgs[0].ParseAs<ValueType>(value));
+        VerifyOrExit(aArgs[1].IsEmpty(), error = OT_ERROR_INVALID_ARGS);
+
         error = aSetHandler(mInstance, value);
 
     exit:
@@ -371,30 +362,24 @@ protected:
     }
 
     template <typename ValueType>
-    otError ProcessGetSet(uint8_t               aArgsLength,
-                          Arg                   aArgs[],
-                          GetHandler<ValueType> aGetHandler,
-                          SetHandler<ValueType> aSetHandler)
+    otError ProcessGetSet(Arg aArgs[], GetHandler<ValueType> aGetHandler, SetHandler<ValueType> aSetHandler)
     {
-        otError error = ProcessGet(aArgsLength, aGetHandler);
+        otError error = ProcessGet(aArgs, aGetHandler);
 
         VerifyOrExit(error != OT_ERROR_NONE);
-        error = ProcessSet(aArgsLength, aArgs, aSetHandler);
+        error = ProcessSet(aArgs, aSetHandler);
 
     exit:
         return error;
     }
 
     template <typename ValueType>
-    otError ProcessGetSet(uint8_t                       aArgsLength,
-                          Arg                           aArgs[],
-                          GetHandler<ValueType>         aGetHandler,
-                          SetHandlerFailable<ValueType> aSetHandler)
+    otError ProcessGetSet(Arg aArgs[], GetHandler<ValueType> aGetHandler, SetHandlerFailable<ValueType> aSetHandler)
     {
-        otError error = ProcessGet(aArgsLength, aGetHandler);
+        otError error = ProcessGet(aArgs, aGetHandler);
 
         VerifyOrExit(error != OT_ERROR_NONE);
-        error = ProcessSet(aArgsLength, aArgs, aSetHandler);
+        error = ProcessSet(aArgs, aSetHandler);
 
     exit:
         return error;

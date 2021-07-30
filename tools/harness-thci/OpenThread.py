@@ -1204,14 +1204,19 @@ class OpenThreadTHCI(object):
                 print('join as sleepy end device')
                 mode = '-'
                 self.__setPollPeriod(self.__sedPollPeriod)
+            elif eRoleId == Thread_Device_Role.SSED:
+                print('join as SSED')
+                mode = '-'
+                self.setCSLperiod(self.cslPeriod)
             elif eRoleId == Thread_Device_Role.EndDevice:
                 print('join as end device')
                 mode = 'rn'
             elif eRoleId == Thread_Device_Role.REED:
                 print('join as REED')
                 mode = 'rdn'
-                # set ROUTER_UPGRADE_THRESHOLD
-                self.__setRouterUpgradeThreshold(0)
+                if self.AutoDUTEnable is False:
+                    # set ROUTER_UPGRADE_THRESHOLD
+                    self.__setRouterUpgradeThreshold(0)
             elif eRoleId == Thread_Device_Role.EndDevice_FED:
                 print('join as FED')
                 mode = 'rdn'
@@ -1454,6 +1459,7 @@ class OpenThreadTHCI(object):
         self.activetimestamp = ModuleHelper.Default_ActiveTimestamp
         # self.sedPollingRate = ModuleHelper.Default_Harness_SED_Polling_Rate
         self.__sedPollPeriod = 3 * 1000  # in milliseconds
+        self.cslPeriod = 500  # in milliseconds
         self.deviceRole = None
         self.provisioningUrl = ''
         self.hasActiveDatasetToCommit = False

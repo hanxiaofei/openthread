@@ -62,9 +62,7 @@ RoutingManager::RoutingManager(Instance &aInstance)
     , mIsEnabled(false)
     , mInfraIfIsRunning(false)
     , mInfraIfIndex(0)
-    , mAdvertisedOmrPrefixNum(0)
     , mAdvertisedOnLinkPrefix(nullptr)
-    , mDiscoveredPrefixNum(0)
     , mTimeRouterAdvMessageLastUpdate(TimerMilli::GetNow())
     , mDiscoveredPrefixInvalidTimer(aInstance, HandleDiscoveredPrefixInvalidTimer)
     , mDiscoveredPrefixStaleTimer(aInstance, HandleDiscoveredPrefixStaleTimer)
@@ -76,11 +74,8 @@ RoutingManager::RoutingManager(Instance &aInstance)
     , mRoutingPolicyTimer(aInstance, HandleRoutingPolicyTimer)
 {
     mLocalOmrPrefix.Clear();
-    memset(mAdvertisedOmrPrefixes, 0, sizeof(mAdvertisedOmrPrefixes));
 
     mLocalOnLinkPrefix.Clear();
-
-    memset(mDiscoveredPrefixes, 0, sizeof(mDiscoveredPrefixes));
 }
 
 Error RoutingManager::Init(uint32_t aInfraIfIndex, bool aInfraIfIsRunning)
@@ -129,12 +124,12 @@ Error RoutingManager::LoadOrGenerateRandomOmrPrefix(void)
     {
         Ip6::NetworkPrefix randomOmrPrefix;
 
-        otLogNoteBr("no valid OMR prefix found in settings, generating new one");
+        otLogNoteBr("No valid OMR prefix found in settings, generating new one");
 
         error = randomOmrPrefix.GenerateRandomUla();
         if (error != kErrorNone)
         {
-            otLogCritBr("failed to generate random OMR prefix");
+            otLogCritBr("Failed to generate random OMR prefix");
             ExitNow();
         }
 
@@ -155,12 +150,12 @@ Error RoutingManager::LoadOrGenerateRandomOnLinkPrefix(void)
     {
         Ip6::NetworkPrefix randomOnLinkPrefix;
 
-        otLogNoteBr("no valid on-link prefix found in settings, generating new one");
+        otLogNoteBr("No valid on-link prefix found in settings, generating new one");
 
         error = randomOnLinkPrefix.GenerateRandomUla();
         if (error != kErrorNone)
         {
-            otLogCritBr("failed to generate random on-link prefix");
+            otLogCritBr("Failed to generate random on-link prefix");
             ExitNow();
         }
 
@@ -203,22 +198,22 @@ void RoutingManager::Stop(void)
     VerifyOrExit(mIsRunning);
 
     UnpublishLocalOmrPrefix();
+
     if (mAdvertisedOnLinkPrefix != nullptr)
     {
         RemoveExternalRoute(*mAdvertisedOnLinkPrefix);
     }
+
     InvalidateAllDiscoveredPrefixes();
 
     // Use empty OMR & on-link prefixes to invalidate possible advertised prefixes.
-    SendRouterAdvertisement(nullptr, 0, nullptr);
+    SendRouterAdvertisement(OmrPrefixArray(), nullptr);
 
-    memset(mAdvertisedOmrPrefixes, 0, sizeof(mAdvertisedOmrPrefixes));
-    mAdvertisedOmrPrefixNum = 0;
+    mAdvertisedOmrPrefixes.Clear();
 
     mAdvertisedOnLinkPrefix = nullptr;
 
-    memset(mDiscoveredPrefixes, 0, sizeof(mDiscoveredPrefixes));
-    mDiscoveredPrefixNum = 0;
+    mDiscoveredPrefixes.Clear();
     mDiscoveredPrefixInvalidTimer.Stop();
     mDiscoveredPrefixStaleTimer.Stop();
 
@@ -268,7 +263,7 @@ void RoutingManager::RecvIcmp6Message(uint32_t            aInfraIfIndex,
 exit:
     if (error != kErrorNone)
     {
-        otLogDebgBr("drop ICMPv6 message: %s", ErrorToString(error));
+        otLogDebgBr("Dropped ICMPv6 message: %s", ErrorToString(error));
     }
 }
 
@@ -280,7 +275,7 @@ Error RoutingManager::HandleInfraIfStateChanged(uint32_t aInfraIfIndex, bool aIs
     VerifyOrExit(aInfraIfIndex == mInfraIfIndex, error = kErrorInvalidArgs);
     VerifyOrExit(aIsRunning != mInfraIfIsRunning);
 
-    otLogInfoBr("infra interface (%u) state changed: %sRUNNING -> %sRUNNING", aInfraIfIndex,
+    otLogInfoBr("Infra interface (%u) state changed: %sRUNNING -> %sRUNNING", aInfraIfIndex,
                 (mInfraIfIsRunning ? "" : "NOT "), (aIsRunning ? "" : "NOT "));
 
     mInfraIfIsRunning = aIsRunning;
@@ -308,10 +303,9 @@ exit:
     return;
 }
 
-uint8_t RoutingManager::EvaluateOmrPrefix(Ip6::Prefix *aNewOmrPrefixes, uint8_t aMaxOmrPrefixNum)
+void RoutingManager::EvaluateOmrPrefix(OmrPrefixArray &aNewOmrPrefixes)
 {
-    uint8_t                         newOmrPrefixNum = 0;
-    NetworkData::Iterator           iterator        = NetworkData::kIteratorInit;
+    NetworkData::Iterator           iterator = NetworkData::kIteratorInit;
     NetworkData::OnMeshPrefixConfig onMeshPrefixConfig;
     Ip6::Prefix *                   smallestOmrPrefix       = nullptr;
     Ip6::Prefix *                   publishedLocalOmrPrefix = nullptr;
@@ -320,66 +314,63 @@ uint8_t RoutingManager::EvaluateOmrPrefix(Ip6::Prefix *aNewOmrPrefixes, uint8_t 
 
     while (Get<NetworkData::Leader>().GetNextOnMeshPrefix(iterator, onMeshPrefixConfig) == kErrorNone)
     {
-        uint8_t newPrefixIndex;
+        const Ip6::Prefix &prefix = onMeshPrefixConfig.GetPrefix();
 
         if (!IsValidOmrPrefix(onMeshPrefixConfig))
         {
             continue;
         }
 
-        newPrefixIndex = 0;
-        while (newPrefixIndex < newOmrPrefixNum && onMeshPrefixConfig.GetPrefix() != aNewOmrPrefixes[newPrefixIndex])
-        {
-            ++newPrefixIndex;
-        }
-
-        if (newPrefixIndex != newOmrPrefixNum)
+        if (aNewOmrPrefixes.Contains(prefix))
         {
             // Ignore duplicate prefixes.
             continue;
         }
 
-        if (newOmrPrefixNum >= aMaxOmrPrefixNum)
+        if (aNewOmrPrefixes.PushBack(prefix) != kErrorNone)
         {
-            otLogWarnBr("EvaluateOmrPrefix: too many OMR prefixes, ignoring prefix %s",
-                        onMeshPrefixConfig.GetPrefix().ToString().AsCString());
+            otLogWarnBr("EvaluateOmrPrefix: Too many OMR prefixes, ignoring prefix %s", prefix.ToString().AsCString());
             continue;
         }
 
-        aNewOmrPrefixes[newOmrPrefixNum] = onMeshPrefixConfig.GetPrefix();
-        if (smallestOmrPrefix == nullptr || (onMeshPrefixConfig.GetPrefix() < *smallestOmrPrefix))
+        if (smallestOmrPrefix == nullptr || (prefix < *smallestOmrPrefix))
         {
-            smallestOmrPrefix = &aNewOmrPrefixes[newOmrPrefixNum];
+            smallestOmrPrefix = aNewOmrPrefixes.Back();
         }
-        if (aNewOmrPrefixes[newOmrPrefixNum] == mLocalOmrPrefix)
+
+        if (prefix == mLocalOmrPrefix)
         {
-            publishedLocalOmrPrefix = &aNewOmrPrefixes[newOmrPrefixNum];
+            publishedLocalOmrPrefix = aNewOmrPrefixes.Back();
         }
-        ++newOmrPrefixNum;
     }
 
-    // Decide if we need to add or remove my local OMR prefix.
-    if (newOmrPrefixNum == 0)
+    // Decide if we need to add or remove our local OMR prefix.
+
+    if (aNewOmrPrefixes.IsEmpty())
     {
-        otLogInfoBr("EvaluateOmrPrefix: no valid OMR prefixes found in Thread network");
+        otLogInfoBr("EvaluateOmrPrefix: No valid OMR prefixes found in Thread network");
+
         if (PublishLocalOmrPrefix() == kErrorNone)
         {
-            aNewOmrPrefixes[newOmrPrefixNum++] = mLocalOmrPrefix;
+            IgnoreError(aNewOmrPrefixes.PushBack(mLocalOmrPrefix));
         }
 
-        // The `newOmrPrefixNum` is zero when we failed to publish the local OMR prefix.
+        // The `aNewOmrPrefixes` remains empty if we fail to publish
+        // the local OMR prefix.
     }
     else if (publishedLocalOmrPrefix != nullptr && smallestOmrPrefix != publishedLocalOmrPrefix)
     {
-        otLogInfoBr("EvaluateOmrPrefix: there is already a smaller OMR prefix %s in the Thread network",
+        otLogInfoBr("EvaluateOmrPrefix: There is already a smaller OMR prefix %s in the Thread network",
                     smallestOmrPrefix->ToString().AsCString());
+
         UnpublishLocalOmrPrefix();
 
-        // Remove the local OMR prefix from the list by overwriting it with the last one.
-        *publishedLocalOmrPrefix = aNewOmrPrefixes[--newOmrPrefixNum];
-    }
+        // Remove the local OMR prefix from the list by overwriting it
+        // with the last element and then popping it from the list.
 
-    return newOmrPrefixNum;
+        *publishedLocalOmrPrefix = *aNewOmrPrefixes.Back();
+        aNewOmrPrefixes.PopBack();
+    }
 }
 
 Error RoutingManager::PublishLocalOmrPrefix(void)
@@ -401,13 +392,13 @@ Error RoutingManager::PublishLocalOmrPrefix(void)
     error = Get<NetworkData::Local>().AddOnMeshPrefix(omrPrefixConfig);
     if (error != kErrorNone)
     {
-        otLogWarnBr("failed to publish local OMR prefix %s in Thread network: %s",
+        otLogWarnBr("Failed to publish local OMR prefix %s in Thread network: %s",
                     mLocalOmrPrefix.ToString().AsCString(), ErrorToString(error));
     }
     else
     {
         Get<NetworkData::Notifier>().HandleServerDataUpdated();
-        otLogInfoBr("published local OMR prefix %s in Thread network", mLocalOmrPrefix.ToString().AsCString());
+        otLogInfoBr("Published local OMR prefix %s in Thread network", mLocalOmrPrefix.ToString().AsCString());
     }
 
     return error;
@@ -422,12 +413,12 @@ void RoutingManager::UnpublishLocalOmrPrefix(void)
     SuccessOrExit(error = Get<NetworkData::Local>().RemoveOnMeshPrefix(mLocalOmrPrefix));
 
     Get<NetworkData::Notifier>().HandleServerDataUpdated();
-    otLogInfoBr("unpublished local OMR prefix %s from Thread network", mLocalOmrPrefix.ToString().AsCString());
+    otLogInfoBr("Unpublished local OMR prefix %s from Thread network", mLocalOmrPrefix.ToString().AsCString());
 
 exit:
     if (error != kErrorNone)
     {
-        otLogWarnBr("failed to unpublish local OMR prefix %s from Thread network: %s",
+        otLogWarnBr("Failed to unpublish local OMR prefix %s from Thread network: %s",
                     mLocalOmrPrefix.ToString().AsCString(), ErrorToString(error));
     }
 }
@@ -447,12 +438,12 @@ Error RoutingManager::AddExternalRoute(const Ip6::Prefix &aPrefix, otRoutePrefer
     error = Get<NetworkData::Local>().AddHasRoutePrefix(routeConfig);
     if (error != kErrorNone)
     {
-        otLogWarnBr("failed to add external route %s: %s", aPrefix.ToString().AsCString(), ErrorToString(error));
+        otLogWarnBr("Failed to add external route %s: %s", aPrefix.ToString().AsCString(), ErrorToString(error));
     }
     else
     {
         Get<NetworkData::Notifier>().HandleServerDataUpdated();
-        otLogInfoBr("added external route %s", aPrefix.ToString().AsCString());
+        otLogInfoBr("Added external route %s", aPrefix.ToString().AsCString());
     }
 
     return error;
@@ -467,29 +458,13 @@ void RoutingManager::RemoveExternalRoute(const Ip6::Prefix &aPrefix)
     SuccessOrExit(error = Get<NetworkData::Local>().RemoveHasRoutePrefix(aPrefix));
 
     Get<NetworkData::Notifier>().HandleServerDataUpdated();
-    otLogInfoBr("removed external route %s", aPrefix.ToString().AsCString());
+    otLogInfoBr("Removed external route %s", aPrefix.ToString().AsCString());
 
 exit:
     if (error != kErrorNone)
     {
-        otLogWarnBr("failed to remove external route %s: %s", aPrefix.ToString().AsCString(), ErrorToString(error));
+        otLogWarnBr("Failed to remove external route %s: %s", aPrefix.ToString().AsCString(), ErrorToString(error));
     }
-}
-
-bool RoutingManager::ContainsPrefix(const Ip6::Prefix &aPrefix, const Ip6::Prefix *aPrefixList, uint8_t aPrefixNum)
-{
-    bool ret = false;
-
-    for (uint8_t i = 0; i < aPrefixNum; ++i)
-    {
-        if (aPrefixList[i] == aPrefix)
-        {
-            ret = true;
-            break;
-        }
-    }
-
-    return ret;
 }
 
 const Ip6::Prefix *RoutingManager::EvaluateOnLinkPrefix(void)
@@ -500,10 +475,8 @@ const Ip6::Prefix *RoutingManager::EvaluateOnLinkPrefix(void)
     // We don't evaluate on-link prefix if we are doing Router Solicitation.
     VerifyOrExit(!mRouterSolicitTimer.IsRunning(), newOnLinkPrefix = mAdvertisedOnLinkPrefix);
 
-    for (uint8_t i = 0; i < mDiscoveredPrefixNum; ++i)
+    for (const ExternalPrefix &prefix : mDiscoveredPrefixes)
     {
-        ExternalPrefix &prefix = mDiscoveredPrefixes[i];
-
         if (!prefix.mIsOnLinkPrefix)
         {
             continue;
@@ -539,7 +512,7 @@ const Ip6::Prefix *RoutingManager::EvaluateOnLinkPrefix(void)
         }
         else
         {
-            otLogInfoBr("EvaluateOnLinkPrefix: there is already smaller on-link prefix %s on interface %u",
+            otLogInfoBr("EvaluateOnLinkPrefix: There is already smaller on-link prefix %s on interface %u",
                         smallestOnLinkPrefix->ToString().AsCString(), mInfraIfIndex);
 
             // TODO: we remove the advertised on-link prefix by setting zero valid lifetime for PIO,
@@ -565,23 +538,24 @@ void RoutingManager::EvaluateRoutingPolicy(void)
     OT_ASSERT(mIsRunning);
 
     const Ip6::Prefix *newOnLinkPrefix = nullptr;
-    Ip6::Prefix        newOmrPrefixes[kMaxOmrPrefixNum];
-    uint8_t            newOmrPrefixNum = 0;
+    OmrPrefixArray     newOmrPrefixes;
 
-    otLogInfoBr("evaluating routing policy");
+    otLogInfoBr("Evaluating routing policy");
 
     // 0. Evaluate on-link & OMR prefixes.
     newOnLinkPrefix = EvaluateOnLinkPrefix();
-    newOmrPrefixNum = EvaluateOmrPrefix(newOmrPrefixes, kMaxOmrPrefixNum);
+    EvaluateOmrPrefix(newOmrPrefixes);
 
     // 1. Send Router Advertisement message if necessary.
-    SendRouterAdvertisement(newOmrPrefixes, newOmrPrefixNum, newOnLinkPrefix);
-    if (newOmrPrefixNum == 0)
+    SendRouterAdvertisement(newOmrPrefixes, newOnLinkPrefix);
+
+    if (newOmrPrefixes.IsEmpty())
     {
         // This is the very exceptional case and happens only when we failed to publish
         // our local OMR prefix to the Thread network. We schedule the Router Advertisement
         // timer to re-evaluate our routing policy in the future.
-        otLogWarnBr("no OMR prefix advertised! Start Router Advertisement timer for future evaluation");
+
+        otLogWarnBr("No OMR prefix advertised! Start Router Advertisement timer for future evaluation");
     }
 
     // 2. Schedule Router Advertisement timer with random interval.
@@ -595,15 +569,13 @@ void RoutingManager::EvaluateRoutingPolicy(void)
             nextSendTime = kMaxInitRtrAdvInterval;
         }
 
-        otLogInfoBr("router advertisement scheduled in %u seconds", nextSendTime);
+        otLogInfoBr("Router advertisement scheduled in %u seconds", nextSendTime);
         mRouterAdvertisementTimer.Start(Time::SecToMsec(nextSendTime));
     }
 
     // 3. Update advertised on-link & OMR prefixes information.
     mAdvertisedOnLinkPrefix = newOnLinkPrefix;
-    static_assert(sizeof(mAdvertisedOmrPrefixes) == sizeof(newOmrPrefixes), "invalid new OMR prefix array size");
-    memcpy(mAdvertisedOmrPrefixes, newOmrPrefixes, sizeof(newOmrPrefixes[0]) * newOmrPrefixNum);
-    mAdvertisedOmrPrefixNum = newOmrPrefixNum;
+    mAdvertisedOmrPrefixes  = newOmrPrefixes;
 }
 
 void RoutingManager::StartRoutingPolicyEvaluationDelay(void)
@@ -615,7 +587,7 @@ void RoutingManager::StartRoutingPolicyEvaluationDelay(void)
     static_assert(kMaxRoutingPolicyDelay > 0, "invalid maximum routing policy evaluation delay");
     randomDelay = Random::NonCrypto::GetUint32InRange(0, Time::SecToMsec(kMaxRoutingPolicyDelay));
 
-    otLogInfoBr("start evaluating routing policy, scheduled in %u milliseconds", randomDelay);
+    otLogInfoBr("Start evaluating routing policy, scheduled in %u milliseconds", randomDelay);
     mRoutingPolicyTimer.Start(randomDelay);
 }
 
@@ -632,7 +604,7 @@ void RoutingManager::StartRouterSolicitationDelay(void)
     static_assert(kMaxRtrSolicitationDelay > 0, "invalid maximum Router Solicitation delay");
     randomDelay = Random::NonCrypto::GetUint32InRange(0, Time::SecToMsec(kMaxRtrSolicitationDelay));
 
-    otLogInfoBr("start Router Solicitation, scheduled in %u milliseconds", randomDelay);
+    otLogInfoBr("Start Router Solicitation, scheduled in %u milliseconds", randomDelay);
     mTimeRouterSolicitStart = TimerMilli::GetNow();
     mRouterSolicitTimer.Start(randomDelay);
 
@@ -653,15 +625,11 @@ Error RoutingManager::SendRouterSolicitation(void)
 }
 
 // This method sends Router Advertisement messages to advertise on-link prefix and route for OMR prefix.
-// @param[in]  aNewOmrPrefixes   A pointer to an array of the new OMR prefixes to be advertised.
-//                               @p aNewOmrPrefixNum must be zero if this argument is nullptr.
-// @param[in]  aNewOmrPrefixNum  The number of the new OMR prefixes to be advertised.
-//                               Zero means we should stop advertising OMR prefixes.
+// @param[in]  aNewOmrPrefixes   An array of the new OMR prefixes to be advertised.
+//                               Empty array means we should stop advertising OMR prefixes.
 // @param[in]  aOnLinkPrefix     A pointer to the new on-link prefix to be advertised.
 //                               nullptr means we should stop advertising on-link prefix.
-void RoutingManager::SendRouterAdvertisement(const Ip6::Prefix *aNewOmrPrefixes,
-                                             uint8_t            aNewOmrPrefixNum,
-                                             const Ip6::Prefix *aNewOnLinkPrefix)
+void RoutingManager::SendRouterAdvertisement(const OmrPrefixArray &aNewOmrPrefixes, const Ip6::Prefix *aNewOnLinkPrefix)
 {
     uint8_t  buffer[kMaxRouterAdvMessageLength];
     uint16_t bufferLength = 0;
@@ -686,11 +654,11 @@ void RoutingManager::SendRouterAdvertisement(const Ip6::Prefix *aNewOmrPrefixes,
 
         if (mAdvertisedOnLinkPrefix == nullptr)
         {
-            otLogInfoBr("start advertising new on-link prefix %s on interface %u",
+            otLogInfoBr("Start advertising new on-link prefix %s on interface %u",
                         aNewOnLinkPrefix->ToString().AsCString(), mInfraIfIndex);
         }
 
-        otLogInfoBr("send on-link prefix %s in PIO (valid lifetime = %u seconds)",
+        otLogInfoBr("Send on-link prefix %s in PIO (valid lifetime = %u seconds)",
                     aNewOnLinkPrefix->ToString().AsCString(), kDefaultOnLinkPrefixLifetime);
     }
     else if (mAdvertisedOnLinkPrefix != nullptr)
@@ -709,16 +677,15 @@ void RoutingManager::SendRouterAdvertisement(const Ip6::Prefix *aNewOmrPrefixes,
         memcpy(buffer + bufferLength, &pio, pio.GetSize());
         bufferLength += pio.GetSize();
 
-        otLogInfoBr("stop advertising on-link prefix %s on interface %u",
+        otLogInfoBr("Stop advertising on-link prefix %s on interface %u",
                     mAdvertisedOnLinkPrefix->ToString().AsCString(), mInfraIfIndex);
     }
 
     // Invalidate the advertised OMR prefixes if they are no longer in the new OMR prefix array.
-    for (uint8_t i = 0; i < mAdvertisedOmrPrefixNum; ++i)
-    {
-        const Ip6::Prefix &advertisedOmrPrefix = mAdvertisedOmrPrefixes[i];
 
-        if (!ContainsPrefix(advertisedOmrPrefix, aNewOmrPrefixes, aNewOmrPrefixNum))
+    for (const Ip6::Prefix &advertisedOmrPrefix : mAdvertisedOmrPrefixes)
+    {
+        if (!aNewOmrPrefixes.Contains(advertisedOmrPrefix))
         {
             RouterAdv::RouteInfoOption rio;
 
@@ -730,14 +697,13 @@ void RoutingManager::SendRouterAdvertisement(const Ip6::Prefix *aNewOmrPrefixes,
             memcpy(buffer + bufferLength, &rio, rio.GetSize());
             bufferLength += rio.GetSize();
 
-            otLogInfoBr("stop advertising OMR prefix %s on interface %u", advertisedOmrPrefix.ToString().AsCString(),
+            otLogInfoBr("Stop advertising OMR prefix %s on interface %u", advertisedOmrPrefix.ToString().AsCString(),
                         mInfraIfIndex);
         }
     }
 
-    for (uint8_t i = 0; i < aNewOmrPrefixNum; ++i)
+    for (const Ip6::Prefix &newOmrPrefix : aNewOmrPrefixes)
     {
-        const Ip6::Prefix &        newOmrPrefix = aNewOmrPrefixes[i];
         RouterAdv::RouteInfoOption rio;
 
         rio.SetRouteLifetime(kDefaultOmrPrefixLifetime);
@@ -747,7 +713,7 @@ void RoutingManager::SendRouterAdvertisement(const Ip6::Prefix *aNewOmrPrefixes,
         memcpy(buffer + bufferLength, &rio, rio.GetSize());
         bufferLength += rio.GetSize();
 
-        otLogInfoBr("send OMR prefix %s in RIO (valid lifetime = %u seconds)", newOmrPrefix.ToString().AsCString(),
+        otLogInfoBr("Send OMR prefix %s in RIO (valid lifetime = %u seconds)", newOmrPrefix.ToString().AsCString(),
                     kDefaultOmrPrefixLifetime);
     }
 
@@ -764,14 +730,12 @@ void RoutingManager::SendRouterAdvertisement(const Ip6::Prefix *aNewOmrPrefixes,
 
         if (error == kErrorNone)
         {
-            otLogInfoBr("sent Router Advertisement on interface %u", mInfraIfIndex);
-#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
-            otDumpCertBr("[BR-CERT] direction=send | type=RA |", buffer, bufferLength);
-#endif
+            otLogInfoBr("Sent Router Advertisement on interface %u", mInfraIfIndex);
+            otDumpDebgBr("[BR-CERT] direction=send | type=RA |", buffer, bufferLength);
         }
         else
         {
-            otLogWarnBr("failed to send Router Advertisement on interface %u: %s", mInfraIfIndex, ErrorToString(error));
+            otLogWarnBr("Failed to send Router Advertisement on interface %u: %s", mInfraIfIndex, ErrorToString(error));
         }
     }
 }
@@ -808,7 +772,7 @@ void RoutingManager::HandleRouterAdvertisementTimer(Timer &aTimer)
 
 void RoutingManager::HandleRouterAdvertisementTimer(void)
 {
-    otLogInfoBr("router advertisement timer triggered");
+    otLogInfoBr("Router advertisement timer triggered");
 
     EvaluateRoutingPolicy();
 }
@@ -820,12 +784,10 @@ void RoutingManager::HandleVicariousRouterSolicitTimer(Timer &aTimer)
 
 void RoutingManager::HandleVicariousRouterSolicitTimer(void)
 {
-    otLogInfoBr("vicarious router solicitation time out");
+    otLogInfoBr("Vicarious router solicitation time out");
 
-    for (uint8_t i = 0; i < mDiscoveredPrefixNum; ++i)
+    for (const ExternalPrefix &prefix : mDiscoveredPrefixes)
     {
-        ExternalPrefix &prefix = mDiscoveredPrefixes[i];
-
         if (prefix.mTimeLastUpdate <= mTimeVicariousRouterSolicitStart)
         {
             StartRouterSolicitationDelay();
@@ -841,7 +803,7 @@ void RoutingManager::HandleRouterSolicitTimer(Timer &aTimer)
 
 void RoutingManager::HandleRouterSolicitTimer(void)
 {
-    otLogInfoBr("router solicitation times out");
+    otLogInfoBr("Router solicitation times out");
 
     if (mRouterSolicitCount < kMaxRtrSolicitations)
     {
@@ -853,26 +815,24 @@ void RoutingManager::HandleRouterSolicitTimer(void)
 
         if (error == kErrorNone)
         {
-            otLogDebgBr("successfully sent %uth Router Solicitation", mRouterSolicitCount);
+            otLogDebgBr("Successfully sent %uth Router Solicitation", mRouterSolicitCount);
         }
         else
         {
-            otLogCritBr("failed to send %uth Router Solicitation: %s", mRouterSolicitCount, ErrorToString(error));
+            otLogCritBr("Failed to send %uth Router Solicitation: %s", mRouterSolicitCount, ErrorToString(error));
         }
 
         nextSolicitationDelay =
             (mRouterSolicitCount == kMaxRtrSolicitations) ? kMaxRtrSolicitationDelay : kRtrSolicitationInterval;
 
-        otLogDebgBr("router solicitation timer scheduled in %u seconds", nextSolicitationDelay);
+        otLogDebgBr("Router solicitation timer scheduled in %u seconds", nextSolicitationDelay);
         mRouterSolicitTimer.Start(Time::SecToMsec(nextSolicitationDelay));
     }
     else
     {
         // Invalidate all prefixes that are not refreshed during Router Solicitation.
-        for (uint8_t i = 0; i < mDiscoveredPrefixNum; ++i)
+        for (const ExternalPrefix &prefix : mDiscoveredPrefixes)
         {
-            ExternalPrefix &prefix = mDiscoveredPrefixes[i];
-
             if (prefix.mTimeLastUpdate <= mTimeRouterSolicitStart)
             {
                 InvalidateDiscoveredPrefixes(&prefix.mPrefix, prefix.mIsOnLinkPrefix);
@@ -898,7 +858,7 @@ void RoutingManager::HandleDiscoveredPrefixStaleTimer(Timer &aTimer)
 
 void RoutingManager::HandleDiscoveredPrefixStaleTimer(void)
 {
-    otLogInfoBr("all on-link prefixes are stale");
+    otLogInfoBr("All on-link prefixes are stale");
     StartRouterSolicitationDelay();
 }
 
@@ -928,7 +888,7 @@ void RoutingManager::HandleRouterSolicit(const Ip6::Address &aSrcAddress,
     OT_UNUSED_VARIABLE(aBufferLength);
 
     VerifyOrExit(!mRouterSolicitTimer.IsRunning());
-    otLogInfoBr("received Router Solicitation from %s on interface %u", aSrcAddress.ToString().AsCString(),
+    otLogInfoBr("Received Router Solicitation from %s on interface %u", aSrcAddress.ToString().AsCString(),
                 mInfraIfIndex);
 
     if (!mVicariousRouterSolicitTimer.IsRunning())
@@ -982,11 +942,9 @@ void RoutingManager::HandleRouterAdvertisement(const Ip6::Address &aSrcAddress,
 
     VerifyOrExit(aBufferLength >= sizeof(RouterAdvMessage));
 
-    otLogInfoBr("received Router Advertisement from %s on interface %u", aSrcAddress.ToString().AsCString(),
+    otLogInfoBr("Received Router Advertisement from %s on interface %u", aSrcAddress.ToString().AsCString(),
                 mInfraIfIndex);
-#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
-    otDumpCertBr("[BR-CERT] direction=recv | type=RA |", aBuffer, aBufferLength);
-#endif
+    otDumpDebgBr("[BR-CERT] direction=recv | type=RA |", aBuffer, aBufferLength);
 
     routerAdvMessage = reinterpret_cast<const RouterAdvMessage *>(aBuffer);
     optionsBegin     = aBuffer + sizeof(RouterAdvMessage);
@@ -1047,13 +1005,13 @@ bool RoutingManager::UpdateDiscoveredPrefixes(const RouterAdv::PrefixInfoOption 
 
     if (!IsValidOnLinkPrefix(aPio, aManagedAddrConfig))
     {
-        otLogInfoBr("ignore invalid on-link prefix in PIO: %s", prefix.ToString().AsCString());
+        otLogInfoBr("Ignore invalid on-link prefix in PIO: %s", prefix.ToString().AsCString());
         ExitNow();
     }
 
     VerifyOrExit(mAdvertisedOnLinkPrefix == nullptr || prefix != *mAdvertisedOnLinkPrefix);
 
-    otLogInfoBr("discovered on-link prefix (%s, %u seconds) from interface %u", prefix.ToString().AsCString(),
+    otLogInfoBr("Discovered on-link prefix (%s, %u seconds) from interface %u", prefix.ToString().AsCString(),
                 aPio.GetValidLifetime(), mInfraIfIndex);
 
     if (aPio.GetValidLifetime() == 0)
@@ -1076,7 +1034,7 @@ bool RoutingManager::UpdateDiscoveredPrefixes(const RouterAdv::RouteInfoOption &
 
     if (!IsValidOmrPrefix(prefix))
     {
-        otLogInfoBr("ignore invalid OMR prefix in RIO: %s", prefix.ToString().AsCString());
+        otLogInfoBr("Ignore invalid OMR prefix in RIO: %s", prefix.ToString().AsCString());
         ExitNow();
     }
 
@@ -1089,10 +1047,11 @@ bool RoutingManager::UpdateDiscoveredPrefixes(const RouterAdv::RouteInfoOption &
     //    it takes time to sync a new OMR prefix into Network Data (multicast loopback RA
     //    messages are usually faster than Thread Network Data propagation).
     // They are the reasons why we need both the checks.
-    VerifyOrExit(!ContainsPrefix(prefix, mAdvertisedOmrPrefixes, mAdvertisedOmrPrefixNum));
+
+    VerifyOrExit(!mAdvertisedOmrPrefixes.Contains(prefix));
     VerifyOrExit(!NetworkDataContainsOmrPrefix(prefix));
 
-    otLogInfoBr("discovered OMR prefix (%s, %u seconds) from interface %u", prefix.ToString().AsCString(),
+    otLogInfoBr("Discovered OMR prefix (%s, %u seconds) from interface %u", prefix.ToString().AsCString(),
                 aRio.GetRouteLifetime(), mInfraIfIndex);
 
     if (aRio.GetRouteLifetime() == 0)
@@ -1111,28 +1070,27 @@ exit:
 
 bool RoutingManager::InvalidateDiscoveredPrefixes(const Ip6::Prefix *aPrefix, bool aIsOnLinkPrefix)
 {
-    uint8_t         removedNum               = 0;
-    ExternalPrefix *remainingPrefix          = mDiscoveredPrefixes;
-    TimeMilli       now                      = TimerMilli::GetNow();
-    uint8_t         remainingOnLinkPrefixNum = 0;
+    bool                didRemove                = false;
+    TimeMilli           now                      = TimerMilli::GetNow();
+    uint8_t             remainingOnLinkPrefixNum = 0;
+    ExternalPrefixArray remainingPrefixes;
 
     mDiscoveredPrefixInvalidTimer.Stop();
 
-    for (uint8_t i = 0; i < mDiscoveredPrefixNum; ++i)
+    for (const ExternalPrefix &prefix : mDiscoveredPrefixes)
     {
-        ExternalPrefix &prefix = mDiscoveredPrefixes[i];
-
         if ((aPrefix != nullptr && prefix.mPrefix == *aPrefix && prefix.mIsOnLinkPrefix == aIsOnLinkPrefix) ||
             (prefix.GetExpireTime() <= now))
         {
             RemoveExternalRoute(prefix.mPrefix);
-            ++removedNum;
+            didRemove = true;
         }
         else
         {
             mDiscoveredPrefixInvalidTimer.FireAtIfEarlier(prefix.GetExpireTime());
-            *remainingPrefix = prefix;
-            ++remainingPrefix;
+
+            IgnoreError(remainingPrefixes.PushBack(prefix));
+
             if (prefix.mIsOnLinkPrefix)
             {
                 ++remainingOnLinkPrefixNum;
@@ -1140,7 +1098,7 @@ bool RoutingManager::InvalidateDiscoveredPrefixes(const Ip6::Prefix *aPrefix, bo
         }
     }
 
-    mDiscoveredPrefixNum -= removedNum;
+    mDiscoveredPrefixes = remainingPrefixes;
 
     if (remainingOnLinkPrefixNum == 0 && mAdvertisedOnLinkPrefix == nullptr)
     {
@@ -1149,19 +1107,19 @@ bool RoutingManager::InvalidateDiscoveredPrefixes(const Ip6::Prefix *aPrefix, bo
         StartRouterSolicitationDelay();
     }
 
-    return (removedNum != 0); // If anything was removed we need to reevaluate.
+    return didRemove; // If anything was removed we need to reevaluate.
 }
 
 void RoutingManager::InvalidateAllDiscoveredPrefixes(void)
 {
-    for (uint8_t i = 0; i < mDiscoveredPrefixNum; ++i)
+    for (ExternalPrefix &prefix : mDiscoveredPrefixes)
     {
-        mDiscoveredPrefixes[i].mValidLifetime = 0;
+        prefix.mValidLifetime = 0;
     }
 
     InvalidateDiscoveredPrefixes();
 
-    OT_ASSERT(mDiscoveredPrefixNum == 0);
+    OT_ASSERT(mDiscoveredPrefixes.IsEmpty());
 }
 
 static void UpdateStaleTime(TimeMilli &aonLinkPrefixStaleTime,
@@ -1196,10 +1154,8 @@ bool RoutingManager::AddDiscoveredPrefix(const Ip6::Prefix &aPrefix,
     TimeMilli       onLinkPrefixStaleTime = now;
     TimeMilli       omrPrefixStaleTime    = now.GetDistantFuture();
 
-    for (uint8_t i = 0; i < mDiscoveredPrefixNum; ++i)
+    for (ExternalPrefix &prefix : mDiscoveredPrefixes)
     {
-        ExternalPrefix &prefix = mDiscoveredPrefixes[i];
-
         if (aPrefix == prefix.mPrefix && aIsOnLinkPrefix == prefix.mIsOnLinkPrefix)
         {
             discoveredPrefix = &prefix;
@@ -1210,15 +1166,15 @@ bool RoutingManager::AddDiscoveredPrefix(const Ip6::Prefix &aPrefix,
 
     if (discoveredPrefix == nullptr)
     {
-        if (mDiscoveredPrefixNum < kMaxDiscoveredPrefixNum)
+        if (!mDiscoveredPrefixes.IsFull())
         {
             SuccessOrExit(AddExternalRoute(aPrefix, aRoutePreference));
-            discoveredPrefix = &mDiscoveredPrefixes[mDiscoveredPrefixNum++];
+            discoveredPrefix = mDiscoveredPrefixes.PushBack();
             addedNewPrefix   = true;
         }
         else
         {
-            otLogWarnBr("discovered too many prefixes, ignore new prefix %s", aPrefix.ToString().AsCString());
+            otLogWarnBr("Discovered too many prefixes, ignore new prefix %s", aPrefix.ToString().AsCString());
             ExitNow();
         }
     }
