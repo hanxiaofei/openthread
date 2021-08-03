@@ -251,6 +251,15 @@ public:
     void OutputEnabledDisabledStatus(bool aEnabled);
 
     /**
+     * Write all commands in @p aCommands to the output buffer
+     *
+     * @param[in]  aCommands        List of commands
+     * @param[in]  aCommandsLength  Number of commands in @p aCommands
+     *
+     */
+    void OutputCommands(const otCliCommand aCommands[], size_t aCommandsLength);
+
+    /**
      * This static method checks a given argument string against "enable" or "disable" commands.
      *
      * @param[in]  aArgs    The argument string to parse.

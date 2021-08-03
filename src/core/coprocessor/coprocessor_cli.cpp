@@ -78,7 +78,7 @@ static OT_DEFINE_ALIGNED_VAR(sCoprocessorCliRaw, sizeof(CoprocessorCli), uint64_
 
 #if OPENTHREAD_COPROCESSOR
 const CoprocessorCli::Command CoprocessorCli::sCommands[] = {
-    // {"help", otCoprocessorCliProcessHelp},
+    {"help-coprocessor-cli", otCoprocessorCliProcessHelp},
 };
 #else
 Arg      CoprocessorCli::mCachedCommands[CoprocessorCli::kMaxCommands];
@@ -114,16 +114,16 @@ void CoprocessorCli::Initialize(Instance &aInstance)
     char *      helpCmd[]   = {help};
 
     // Initialize a response buffer
-    memset(ot::Coprocessor::CoprocessorCli::mCachedCommandsBuffer, 0, sizeof(ot::Coprocessor::CoprocessorCli::mCachedCommandsBuffer));
+    memset(mCachedCommandsBuffer, 0, sizeof(mCachedCommandsBuffer));
 
     // Get a list of supported commands
-    SuccessOrExit(otPlatCoprocessorCliProcess(&CoprocessorCli::sCoprocessorCli->GetInstance(), OT_ARRAY_LENGTH(helpCmd), helpCmd,
-                                    CoprocessorCli::sCoprocessorCli->mCachedCommandsBuffer, sizeof(CoprocessorCli::sCoprocessorCli->mCachedCommandsBuffer)));
+    SuccessOrExit(otPlatCoprocessorCliProcess(&sCoprocessorCli->GetInstance(), OT_ARRAY_LENGTH(helpCmd), helpCmd,
+                                    sCoprocessorCli->mCachedCommandsBuffer, sizeof(sCoprocessorCli->mCachedCommandsBuffer)));
 
     // Parse response string into mCachedCommands to make it iterable
-    SuccessOrExit(Utils::CmdLineParser::ParseCmd(CoprocessorCli::sCoprocessorCli->mCachedCommandsBuffer,
-                                                 CoprocessorCli::sCoprocessorCli->mCachedCommands,
-                                                 OT_ARRAY_LENGTH(CoprocessorCli::sCoprocessorCli->mCachedCommands)));
+    SuccessOrExit(Utils::CmdLineParser::ParseCmd(sCoprocessorCli->mCachedCommandsBuffer,
+                                                 sCoprocessorCli->mCachedCommands,
+                                                 OT_ARRAY_LENGTH(sCoprocessorCli->mCachedCommands)));
 
     // Get the number of supported commands
     mCachedCommandsLength = Arg::GetArgsLength(CoprocessorCli::sCoprocessorCli->mCachedCommands);
@@ -264,14 +264,13 @@ exit:
     return rval;
 }
 
-// void CoprocessorCli::ProcessHelp(void *aContext, char *aArgs[])
-// {
-//     OT_UNUSED_VARIABLE(aContext);
-//     OT_UNUSED_VARIABLE(aArgs);
+void CoprocessorCli::ProcessHelp(char *aArgs[])
+{
+    OT_UNUSED_VARIABLE(aArgs);
 
-//     OutputCommands(sCommands, OT_ARRAY_LENGTH(sCommands));
-//     OutputCommands(mUserCommands, mUserCommandsLength);
-// }
+    otCliOutputCommands(sCommands, OT_ARRAY_LENGTH(sCommands));
+    otCliOutputCommands(mUserCommands, mUserCommandsLength);
+}
 
 void CoprocessorCli::SetOutputBuffer(char *aOutput, size_t aOutputMaxLen)
 {

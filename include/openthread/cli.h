@@ -126,6 +126,24 @@ void otCliOutputBytes(const uint8_t *aBytes, uint8_t aLength);
 void otCliOutputFormat(const char *aFmt, ...);
 
 /**
+ * Write formatted string to the CLI console
+ *
+ * @param[in]  aFmt   A pointer to the format string.
+ * @param[in]  ...    A matching list of arguments.
+ *
+ */
+void otCliOutputLine(const char *aFmt, ...);
+
+/**
+ * Write all commands in @p aCommands to the output buffer
+*
+* @param[in]  aCommands        List of commands
+* @param[in]  aCommandsLength  Number of commands in @p aCommands
+*
+*/
+void otCliOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength);
+
+/**
  * Write error code to the CLI console
  *
  * If the @p aError is `OT_ERROR_PENDING` nothing will be outputted.

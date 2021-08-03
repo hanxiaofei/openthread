@@ -88,10 +88,15 @@ extern "C" otError otCoprocessorCliProcessCmd(uint8_t aArgsLength, char *aArgs[]
 #if OPENTHREAD_COPROCESSOR
 extern "C" void otCoprocessorCliProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[])
 {
+    OT_UNUSED_VARIABLE(aContext);
     OT_UNUSED_VARIABLE(aArgsLength);
-    CoprocessorCli::GetCoprocessorCli().ProcessHelp(aContext, aArgs);
+    CoprocessorCli::GetCoprocessorCli().ProcessHelp(aArgs);
 }
 
+extern "C" void otCoprocessorCliSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
+{
+    CoprocessorCli::GetCoprocessorCli().SetUserCommands(aUserCommands, aLength, aContext);
+}
 #endif
 
 #endif // OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE

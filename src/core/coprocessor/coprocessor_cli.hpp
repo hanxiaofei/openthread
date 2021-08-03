@@ -165,7 +165,7 @@ public:
      */
     int OutputCallback(const char *aFormat, va_list aArguments);
 
-    void ProcessHelp(void *aContext, char *aArgs[]);
+    void ProcessHelp(char *aArgs[]);
 
     enum
     {

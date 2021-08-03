@@ -38,6 +38,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
+#include "openthread/coprocessor_cli.h"
+#endif
 #include <openthread/dns.h>
 #include <openthread/icmp6.h>
 #include <openthread/link.h>
@@ -91,6 +95,19 @@ void InterpreterCore::OutputBytes(const uint8_t *aBytes, uint16_t aLength)
 void InterpreterCore::OutputEnabledDisabledStatus(bool aEnabled)
 {
     OutputLine(aEnabled ? "Enabled" : "Disabled");
+}
+
+void InterpreterCore::OutputCommands(const otCliCommand aCommands[], size_t aCommandsLength)
+{
+    VerifyOrExit(aCommands != NULL);
+
+    for (size_t i = 0; i < aCommandsLength; i++)
+    {
+        OutputFormat("%s\n", aCommands[i].mName);
+    }
+
+exit:
+    return;
 }
 
 int InterpreterCore::OutputIp6Address(const otIp6Address &aAddress)
@@ -361,6 +378,9 @@ extern "C" void otCliInputLine(char *aBuf)
 extern "C" void otCliSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
 {
     InterpreterCore::GetInterpreter().SetUserCommands(aUserCommands, aLength, aContext);
+#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
+    otCoprocessorCliSetUserCommands(aUserCommands, aLength, aContext);
+#endif
 }
 
 extern "C" void otCliOutputBytes(const uint8_t *aBytes, uint8_t aLength)
@@ -374,6 +394,19 @@ extern "C" void otCliOutputFormat(const char *aFmt, ...)
     va_start(aAp, aFmt);
     InterpreterCore::GetInterpreter().OutputFormatV(aFmt, aAp);
     va_end(aAp);
+}
+
+extern "C" void otCliOutputLine(const char *aFmt, ...)
+{
+    va_list aAp;
+    va_start(aAp, aFmt);
+    InterpreterCore::GetInterpreter().OutputLine(aFmt, aAp);
+    va_end(aAp);
+}
+
+extern "C" void otCliOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength)
+{
+    InterpreterCore::GetInterpreter().OutputCommands(aCommands, aCommandsLength);
 }
 
 extern "C" void otCliAppendResult(otError aError)
