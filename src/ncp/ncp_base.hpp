@@ -463,20 +463,20 @@ protected:
 
     otError HandlePropertySet_SPINEL_PROP_HOST_POWER_STATE(uint8_t aHeader);
 
-#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
-    static_assert(OPENTHREAD_CONFIG_COPROCESSOR_CLI_OUTPUT_BUFFER_SIZE <=
-                      OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE - kSpinelCmdHeaderSize - kSpinelPropIdSize,
-                  "Coprocessor RPC output buffer should be smaller than NCP HDLC tx buffer");
-
-    otError HandlePropertySet_SPINEL_PROP_COPROCESSOR_CLI(uint8_t aHeader);
-#endif
-
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     static_assert(OPENTHREAD_CONFIG_DIAG_OUTPUT_BUFFER_SIZE <=
                       OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE - kSpinelCmdHeaderSize - kSpinelPropIdSize,
                   "diag output buffer should be smaller than NCP HDLC tx buffer");
 
     otError HandlePropertySet_SPINEL_PROP_NEST_STREAM_MFG(uint8_t aHeader);
+#endif
+
+#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
+    static_assert(OPENTHREAD_CONFIG_COPROCESSOR_CLI_OUTPUT_BUFFER_SIZE <=
+                      OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE - kSpinelCmdHeaderSize - kSpinelPropIdSize,
+                  "Coprocessor RPC output buffer should be smaller than NCP HDLC tx buffer");
+
+    otError HandlePropertySet_SPINEL_PROP_COPROCESSOR_CLI(uint8_t aHeader);
 #endif
 
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_COMMISSIONER_ENABLE

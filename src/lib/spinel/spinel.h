@@ -4717,12 +4717,12 @@ enum
 
     SPINEL_PROP_VENDOR__BEGIN = 0x3C00,
 
-    /// Coprocessor CLI (Host -> RCP)
+    /// Coprocessor CLI (Host -> Co-processor)
     /** Format: `D`.
      *
      *  `D`: command string
      *
-     * The Spinel property is used to allow a Host to execute a CLI command on a RCP.
+     * The Spinel property is used to allow a Host to execute a CLI command on a Co-processor.
      *
      */
     SPINEL_PROP_COPROCESSOR_CLI = SPINEL_PROP_VENDOR__BEGIN + 0,

@@ -571,22 +571,6 @@ public:
      */
     InterfaceType &GetSpinelInterface(void) { return mSpinelInterface; }
 
-#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
-    /**
-     * This method processes platform diagnostics commands.
-     *
-     * @param[in]   aString         A null-terminated input string.
-     * @param[out]  aOutput         The diagnostics execution result.
-     * @param[in]   aOutputMaxLen   The output buffer size.
-     *
-     * @retval  OT_ERROR_NONE               Succeeded.
-     * @retval  OT_ERROR_BUSY               Failed due to another operation is on going.
-     * @retval  OT_ERROR_RESPONSE_TIMEOUT   Failed due to no response received from the transceiver.
-     *
-     */
-    otError PlatCoprocessorCliProcess(const char *aString, char *aOutput, size_t aOutputMaxLen);
-#endif
-
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     /**
      * This method enables/disables the factory diagnostics mode.
@@ -617,6 +601,22 @@ public:
      *
      */
     otError PlatDiagProcess(const char *aString, char *aOutput, size_t aOutputMaxLen);
+#endif
+
+#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
+    /**
+     * This method processes platform diagnostics commands.
+     *
+     * @param[in]   aString         A null-terminated input string.
+     * @param[out]  aOutput         The diagnostics execution result.
+     * @param[in]   aOutputMaxLen   The output buffer size.
+     *
+     * @retval  OT_ERROR_NONE               Succeeded.
+     * @retval  OT_ERROR_BUSY               Failed due to another operation is on going.
+     * @retval  OT_ERROR_RESPONSE_TIMEOUT   Failed due to no response received from the transceiver.
+     *
+     */
+    otError PlatCoprocessorCliProcess(const char *aString, char *aOutput, size_t aOutputMaxLen);
 #endif
 
     /**
@@ -1012,15 +1012,15 @@ private:
 
 #endif // OPENTHREAD_SPINEL_CONFIG_RCP_RESTORATION_MAX_COUNT > 0
 
-#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
-    char * mCoprocessorCliOutput;
-    size_t mCoprocessorCliOutputMaxLen;
-#endif
-
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     bool   mDiagMode;
     char * mDiagOutput;
     size_t mDiagOutputMaxLen;
+#endif
+
+#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
+    char * mCoprocessorCliOutput;
+    size_t mCoprocessorCliOutputMaxLen;
 #endif
 
     uint64_t mTxRadioEndUs;
