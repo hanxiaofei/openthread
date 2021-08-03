@@ -91,30 +91,30 @@ public:
      * @returns A reference to the InterpreterCore object.
      *
      */
-    static InterpreterCore &GetInterpreter(void)
-    {
-        OT_ASSERT(sInterpreter != nullptr);
+    // InterpreterCore &GetInterpreter(void)
+    // {
+    //     OT_ASSERT(sInterpreter != nullptr);
 
-        return *sInterpreter;
-    }
+    //     return *sInterpreter;
+    // }
 
-    /**
-     * This method initializes the Console interpreter.
-     *
-     * @param[in]  aInstance  The OpenThread instance structure.
-     * @param[in]  aCallback  A pointer to a callback method.
-     * @param[in]  aContext   A pointer to a user context.
-     *
-     */
-    static void Initialize(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext);
+    // /**
+    //  * This method initializes the Console interpreter.
+    //  *
+    //  * @param[in]  aInstance  The OpenThread instance structure.
+    //  * @param[in]  aCallback  A pointer to a callback method.
+    //  * @param[in]  aContext   A pointer to a user context.
+    //  *
+    //  */
+    // static void Initialize(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext);
 
-    /**
-     * This method returns whether the interpreter is initialized.
-     *
-     * @returns  Whether the interpreter is initialized.
-     *
-     */
-    static bool IsInitialized(void) { return sInterpreter != nullptr; }
+    // /**
+    //  * This method returns whether the interpreter is initialized.
+    //  *
+    //  * @returns  Whether the interpreter is initialized.
+    //  *
+    //  */
+    // static bool IsInitialized(void) { return sInterpreter != nullptr; }
 
     /**
      * This method interprets a CLI command.
@@ -297,7 +297,6 @@ protected:
         kMaxLineLength    = OPENTHREAD_CONFIG_CLI_MAX_LINE_LENGTH,
     };
 
-    static InterpreterCore *sInterpreter;
     Instance               *mInstance;
 
     template <typename ValueType> using GetHandler         = ValueType (&)(otInstance *);

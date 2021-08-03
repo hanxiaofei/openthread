@@ -124,6 +124,38 @@ public:
     explicit Interpreter(Instance *aInstance, otCliOutputCallback aCallback, void *aContext);
 
     /**
+     * This method returns a reference to the InterpreterCore object.
+     *
+     * @returns A reference to the InterpreterCore object.
+     *
+     */
+    static Interpreter &GetInterpreter(void)
+    {
+        OT_ASSERT(sInterpreter != nullptr);
+
+        return *sInterpreter;
+    }
+
+    /**
+     * This method initializes the Console interpreter.
+     *
+     * @param[in]  aInstance  The OpenThread instance structure.
+     * @param[in]  aCallback  A pointer to a callback method.
+     * @param[in]  aContext   A pointer to a user context.
+     *
+     */
+    static void Initialize(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext);
+
+    /**
+     * This method returns whether the interpreter is initialized.
+     *
+     * @returns  Whether the interpreter is initialized.
+     *
+     */
+    static bool IsInitialized(void) { return sInterpreter != nullptr; }
+
+
+    /**
      * This method interprets a CLI command.
      *
      * @param[in]  aBuf        A pointer to a string.
@@ -131,6 +163,7 @@ public:
      */
     void ProcessLine(char *aBuf) override;
 protected:
+    static Interpreter *sInterpreter;
 
 private:
     struct Command

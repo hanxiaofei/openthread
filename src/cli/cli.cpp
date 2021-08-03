@@ -94,6 +94,9 @@
 namespace ot {
 namespace Cli {
 
+Interpreter *Interpreter::sInterpreter = nullptr;
+static OT_DEFINE_ALIGNED_VAR(sInterpreterRaw, sizeof(Interpreter), uint64_t);
+
 constexpr Interpreter::Command Interpreter::sCommands[];
 
 Interpreter::Interpreter(Instance *aInstance, otCliOutputCallback aCallback, void *aContext)
@@ -129,6 +132,13 @@ Interpreter::Interpreter(Instance *aInstance, otCliOutputCallback aCallback, voi
 #if OPENTHREAD_FTD
     otThreadSetDiscoveryRequestCallback(mInstance, &Interpreter::HandleDiscoveryRequest, this);
 #endif
+}
+
+void Interpreter::Initialize(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext)
+{
+    Instance *instance = static_cast<Instance *>(aInstance);
+
+    Interpreter::sInterpreter = new (&sInterpreterRaw) Interpreter(instance, aCallback, aContext);
 }
 
 otError Interpreter::ParseJoinerDiscerner(Arg &aArg, otJoinerDiscerner &aDiscerner)

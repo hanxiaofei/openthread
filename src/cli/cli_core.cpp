@@ -57,8 +57,8 @@
 namespace ot {
 namespace Cli {
 
-InterpreterCore *InterpreterCore::sInterpreter = nullptr;
-static OT_DEFINE_ALIGNED_VAR(sInterpreterRaw, sizeof(InterpreterCore), uint64_t);
+// InterpreterCore *InterpreterCore::sInterpreter = nullptr;
+// static OT_DEFINE_ALIGNED_VAR(sInterpreterRaw, sizeof(InterpreterCore), uint64_t);
 
 InterpreterCore::InterpreterCore(Instance *aInstance, otCliOutputCallback aCallback, void *aContext)
     : mInstance(aInstance)
@@ -363,12 +363,7 @@ exit:
     return rval;
 }
 
-void InterpreterCore::Initialize(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext)
-{
-    Instance *instance = static_cast<Instance *>(aInstance);
 
-    InterpreterCore::sInterpreter = new (&sInterpreterRaw) InterpreterCore(instance, aCallback, aContext);
-}
 
 extern "C" void otCliInit(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext)
 {
