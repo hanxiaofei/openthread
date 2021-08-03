@@ -32,7 +32,6 @@
  */
 
 #include "cli_core.hpp"
-#include "cli.hpp"
 #include "openthread/platform/toolchain.h"
 
 #include <stdio.h>
