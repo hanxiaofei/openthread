@@ -32,7 +32,7 @@
  */
 
 #include "cli_lite.hpp"
-#include "cli.hpp"
+#include "cli_core.hpp"
 #include "openthread/platform/toolchain.h"
 
 #include <stdio.h>
@@ -72,42 +72,6 @@ void InterpreterLite::Initialize(otInstance *aInstance, otCliOutputCallback aCal
     InterpreterLite::sInterpreter = new (&sInterpreterRaw) InterpreterLite(instance, aCallback, aContext);
 }
 
-void InterpreterLite::ProcessLine(const char *aString, char *aOutput, size_t aOutputMaxLen) override
-{
-    Error   error = kErrorNone;
-    char    buffer[kMaxCommandBuffer];
-    char *  args[kMaxArgs];
-    uint8_t argCount = 0;
-
-    VerifyOrExit(StringLength(aString, kMaxCommandBuffer) < kMaxCommandBuffer, error = kErrorNoBufs);
-
-    strcpy(buffer, aString);
-    argCount = kMaxArgs;
-    error    = ParseCmd(buffer, argCount, args);
-
-exit:
-
-    switch (error)
-    {
-    case kErrorNone:
-        aOutput[0] = '\0'; // In case there is no output.
-        IgnoreError(ProcessCmd(argCount, &args[0], aOutput, aOutputMaxLen));
-        break;
-
-    case kErrorNoBufs:
-        snprintf(aOutput, aOutputMaxLen, "failed: command string too long\r\n");
-        break;
-
-    case kErrorInvalidArgs:
-        snprintf(aOutput, aOutputMaxLen, "failed: command string contains too many arguments\r\n");
-        break;
-
-    default:
-        snprintf(aOutput, aOutputMaxLen, "failed to parse command string\r\n");
-        break;
-    }
-}
-
 extern "C" void otCliInit(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext)
 {
     otCliCoreInit<InterpreterLite>(aInstance, aCallback, aContext);
@@ -130,7 +94,10 @@ extern "C" void otCliOutputBytes(const uint8_t *aBytes, uint8_t aLength)
 
 extern "C" void otCliOutputFormat(const char *aFmt, ...)
 {
+    va_list aAp;
+    va_start(aAp, aFmt);
     otCliCoreOutputFormat<InterpreterLite>(aFmt, aAp);
+    va_end(aAp);
 }
 
 extern "C" void otCliOutputLine(const char *aFmt, ...)

@@ -46,6 +46,9 @@
 #include <openthread/instance.h>
 #include <openthread/ip6.h>
 #include <openthread/link.h>
+#if OPENTHREAD_CONFIG_PING_SENDER_ENABLE
+#include <openthread/ping_sender.h>
+#endif
 #include <openthread/sntp.h>
 #if OPENTHREAD_CONFIG_TCP_ENABLE && OPENTHREAD_CONFIG_CLI_TCP_ENABLE
 #include <openthread/tcp.h>

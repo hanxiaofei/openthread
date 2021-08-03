@@ -34,8 +34,9 @@
 #ifndef CLI_LITE_HPP_
 #define CLI_LITE_HPP_
 
-#include "openthread-lite-config.h"
+#include "openthread-core-config.h"
 
+#include "cli_core.hpp"
 #include "cli_config.h"
 
 #include <stdarg.h>
@@ -65,12 +66,10 @@ namespace Cli {
  * This class implements the CLI interpreter.
  *
  */
-class InterpreterLite
+class InterpreterLite: public InterpreterCore
 {
 
 public:
-    typedef Utils::CmdLineParser::Arg Arg;
-
     /**
      * Constructor
      *
@@ -115,14 +114,6 @@ public:
      *
      */
     static bool IsInitialized(void) { return sInterpreter != nullptr; }
-
-    /**
-     * This method interprets a CLI command.
-     *
-     * @param[in]  aBuf        A pointer to a string.
-     *
-     */
-    void ProcessLine(char *aBuf) override;
 
 protected:
     enum
