@@ -32,7 +32,8 @@
  */
 
 #include "cli_core.hpp"
-// #include "cli.hpp"
+#include "cli.hpp"
+#include "openthread/platform/toolchain.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -365,100 +366,7 @@ exit:
 
 
 
-extern "C" void otCliInit(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext)
-{
-    InterpreterCore::Initialize(aInstance, aCallback, aContext);
-}
 
-extern "C" void otCliInputLine(char *aBuf)
-{
-    InterpreterCore::GetInterpreter().ProcessLine(aBuf);
-}
-
-extern "C" void otCliSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
-{
-    InterpreterCore::GetInterpreter().SetUserCommands(aUserCommands, aLength, aContext);
-#if OPENTHREAD_COPROCESSOR && OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
-    otCoprocessorCliSetUserCommands(aUserCommands, aLength, aContext);
-#endif
-}
-
-extern "C" void otCliOutputBytes(const uint8_t *aBytes, uint8_t aLength)
-{
-    InterpreterCore::GetInterpreter().OutputBytes(aBytes, aLength);
-}
-
-extern "C" void otCliOutputFormat(const char *aFmt, ...)
-{
-    va_list aAp;
-    va_start(aAp, aFmt);
-    InterpreterCore::GetInterpreter().OutputFormatV(aFmt, aAp);
-    va_end(aAp);
-}
-
-extern "C" void otCliOutputLine(const char *aFmt, ...)
-{
-    va_list aAp;
-    va_start(aAp, aFmt);
-    InterpreterCore::GetInterpreter().OutputLine(aFmt, aAp);
-    va_end(aAp);
-}
-
-extern "C" void otCliOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength)
-{
-    InterpreterCore::GetInterpreter().OutputCommands(aCommands, aCommandsLength);
-}
-
-extern "C" void otCliAppendResult(otError aError)
-{
-    InterpreterCore::GetInterpreter().OutputResult(aError);
-}
-
-extern "C" void otCliPlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aFormat, va_list aArgs)
-{
-    OT_UNUSED_VARIABLE(aLogLevel);
-    OT_UNUSED_VARIABLE(aLogRegion);
-
-    VerifyOrExit(InterpreterCore::IsInitialized());
-
-#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
-    // CLI output can be used for logging. The `IsLogging` flag is
-    // used to indicate whether it is being used for a CLI command
-    // output or for logging.
-    InterpreterCore::GetInterpreter().SetIsLogging(true);
-#endif
-
-    InterpreterCore::GetInterpreter().OutputFormatV(aFormat, aArgs);
-    InterpreterCore::GetInterpreter().OutputLine("");
-
-#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
-    InterpreterCore::GetInterpreter().SetIsLogging(false);
-#endif
-
-exit:
-    return;
-}
-
-extern "C" void otCliPlatLogLine(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aLogLine)
-{
-    OT_UNUSED_VARIABLE(aLogLevel);
-    OT_UNUSED_VARIABLE(aLogRegion);
-
-    VerifyOrExit(InterpreterCore::IsInitialized());
-
-#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
-    InterpreterCore::GetInterpreter().SetIsLogging(true);
-#endif
-
-    InterpreterCore::GetInterpreter().OutputLine(aLogLine);
-
-#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
-    InterpreterCore::GetInterpreter().SetIsLogging(false);
-#endif
-
-exit:
-    return;
-}
 
 } // namespace Cli
 } // namespace ot

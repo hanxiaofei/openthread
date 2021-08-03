@@ -437,6 +437,122 @@ template <> inline constexpr const char *InterpreterCore::FormatStringFor<int32_
     return "%d";
 }
 
+// template <class InterpreterClass> void otCliCoreInit(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext);
+// template <class InterpreterClass> void otCliCoreInputLine(char *aBuf);
+// template <class InterpreterClass> void otCliCoreSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext);
+// template <class InterpreterClass> void otCliCoreOutputBytes(const uint8_t *aBytes, uint8_t aLength);
+// template <class InterpreterClass> void otCliCoreOutputFormat(const char *aFmt, ...);
+// template <class InterpreterClass> void otCliCoreOutputLine(const char *aFmt, ...);
+// template <class InterpreterClass> void otCliCoreOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength);
+// template <class InterpreterClass> void otCliCoreAppendResult(otError aError);
+// template <class InterpreterClass> void otCliCorePlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aFormat, va_list aArgs);
+// template <class InterpreterClass> void otCliCorePlatLogLine(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aLogLine);
+
+template <class InterpreterClass>
+void otCliCoreInit(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext)
+{
+    InterpreterClass::Initialize(aInstance, aCallback, aContext);
+}
+
+template <class InterpreterClass>
+void otCliCoreInputLine(char *aBuf)
+{
+    InterpreterClass::GetInterpreter().ProcessLine(aBuf);
+}
+
+template <class InterpreterClass>
+void otCliCoreSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
+{
+    InterpreterClass::GetInterpreter().SetUserCommands(aUserCommands, aLength, aContext);
+#if OPENTHREAD_COPROCESSOR && OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
+    otCoprocessorCliSetUserCommands(aUserCommands, aLength, aContext);
+#endif
+}
+
+template <class InterpreterClass>
+void otCliCoreOutputBytes(const uint8_t *aBytes, uint8_t aLength)
+{
+    InterpreterClass::GetInterpreter().OutputBytes(aBytes, aLength);
+}
+
+template <class InterpreterClass>
+void otCliCoreOutputFormat(const char *aFmt, ...)
+{
+    va_list aAp;
+    va_start(aAp, aFmt);
+    InterpreterClass::GetInterpreter().OutputFormatV(aFmt, aAp);
+    va_end(aAp);
+}
+
+template <class InterpreterClass>
+void otCliCoreOutputLine(const char *aFmt, ...)
+{
+    va_list aAp;
+    va_start(aAp, aFmt);
+    InterpreterClass::GetInterpreter().OutputLine(aFmt, aAp);
+    va_end(aAp);
+}
+
+template <class InterpreterClass>
+void otCliCoreOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength)
+{
+    InterpreterClass::GetInterpreter().OutputCommands(aCommands, aCommandsLength);
+}
+
+template <class InterpreterClass>
+void otCliCoreAppendResult(otError aError)
+{
+    InterpreterClass::GetInterpreter().OutputResult(aError);
+}
+
+template <class InterpreterClass>
+void otCliCorePlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aFormat, va_list aArgs)
+{
+    OT_UNUSED_VARIABLE(aLogLevel);
+    OT_UNUSED_VARIABLE(aLogRegion);
+
+    VerifyOrExit(InterpreterClass::IsInitialized());
+
+#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
+    // CLI output can be used for logging. The `IsLogging` flag is
+    // used to indicate whether it is being used for a CLI command
+    // output or for logging.
+    InterpreterClass::GetInterpreter().SetIsLogging(true);
+#endif
+
+    InterpreterClass::GetInterpreter().OutputFormatV(aFormat, aArgs);
+    InterpreterClass::GetInterpreter().OutputLine("");
+
+#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
+    InterpreterClass::GetInterpreter().SetIsLogging(false);
+#endif
+
+exit:
+    return;
+}
+
+template <class InterpreterClass>
+void otCliCorePlatLogLine(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aLogLine)
+{
+    OT_UNUSED_VARIABLE(aLogLevel);
+    OT_UNUSED_VARIABLE(aLogRegion);
+
+    VerifyOrExit(InterpreterClass::IsInitialized());
+
+#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
+    InterpreterClass::GetInterpreter().SetIsLogging(true);
+#endif
+
+    InterpreterClass::GetInterpreter().OutputLine(aLogLine);
+
+#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
+    InterpreterClass::GetInterpreter().SetIsLogging(false);
+#endif
+
+exit:
+    return;
+}
+
 } // namespace Cli
 } // namespace ot
 

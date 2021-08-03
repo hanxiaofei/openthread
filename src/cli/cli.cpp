@@ -4769,6 +4769,62 @@ void Interpreter::HandleDiscoveryRequest(const otThreadDiscoveryRequestInfo &aIn
     OutputLine(": version=%u,joiner=%d", aInfo.mVersion, aInfo.mIsJoiner);
 }
 
+extern "C" void otCliInit(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext)
+{
+    otCliCoreInit<Interpreter>(aInstance, aCallback, aContext);
+}
+
+extern "C" void otCliInputLine(char *aBuf)
+{
+    otCliCoreInputLine<Interpreter>(aBuf);
+}
+
+extern "C" void otCliSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
+{
+    otCliCoreSetUserCommands<Interpreter>(aUserCommands, aLength, aContext);
+}
+
+extern "C" void otCliOutputBytes(const uint8_t *aBytes, uint8_t aLength)
+{
+    otCliCoreOutputBytes<Interpreter>(aBytes, aLength);
+}
+
+extern "C" void otCliOutputFormat(const char *aFmt, ...)
+{
+    va_list aAp;
+    va_start(aAp, aFmt);
+    otCliCoreOutputFormat<Interpreter>(aFmt, aAp);
+    va_end(aAp);
+}
+
+extern "C" void otCliOutputLine(const char *aFmt, ...)
+{
+    va_list aAp;
+    va_start(aAp, aFmt);
+    otCliCoreOutputLine<Interpreter>(aFmt, aAp);
+    va_end(aAp);
+}
+
+extern "C" void otCliOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength)
+{
+    otCliCoreOutputCommands<Interpreter>(aCommands, aCommandsLength);
+}
+
+extern "C" void otCliAppendResult(otError aError)
+{
+    otCliCoreAppendResult<Interpreter>(aError);
+}
+
+extern "C" void otCliPlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aFormat, va_list aArgs)
+{
+    otCliCorePlatLogv<Interpreter>(aLogLevel, aLogRegion, aFormat, aArgs);
+}
+
+extern "C" void otCliPlatLogLine(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aLogLine)
+{
+    otCliCorePlatLogLine<Interpreter>(aLogLevel, aLogRegion, aLogLine);
+}
+
 } // namespace Cli
 } // namespace ot
 
