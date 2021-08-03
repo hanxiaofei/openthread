@@ -464,9 +464,6 @@ template <class InterpreterClass>
 void otCliCoreSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
 {
     InterpreterClass::GetInterpreter().SetUserCommands(aUserCommands, aLength, aContext);
-#if OPENTHREAD_COPROCESSOR && OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
-    otCoprocessorCliSetUserCommands(aUserCommands, aLength, aContext);
-#endif
 }
 
 template <class InterpreterClass>
