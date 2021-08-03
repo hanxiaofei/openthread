@@ -28,7 +28,10 @@
 
 add_library(openthread-rcp)
 
-target_compile_definitions(openthread-rcp PRIVATE
+target_compile_definitions(openthread-rcp
+PUBLIC
+    OPENTHREAD_COPROCESSOR=1
+PRIVATE
     OPENTHREAD_RADIO=1
     OPENTHREAD_CONFIG_NCP_HDLC_ENABLE=1
 )
