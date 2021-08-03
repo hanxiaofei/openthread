@@ -282,6 +282,12 @@ public:
      */
     void SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext);
 
+#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
+    // TODO: Move to private scope
+    bool IsLogging(void) const { return mIsLogging; }
+    void SetIsLogging(bool aIsLogging) { mIsLogging = aIsLogging; }
+#endif
+
 protected:
     enum
     {
@@ -387,7 +393,11 @@ protected:
     void *              mUserCommandsContext;
 
 private:
-
+#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
+    char     mOutputString[OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_LOG_STRING_SIZE];
+    uint16_t mOutputLength;
+    bool     mIsLogging;
+#endif
     // struct Command
     // {
     //     const char *mName;
