@@ -41,6 +41,7 @@ set(COMMON_SOURCES
     api/coap_api.cpp
     api/coap_secure_api.cpp
     api/commissioner_api.cpp
+    api/coprocessor_cli_api.cpp
     api/crypto_api.cpp
     api/dataset_api.cpp
     api/dataset_ftd_api.cpp
