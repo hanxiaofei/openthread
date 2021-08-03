@@ -782,8 +782,8 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleWaitingResponse(uint3
         spinel_ssize_t unpacked;
 
         VerifyOrExit(mCoprocessorCliOutput != nullptr);
-        unpacked =
-            spinel_datatype_unpack_in_place(aBuffer, aLength, SPINEL_DATATYPE_UTF8_S, mCoprocessorCliOutput, &mCoprocessorCliOutputMaxLen);
+        unpacked = spinel_datatype_unpack_in_place(aBuffer, aLength, SPINEL_DATATYPE_UTF8_S, mCoprocessorCliOutput,
+                                                   &mCoprocessorCliOutputMaxLen);
         VerifyOrExit(unpacked > 0, mError = OT_ERROR_PARSE);
     }
 #endif
@@ -2050,8 +2050,8 @@ exit:
 #if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
 template <typename InterfaceType, typename ProcessContextType>
 otError RadioSpinel<InterfaceType, ProcessContextType>::PlatCoprocessorCliProcess(const char *aString,
-                                                                        char *      aOutput,
-                                                                        size_t      aOutputMaxLen)
+                                                                                  char *      aOutput,
+                                                                                  size_t      aOutputMaxLen)
 {
     otError error;
 

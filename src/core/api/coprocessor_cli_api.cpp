@@ -35,19 +35,19 @@
 
 #include <openthread/coprocessor_cli.h>
 
-#include "coprocessor/coprocessor_cli.hpp"
 #include "common/error.hpp"
 #include "common/instance.hpp"
 #include "common/locator_getters.hpp"
+#include "coprocessor/coprocessor_cli.hpp"
 
 namespace ot {
 namespace Coprocessor {
 
 extern "C" Error otCoprocessorCliHandleCommand(void *             aContext,
-                                     uint8_t            aArgsLength,
-                                     char *             aArgs[],
-                                     uint8_t            aCommandsLength,
-                                     const otCliCommand aCommands[])
+                                               uint8_t            aArgsLength,
+                                               char *             aArgs[],
+                                               uint8_t            aCommandsLength,
+                                               const otCliCommand aCommands[])
 {
     Error error = kErrorInvalidCommand;
 
@@ -101,5 +101,5 @@ extern "C" void otCoprocessorCliSetUserCommands(const otCliCommand *aUserCommand
 
 #endif // OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
 
-} // namespace Cli
+} // namespace Coprocessor
 } // namespace ot

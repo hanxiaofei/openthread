@@ -56,10 +56,10 @@
  */
 OT_TOOL_WEAK
 otError otPlatCoprocessorCliProcess(otInstance *aInstance,
-                          uint8_t     aArgsLength,
-                          char *      aArgs[],
-                          char *      aOutput,
-                          size_t      aOutputMaxLen)
+                                    uint8_t     aArgsLength,
+                                    char *      aArgs[],
+                                    char *      aOutput,
+                                    size_t      aOutputMaxLen)
 {
     OT_UNUSED_VARIABLE(aArgsLength);
     OT_UNUSED_VARIABLE(aArgs);
@@ -81,9 +81,9 @@ const CoprocessorCli::Command CoprocessorCli::sCommands[] = {
     {"help-coprocessor-cli", otCoprocessorCliProcessHelp},
 };
 #else
-Utils::CmdLineParser::Arg      CoprocessorCli::mCachedCommands[CoprocessorCli::kMaxCommands];
-char     CoprocessorCli::mCachedCommandsBuffer[CoprocessorCli::kCommandCacheBufferLength];
-uint8_t  CoprocessorCli::mCachedCommandsLength = 0;
+Utils::CmdLineParser::Arg CoprocessorCli::mCachedCommands[CoprocessorCli::kMaxCommands];
+char                      CoprocessorCli::mCachedCommandsBuffer[CoprocessorCli::kCommandCacheBufferLength];
+uint8_t                   CoprocessorCli::mCachedCommandsLength = 0;
 #endif
 
 CoprocessorCli::CoprocessorCli(Instance &aInstance)
@@ -109,7 +109,7 @@ void CoprocessorCli::Initialize(Instance &aInstance)
     OT_UNUSED_VARIABLE(helpCmd);
 
     VerifyOrExit((CoprocessorCli::sCoprocessorCli == nullptr) && !initStarted);
-    initStarted = true;
+    initStarted                     = true;
     CoprocessorCli::sCoprocessorCli = new (&sCoprocessorCliRaw) CoprocessorCli(aInstance);
 
 #if !OPENTHREAD_COPROCESSOR
@@ -119,7 +119,8 @@ void CoprocessorCli::Initialize(Instance &aInstance)
 
     // Get a list of supported commands
     SuccessOrExit(otPlatCoprocessorCliProcess(&sCoprocessorCli->GetInstance(), OT_ARRAY_LENGTH(helpCmd), helpCmd,
-                                    sCoprocessorCli->mCachedCommandsBuffer, sizeof(sCoprocessorCli->mCachedCommandsBuffer)));
+                                              sCoprocessorCli->mCachedCommandsBuffer,
+                                              sizeof(sCoprocessorCli->mCachedCommandsBuffer)));
 
     // Parse response string into mCachedCommands to make it iterable
     SuccessOrExit(Utils::CmdLineParser::ParseCmd(sCoprocessorCli->mCachedCommandsBuffer,
@@ -127,7 +128,7 @@ void CoprocessorCli::Initialize(Instance &aInstance)
                                                  OT_ARRAY_LENGTH(sCoprocessorCli->mCachedCommands)));
 
     // Get the number of supported commands
-    mCachedCommandsLength = Arg::GetArgsLength(CoprocessorCli::sCoprocessorCli->mCachedCommands);
+    mCachedCommandsLength = Arg::GetArgsLength(ot::Coprocessor::CoprocessorCli::mCachedCommands);
 #endif
 exit:
     return;
@@ -224,7 +225,8 @@ Error CoprocessorCli::ProcessCmd(uint8_t aArgsLength, char *aArgs[], char *aOutp
         if (command == aArgs[0])
         {
             // more platform specific features will be processed under platform layer
-            SuccessOrExit(error = otPlatCoprocessorCliProcess(&GetInstance(), aArgsLength, aArgs, aOutput, aOutputMaxLen));
+            SuccessOrExit(error =
+                              otPlatCoprocessorCliProcess(&GetInstance(), aArgsLength, aArgs, aOutput, aOutputMaxLen));
             ExitNow();
         }
     }
@@ -241,10 +243,10 @@ exit:
 #endif
 
 Error CoprocessorCli::HandleCommand(void *        aContext,
-                         uint8_t       aArgsLength,
-                         char *        aArgs[],
-                         uint8_t       aCommandsLength,
-                         const Command aCommands[])
+                                    uint8_t       aArgsLength,
+                                    char *        aArgs[],
+                                    uint8_t       aCommandsLength,
+                                    const Command aCommands[])
 {
     return otCoprocessorCliHandleCommand(aContext, aArgsLength, aArgs, aCommandsLength, aCommands);
 }
@@ -252,7 +254,7 @@ Error CoprocessorCli::HandleCommand(void *        aContext,
 #if OPENTHREAD_COPROCESSOR
 int CoprocessorCli::OutputCallback(const char *aFormat, va_list aArguments)
 {
-    int rval = 0;
+    int rval      = 0;
     int remaining = mOutputBufferMaxLen - mOutputBufferCount;
 
     VerifyOrExit(mOutputBuffer && (remaining > 0));

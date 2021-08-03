@@ -67,7 +67,6 @@ namespace Cli {
  */
 class InterpreterCore
 {
-
 public:
     typedef Utils::CmdLineParser::Arg Arg;
 
@@ -122,10 +121,7 @@ public:
      * @param[in]  aBuf        A pointer to a string.
      *
      */
-    virtual void ProcessLine(char *aBuf)
-    {
-        OT_UNUSED_VARIABLE(aBuf);
-    }
+    virtual void ProcessLine(char *aBuf) { OT_UNUSED_VARIABLE(aBuf); }
 
     /**
      * This method writes a number of bytes to the CLI console as a hex string.
@@ -297,7 +293,7 @@ protected:
         kMaxLineLength    = OPENTHREAD_CONFIG_CLI_MAX_LINE_LENGTH,
     };
 
-    Instance               *mInstance;
+    Instance *mInstance;
 
     template <typename ValueType> using GetHandler         = ValueType (&)(otInstance *);
     template <typename ValueType> using SetHandler         = void (&)(otInstance *, ValueType);
@@ -402,7 +398,6 @@ private:
     //     const char *mName;
     //     otError (InterpreterCore::*mHandler)(uint8_t aArgsLength, Arg aArgs[]);
     // };
-
 };
 
 // Specializations of `FormatStringFor<ValueType>()`
@@ -437,16 +432,16 @@ template <> inline constexpr const char *InterpreterCore::FormatStringFor<int32_
     return "%d";
 }
 
-// template <class InterpreterClass> void otCliCoreInit(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext);
-// template <class InterpreterClass> void otCliCoreInputLine(char *aBuf);
-// template <class InterpreterClass> void otCliCoreSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext);
-// template <class InterpreterClass> void otCliCoreOutputBytes(const uint8_t *aBytes, uint8_t aLength);
-// template <class InterpreterClass> void otCliCoreOutputFormat(const char *aFmt, ...);
-// template <class InterpreterClass> void otCliCoreOutputLine(const char *aFmt, ...);
-// template <class InterpreterClass> void otCliCoreOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength);
-// template <class InterpreterClass> void otCliCoreAppendResult(otError aError);
-// template <class InterpreterClass> void otCliCorePlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aFormat, va_list aArgs);
-// template <class InterpreterClass> void otCliCorePlatLogLine(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aLogLine);
+// template <class InterpreterClass> void otCliCoreInit(otInstance *aInstance, otCliOutputCallback aCallback, void
+// *aContext); template <class InterpreterClass> void otCliCoreInputLine(char *aBuf); template <class InterpreterClass>
+// void otCliCoreSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext); template <class
+// InterpreterClass> void otCliCoreOutputBytes(const uint8_t *aBytes, uint8_t aLength); template <class
+// InterpreterClass> void otCliCoreOutputFormat(const char *aFmt, ...); template <class InterpreterClass> void
+// otCliCoreOutputLine(const char *aFmt, ...); template <class InterpreterClass> void otCliCoreOutputCommands(const
+// otCliCommand aCommands[], size_t aCommandsLength); template <class InterpreterClass> void
+// otCliCoreAppendResult(otError aError); template <class InterpreterClass> void otCliCorePlatLogv(otLogLevel aLogLevel,
+// otLogRegion aLogRegion, const char *aFormat, va_list aArgs); template <class InterpreterClass> void
+// otCliCorePlatLogLine(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aLogLine);
 
 template <class InterpreterClass>
 void otCliCoreInit(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext)
@@ -454,8 +449,7 @@ void otCliCoreInit(otInstance *aInstance, otCliOutputCallback aCallback, void *a
     InterpreterClass::Initialize(aInstance, aCallback, aContext);
 }
 
-template <class InterpreterClass>
-void otCliCoreInputLine(char *aBuf)
+template <class InterpreterClass> void otCliCoreInputLine(char *aBuf)
 {
     InterpreterClass::GetInterpreter().ProcessLine(aBuf);
 }
@@ -466,14 +460,12 @@ void otCliCoreSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength
     InterpreterClass::GetInterpreter().SetUserCommands(aUserCommands, aLength, aContext);
 }
 
-template <class InterpreterClass>
-void otCliCoreOutputBytes(const uint8_t *aBytes, uint8_t aLength)
+template <class InterpreterClass> void otCliCoreOutputBytes(const uint8_t *aBytes, uint8_t aLength)
 {
     InterpreterClass::GetInterpreter().OutputBytes(aBytes, aLength);
 }
 
-template <class InterpreterClass>
-void otCliCoreOutputFormat(const char *aFmt, ...)
+template <class InterpreterClass> void otCliCoreOutputFormat(const char *aFmt, ...)
 {
     va_list aAp;
     va_start(aAp, aFmt);
@@ -481,8 +473,7 @@ void otCliCoreOutputFormat(const char *aFmt, ...)
     va_end(aAp);
 }
 
-template <class InterpreterClass>
-void otCliCoreOutputLine(const char *aFmt, ...)
+template <class InterpreterClass> void otCliCoreOutputLine(const char *aFmt, ...)
 {
     va_list aAp;
     va_start(aAp, aFmt);
@@ -490,14 +481,12 @@ void otCliCoreOutputLine(const char *aFmt, ...)
     va_end(aAp);
 }
 
-template <class InterpreterClass>
-void otCliCoreOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength)
+template <class InterpreterClass> void otCliCoreOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength)
 {
     InterpreterClass::GetInterpreter().OutputCommands(aCommands, aCommandsLength);
 }
 
-template <class InterpreterClass>
-void otCliCoreAppendResult(otError aError)
+template <class InterpreterClass> void otCliCoreAppendResult(otError aError)
 {
     InterpreterClass::GetInterpreter().OutputResult(aError);
 }

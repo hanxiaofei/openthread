@@ -57,8 +57,8 @@
 #include <openthread/thread_ftd.h>
 #include <openthread/udp.h>
 
-#include "cli/cli_core.hpp"
 #include "cli/cli_commissioner.hpp"
+#include "cli/cli_core.hpp"
 #include "cli/cli_dataset.hpp"
 #include "cli/cli_joiner.hpp"
 #include "cli/cli_network_data.hpp"
@@ -80,7 +80,6 @@
 #include "utils/lookup_table.hpp"
 #include "utils/parse_cmdline.hpp"
 
-
 using ot::Cli::InterpreterCore;
 
 namespace ot {
@@ -101,7 +100,7 @@ extern "C" void otCliPlatLogLine(otLogLevel, otLogRegion, const char *);
  * This class implements the CLI interpreter.
  *
  */
-class Interpreter: public InterpreterCore
+class Interpreter : public InterpreterCore
 {
     friend class Coap;
     friend class CoapSecure;
@@ -157,7 +156,6 @@ public:
      */
     static bool IsInitialized(void) { return sInterpreter != nullptr; }
 
-
     /**
      * This method interprets a CLI command.
      *
@@ -165,6 +163,7 @@ public:
      *
      */
     void ProcessLine(char *aBuf) override;
+
 protected:
     static Interpreter *sInterpreter;
 
@@ -705,7 +704,6 @@ private:
 #if OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
     SrpServer mSrpServer;
 #endif
-
 };
 
 } // namespace Cli

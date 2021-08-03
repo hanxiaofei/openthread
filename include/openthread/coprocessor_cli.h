@@ -54,12 +54,11 @@ extern "C" {
  *
  */
 
-
-
 /**
  * TODO: Doc this
  */
 int otCoprocessorCliOutputCallback(void *aContext, const char *aFormat, va_list aArguments);
+
 /**
  * Call the corresponding handler for a command
  *
@@ -78,10 +77,10 @@ int otCoprocessorCliOutputCallback(void *aContext, const char *aFormat, va_list 
  *
  */
 otError otCoprocessorCliHandleCommand(void *             aContext,
-                            uint8_t            aArgsLength,
-                            char *             aArgs[],
-                            uint8_t            aCommandsLength,
-                            const otCliCommand aCommands[]);
+                                      uint8_t            aArgsLength,
+                                      char *             aArgs[],
+                                      uint8_t            aCommandsLength,
+                                      const otCliCommand aCommands[]);
 
 /**
  * Process a command line

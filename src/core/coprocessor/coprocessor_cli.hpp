@@ -36,7 +36,6 @@
 
 #include "openthread-core-config.h"
 
-
 #include <string.h>
 
 #include <openthread/cli.h>
@@ -142,7 +141,7 @@ public:
                                uint8_t       aCommandsLength,
                                const Command aCommands[]);
 #if OPENTHREAD_COPROCESSOR
-   /**
+    /**
      * Set the user command table.
      *
      * @param[in]  aUserCommands  A pointer to an array with user commands.

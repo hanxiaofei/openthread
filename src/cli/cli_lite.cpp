@@ -39,7 +39,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 #if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
 #include "openthread/coprocessor_cli.h"
 #endif

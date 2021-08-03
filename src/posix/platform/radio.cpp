@@ -477,10 +477,10 @@ exit:
 
 #if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
 otError otPlatCoprocessorCliProcess(otInstance *aInstance,
-                          uint8_t     aArgsLength,
-                          char *      aArgs[],
-                          char *      aOutput,
-                          size_t      aOutputMaxLen)
+                                    uint8_t     aArgsLength,
+                                    char *      aArgs[],
+                                    char *      aOutput,
+                                    size_t      aOutputMaxLen)
 {
     OT_UNUSED_VARIABLE(aInstance);
     char  cmd[OPENTHREAD_CONFIG_COPROCESSOR_CLI_CMD_LINE_BUFFER_SIZE] = {'\0'};

@@ -38,7 +38,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 #if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
 #include "openthread/coprocessor_cli.h"
 #endif
@@ -104,7 +103,7 @@ void InterpreterCore::OutputEnabledDisabledStatus(bool aEnabled)
 
 void InterpreterCore::OutputCommands(const otCliCommand aCommands[], size_t aCommandsLength)
 {
-    VerifyOrExit(aCommands != NULL);
+    VerifyOrExit(aCommands != nullptr);
 
     for (size_t i = 0; i < aCommandsLength; i++)
     {
@@ -362,10 +361,6 @@ exit:
 
     return rval;
 }
-
-
-
-
 
 } // namespace Cli
 } // namespace ot

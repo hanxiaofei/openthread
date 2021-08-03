@@ -36,8 +36,8 @@
 
 #include "openthread-core-config.h"
 
-#include "cli_core.hpp"
 #include "cli_config.h"
+#include "cli_core.hpp"
 
 #include <stdarg.h>
 
@@ -66,9 +66,8 @@ namespace Cli {
  * This class implements the CLI interpreter.
  *
  */
-class InterpreterLite: public InterpreterCore
+class InterpreterLite : public InterpreterCore
 {
-
 public:
     /**
      * Constructor
@@ -125,7 +124,7 @@ protected:
     };
 
     static InterpreterLite *sInterpreter;
-    Instance               *mInstance;
+    Instance *              mInstance;
 
 private:
     // struct Command

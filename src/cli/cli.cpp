@@ -31,8 +31,8 @@
  *   This file implements the CLI interpreter.
  */
 
-#include "cli_core.hpp"
 #include "cli.hpp"
+#include "cli_core.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
