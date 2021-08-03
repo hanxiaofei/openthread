@@ -31,12 +31,16 @@
  *   This file implements the CLI interpreter.
  */
 
+#include "cli_core.hpp"
 #include "cli.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
+#include <openthread/coprocessor_cli.h>
+#endif
 #include <openthread/diag.h>
 #include <openthread/dns.h>
 #include <openthread/icmp6.h>
@@ -92,15 +96,8 @@ namespace Cli {
 
 constexpr Interpreter::Command Interpreter::sCommands[];
 
-Interpreter *Interpreter::sInterpreter = nullptr;
-static OT_DEFINE_ALIGNED_VAR(sInterpreterRaw, sizeof(Interpreter), uint64_t);
-
 Interpreter::Interpreter(Instance *aInstance, otCliOutputCallback aCallback, void *aContext)
-    : mInstance(aInstance)
-    , mOutputCallback(aCallback)
-    , mOutputContext(aContext)
-    , mUserCommands(nullptr)
-    , mUserCommandsLength(0)
+    : InterpreterCore(aInstance, aCallback, aContext)
 #if OPENTHREAD_CONFIG_SNTP_CLIENT_ENABLE
     , mSntpQueryingInProgress(false)
 #endif
@@ -128,112 +125,10 @@ Interpreter::Interpreter(Instance *aInstance, otCliOutputCallback aCallback, voi
 #if OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
     , mSrpServer(*this)
 #endif
-#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
-    , mOutputLength(0)
-    , mIsLogging(false)
-#endif
 {
 #if OPENTHREAD_FTD
     otThreadSetDiscoveryRequestCallback(mInstance, &Interpreter::HandleDiscoveryRequest, this);
 #endif
-}
-
-void Interpreter::OutputResult(otError aError)
-{
-    switch (aError)
-    {
-    case OT_ERROR_NONE:
-        OutputLine("Done");
-        break;
-
-    case OT_ERROR_PENDING:
-        break;
-
-    default:
-        OutputLine("Error %d: %s", aError, otThreadErrorToString(aError));
-    }
-}
-
-void Interpreter::OutputBytes(const uint8_t *aBytes, uint16_t aLength)
-{
-    for (uint16_t i = 0; i < aLength; i++)
-    {
-        OutputFormat("%02x", aBytes[i]);
-    }
-}
-
-void Interpreter::OutputEnabledDisabledStatus(bool aEnabled)
-{
-    OutputLine(aEnabled ? "Enabled" : "Disabled");
-}
-
-int Interpreter::OutputIp6Address(const otIp6Address &aAddress)
-{
-    char string[OT_IP6_ADDRESS_STRING_SIZE];
-
-    otIp6AddressToString(&aAddress, string, sizeof(string));
-
-    return OutputFormat("%s", string);
-}
-
-void Interpreter::OutputTableHeader(uint8_t aNumColumns, const char *const aTitles[], const uint8_t aWidths[])
-{
-    for (uint8_t index = 0; index < aNumColumns; index++)
-    {
-        const char *title       = aTitles[index];
-        uint8_t     width       = aWidths[index];
-        size_t      titleLength = strlen(title);
-
-        if (titleLength + 2 <= width)
-        {
-            // `title` fits in column width so we write it with extra space
-            // at beginning and end ("| Title    |").
-
-            OutputFormat("| %*s", -static_cast<int>(width - 1), title);
-        }
-        else
-        {
-            // Use narrow style (no space at beginning) and write as many
-            // chars from `title` as it can fit in the given column width
-            // ("|Title|").
-
-            OutputFormat("|%*.*s", -static_cast<int>(width), width, title);
-        }
-    }
-
-    OutputLine("|");
-
-    for (uint8_t index = 0; index < aNumColumns; index++)
-    {
-        OutputFormat("+");
-
-        for (uint8_t width = aWidths[index]; width != 0; width--)
-        {
-            OutputFormat("-");
-        }
-    }
-
-    OutputLine("+");
-}
-
-otError Interpreter::ParseEnableOrDisable(const Arg &aArg, bool &aEnable)
-{
-    otError error = OT_ERROR_NONE;
-
-    if (aArg == "enable")
-    {
-        aEnable = true;
-    }
-    else if (aArg == "disable")
-    {
-        aEnable = false;
-    }
-    else
-    {
-        error = OT_ERROR_INVALID_COMMAND;
-    }
-
-    return error;
 }
 
 otError Interpreter::ParseJoinerDiscerner(Arg &aArg, otJoinerDiscerner &aDiscerner)
@@ -4526,6 +4421,27 @@ exit:
 }
 #endif
 
+#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
+otError Interpreter::ProcessCoprocessorCli(Arg aArgs[])
+{
+    otError error = OT_ERROR_INVALID_COMMAND;
+
+    char *args[kMaxArgs];
+    char  output[OPENTHREAD_CONFIG_COPROCESSOR_CLI_OUTPUT_BUFFER_SIZE];
+
+    output[0]                  = '\0';
+    output[sizeof(output) - 1] = '\0';
+
+    Arg::CopyArgsToStringArray(aArgs, args);
+
+    error = otCoprocessorCliProcessCmd(Arg::GetArgsLength(aArgs), args, output, sizeof(output) - 1);
+
+    OutputFormat("%s", output);
+
+    return error;
+}
+#endif
+
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
 otError Interpreter::ProcessDiag(Arg aArgs[])
 {
@@ -4584,7 +4500,10 @@ void Interpreter::ProcessLine(char *aBuf)
     }
     else
     {
-        error = ProcessUserCommands(args);
+        VerifyOrExit((error = ProcessUserCommands(args)) != OT_ERROR_NONE);
+#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
+        VerifyOrExit((error = ProcessCoprocessorCli(args)) != OT_ERROR_NONE);
+#endif
     }
 
 exit:
@@ -4592,26 +4511,6 @@ exit:
     {
         OutputResult(error);
     }
-}
-
-otError Interpreter::ProcessUserCommands(Arg aArgs[])
-{
-    otError error = OT_ERROR_INVALID_COMMAND;
-
-    for (uint8_t i = 0; i < mUserCommandsLength; i++)
-    {
-        if (aArgs[0] == mUserCommands[i].mName)
-        {
-            char *args[kMaxArgs];
-
-            Arg::CopyArgsToStringArray(aArgs, args);
-            mUserCommands[i].mCommand(mUserCommandsContext, Arg::GetArgsLength(aArgs) - 1, args + 1);
-            error = OT_ERROR_NONE;
-            break;
-        }
-    }
-
-    return error;
 }
 
 void Interpreter::OutputPrefix(const otMeshLocalPrefix &aPrefix)
@@ -4853,256 +4752,11 @@ void Interpreter::OutputChildTableEntry(uint8_t aIndentSize, const otNetworkDiag
 }
 #endif // OPENTHREAD_FTD || OPENTHREAD_CONFIG_TMF_NETWORK_DIAG_MTD_ENABLE
 
-void Interpreter::SetUserCommands(const otCliCommand *aCommands, uint8_t aLength, void *aContext)
-{
-    mUserCommands        = aCommands;
-    mUserCommandsLength  = aLength;
-    mUserCommandsContext = aContext;
-}
-
 void Interpreter::HandleDiscoveryRequest(const otThreadDiscoveryRequestInfo &aInfo)
 {
     OutputFormat("~ Discovery Request from ");
     OutputExtAddress(aInfo.mExtAddress);
     OutputLine(": version=%u,joiner=%d", aInfo.mVersion, aInfo.mIsJoiner);
-}
-
-int Interpreter::OutputFormat(const char *aFormat, ...)
-{
-    int     rval;
-    va_list ap;
-
-    va_start(ap, aFormat);
-    rval = OutputFormatV(aFormat, ap);
-    va_end(ap);
-
-    return rval;
-}
-
-void Interpreter::OutputFormat(uint8_t aIndentSize, const char *aFormat, ...)
-{
-    va_list ap;
-
-    OutputSpaces(aIndentSize);
-
-    va_start(ap, aFormat);
-    OutputFormatV(aFormat, ap);
-    va_end(ap);
-}
-
-void Interpreter::OutputLine(const char *aFormat, ...)
-{
-    va_list args;
-
-    va_start(args, aFormat);
-    OutputFormatV(aFormat, args);
-    va_end(args);
-
-    OutputFormat("\r\n");
-}
-
-void Interpreter::OutputLine(uint8_t aIndentSize, const char *aFormat, ...)
-{
-    va_list args;
-
-    OutputSpaces(aIndentSize);
-
-    va_start(args, aFormat);
-    OutputFormatV(aFormat, args);
-    va_end(args);
-
-    OutputFormat("\r\n");
-}
-
-void Interpreter::OutputSpaces(uint8_t aCount)
-{
-    char format[sizeof("%256s")];
-
-    snprintf(format, sizeof(format), "%%%us", aCount);
-
-    OutputFormat(format, "");
-}
-
-int Interpreter::OutputFormatV(const char *aFormat, va_list aArguments)
-{
-    int rval;
-#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
-    va_list args;
-    int     charsWritten;
-    bool    truncated = false;
-
-    va_copy(args, aArguments);
-#endif
-
-    rval = mOutputCallback(mOutputContext, aFormat, aArguments);
-
-#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
-    VerifyOrExit(!IsLogging());
-
-    charsWritten = vsnprintf(&mOutputString[mOutputLength], sizeof(mOutputString) - mOutputLength, aFormat, args);
-
-    VerifyOrExit(charsWritten >= 0, mOutputLength = 0);
-
-    if (static_cast<uint32_t>(charsWritten) >= sizeof(mOutputString) - mOutputLength)
-    {
-        truncated     = true;
-        mOutputLength = sizeof(mOutputString) - 1;
-    }
-    else
-    {
-        mOutputLength += charsWritten;
-    }
-
-    while (true)
-    {
-        char *lineEnd = strchr(mOutputString, '\r');
-
-        if (lineEnd == nullptr)
-        {
-            break;
-        }
-
-        *lineEnd = '\0';
-
-        if (lineEnd > mOutputString)
-        {
-            otLogNoteCli("Output: %s", mOutputString);
-        }
-
-        lineEnd++;
-
-        while ((*lineEnd == '\n') || (*lineEnd == '\r'))
-        {
-            lineEnd++;
-        }
-
-        // Example of the pointers and lengths.
-        //
-        // - mOutputString = "hi\r\nmore"
-        // - mOutputLength = 8
-        // - lineEnd       = &mOutputString[4]
-        //
-        //
-        //   0    1    2    3    4    5    6    7    8    9
-        // +----+----+----+----+----+----+----+----+----+---
-        // | h  | i  | \r | \n | m  | o  | r  | e  | \0 |
-        // +----+----+----+----+----+----+----+----+----+---
-        //                       ^                   ^
-        //                       |                   |
-        //                    lineEnd    mOutputString[mOutputLength]
-        //
-        //
-        // New length is `&mOutputString[8] - &mOutputString[4] -> 4`.
-        //
-        // We move (newLen + 1 = 5) chars from `lineEnd` to start of
-        // `mOutputString` which will include the `\0` char.
-        //
-        // If `lineEnd` and `mOutputString[mOutputLength]` are the same
-        // the code works correctly as well  (new length set to zero and
-        // the `\0` is copied).
-
-        mOutputLength = static_cast<uint16_t>(&mOutputString[mOutputLength] - lineEnd);
-        memmove(mOutputString, lineEnd, mOutputLength + 1);
-    }
-
-    if (truncated)
-    {
-        otLogNoteCli("Output: %s ...", mOutputString);
-        mOutputLength = 0;
-    }
-
-exit:
-    va_end(args);
-
-#endif // OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
-
-    return rval;
-}
-
-void Interpreter::Initialize(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext)
-{
-    Instance *instance = static_cast<Instance *>(aInstance);
-
-    Interpreter::sInterpreter = new (&sInterpreterRaw) Interpreter(instance, aCallback, aContext);
-}
-
-extern "C" void otCliInit(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext)
-{
-    Interpreter::Initialize(aInstance, aCallback, aContext);
-}
-
-extern "C" void otCliInputLine(char *aBuf)
-{
-    Interpreter::GetInterpreter().ProcessLine(aBuf);
-}
-
-extern "C" void otCliSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
-{
-    Interpreter::GetInterpreter().SetUserCommands(aUserCommands, aLength, aContext);
-}
-
-extern "C" void otCliOutputBytes(const uint8_t *aBytes, uint8_t aLength)
-{
-    Interpreter::GetInterpreter().OutputBytes(aBytes, aLength);
-}
-
-extern "C" void otCliOutputFormat(const char *aFmt, ...)
-{
-    va_list aAp;
-    va_start(aAp, aFmt);
-    Interpreter::GetInterpreter().OutputFormatV(aFmt, aAp);
-    va_end(aAp);
-}
-
-extern "C" void otCliAppendResult(otError aError)
-{
-    Interpreter::GetInterpreter().OutputResult(aError);
-}
-
-extern "C" void otCliPlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aFormat, va_list aArgs)
-{
-    OT_UNUSED_VARIABLE(aLogLevel);
-    OT_UNUSED_VARIABLE(aLogRegion);
-
-    VerifyOrExit(Interpreter::IsInitialized());
-
-#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
-    // CLI output can be used for logging. The `IsLogging` flag is
-    // used to indicate whether it is being used for a CLI command
-    // output or for logging.
-    Interpreter::GetInterpreter().SetIsLogging(true);
-#endif
-
-    Interpreter::GetInterpreter().OutputFormatV(aFormat, aArgs);
-    Interpreter::GetInterpreter().OutputLine("");
-
-#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
-    Interpreter::GetInterpreter().SetIsLogging(false);
-#endif
-
-exit:
-    return;
-}
-
-extern "C" void otCliPlatLogLine(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aLogLine)
-{
-    OT_UNUSED_VARIABLE(aLogLevel);
-    OT_UNUSED_VARIABLE(aLogRegion);
-
-    VerifyOrExit(Interpreter::IsInitialized());
-
-#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
-    Interpreter::GetInterpreter().SetIsLogging(true);
-#endif
-
-    Interpreter::GetInterpreter().OutputLine(aLogLine);
-
-#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
-    Interpreter::GetInterpreter().SetIsLogging(false);
-#endif
-
-exit:
-    return;
 }
 
 } // namespace Cli

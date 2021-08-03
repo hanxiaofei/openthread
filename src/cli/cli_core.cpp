@@ -49,6 +49,7 @@
 #include <openthread/ncp.h>
 #include <openthread/thread.h>
 
+#include "common/logging.hpp"
 #include "common/new.hpp"
 #include "common/string.hpp"
 #include "mac/channel_mask.hpp"
@@ -65,6 +66,10 @@ InterpreterCore::InterpreterCore(Instance *aInstance, otCliOutputCallback aCallb
     , mOutputContext(aContext)
     , mUserCommands(nullptr)
     , mUserCommandsLength(0)
+#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
+    , mOutputLength(0)
+    , mIsLogging(false)
+#endif
 {
 }
 
@@ -378,7 +383,7 @@ extern "C" void otCliInputLine(char *aBuf)
 extern "C" void otCliSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)
 {
     InterpreterCore::GetInterpreter().SetUserCommands(aUserCommands, aLength, aContext);
-#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
+#if OPENTHREAD_COPROCESSOR && OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
     otCoprocessorCliSetUserCommands(aUserCommands, aLength, aContext);
 #endif
 }

@@ -55,7 +55,6 @@ target_sources(openthread-radio PRIVATE
     common/string.cpp
     common/tasklet.cpp
     common/timer.cpp
-    coprocessor/coprocessor_cli.cpp
     crypto/aes_ccm.cpp
     crypto/aes_ecb.cpp
     diags/factory_diags.cpp

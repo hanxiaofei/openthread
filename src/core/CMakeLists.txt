@@ -106,6 +106,7 @@ set(COMMON_SOURCES
     common/timer.cpp
     common/tlvs.cpp
     common/trickle_timer.cpp
+    coprocessor/coprocessor_cli.cpp
     crypto/aes_ccm.cpp
     crypto/aes_ecb.cpp
     crypto/ecdsa.cpp

@@ -69,12 +69,6 @@ exit:
 }
 
 #if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
-extern "C" int otCoprocessorCliOutputCallback(void *aContext, const char *aFormat, va_list aArguments)
-{
-    OT_UNUSED_VARIABLE(aContext);
-    return CoprocessorCli::GetCoprocessorCli().OutputCallback(aFormat, aArguments);
-}
-
 extern "C" void otCoprocessorCliProcessCmdLine(const char *aString, char *aOutput, size_t aOutputMaxLen)
 {
     CoprocessorCli::GetCoprocessorCli().ProcessLine(aString, aOutput, aOutputMaxLen);
@@ -91,6 +85,12 @@ extern "C" void otCoprocessorCliProcessHelp(void *aContext, uint8_t aArgsLength,
     OT_UNUSED_VARIABLE(aContext);
     OT_UNUSED_VARIABLE(aArgsLength);
     CoprocessorCli::GetCoprocessorCli().ProcessHelp(aArgs);
+}
+
+extern "C" int otCoprocessorCliOutputCallback(void *aContext, const char *aFormat, va_list aArguments)
+{
+    OT_UNUSED_VARIABLE(aContext);
+    return CoprocessorCli::GetCoprocessorCli().OutputCallback(aFormat, aArguments);
 }
 
 extern "C" void otCoprocessorCliSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext)

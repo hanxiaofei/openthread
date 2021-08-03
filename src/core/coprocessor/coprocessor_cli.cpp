@@ -81,7 +81,7 @@ const CoprocessorCli::Command CoprocessorCli::sCommands[] = {
     {"help-coprocessor-cli", otCoprocessorCliProcessHelp},
 };
 #else
-Arg      CoprocessorCli::mCachedCommands[CoprocessorCli::kMaxCommands];
+Utils::CmdLineParser::Arg      CoprocessorCli::mCachedCommands[CoprocessorCli::kMaxCommands];
 char     CoprocessorCli::mCachedCommandsBuffer[CoprocessorCli::kCommandCacheBufferLength];
 uint8_t  CoprocessorCli::mCachedCommandsLength = 0;
 #endif
@@ -104,14 +104,15 @@ CoprocessorCli::CoprocessorCli(Instance &aInstance)
 void CoprocessorCli::Initialize(Instance &aInstance)
 {
     static bool initStarted = false;
+    char        help[]      = "help-coprocessor-cli\n";
+    char *      helpCmd[]   = {help};
+    OT_UNUSED_VARIABLE(helpCmd);
 
     VerifyOrExit((CoprocessorCli::sCoprocessorCli == nullptr) && !initStarted);
     initStarted = true;
     CoprocessorCli::sCoprocessorCli = new (&sCoprocessorCliRaw) CoprocessorCli(aInstance);
 
 #if !OPENTHREAD_COPROCESSOR
-    char        help[]      = "help-coprocessor-cli\n";
-    char *      helpCmd[]   = {help};
 
     // Initialize a response buffer
     memset(mCachedCommandsBuffer, 0, sizeof(mCachedCommandsBuffer));

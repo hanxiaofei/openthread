@@ -43,9 +43,11 @@ target_include_directories(openthread-cli-core PUBLIC ${OT_PUBLIC_INCLUDES} PRIV
 # target_sources(openthread-cli-core PRIVATE ${COMMON_SOURCES})
 
 target_link_libraries(openthread-cli-core
-    PUBLIC
-        openthread-radio
+    # PUBLIC
+        # openthread-radio
     PRIVATE
         ${OT_MBEDTLS}
         ot-config
 )
+
+# if(OT_FTD)
