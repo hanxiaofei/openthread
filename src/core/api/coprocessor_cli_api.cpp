@@ -68,7 +68,7 @@ exit:
     return error;
 }
 
-#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE || 1
+#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
 extern "C" int otCoprocessorCliOutputCallback(void *aContext, const char *aFormat, va_list aArguments)
 {
     OT_UNUSED_VARIABLE(aContext);
