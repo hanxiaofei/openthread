@@ -46,7 +46,10 @@ set(COMMON_SOURCES
     cli_udp.cpp
 )
 
-include(core.cmake)
+if(OT_RCP)
+    include(lite.cmake)
+endif()
+
 if(OT_FTD)
     include(ftd.cmake)
 endif()
