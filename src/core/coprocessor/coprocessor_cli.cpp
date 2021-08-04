@@ -28,10 +28,8 @@
 
 /**
  * @file
- *   This file implements the Co-processor CoprocessorCli (CoprocessorCli) module.
+ *   This file implements the Co-processor CLI module.
  */
-
-#include "coprocessor_cli.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,11 +38,12 @@
 #include "common/instance.hpp"
 #include "common/locator_getters.hpp"
 #include "common/new.hpp"
+#include "coprocessor/coprocessor_cli.hpp"
 #include "openthread/coprocessor_cli.h"
 #include "utils/parse_cmdline.hpp"
 
 /**
- * Deliver the platform specific coprocessor CoprocessorCli commands to radio only ncp
+ * Deliver the platform specific coprocessor CLI commands
  *
  * @param[in]   aInstance       The OpenThread instance structure.
  * @param[in]   aArgsLength     The number of elements in @p aArgs.
@@ -83,6 +82,7 @@ const CoprocessorCli::Command CoprocessorCli::sCommands[] = {
 };
 
 #else
+// Cached Coprocessor CLI commands
 Utils::CmdLineParser::Arg CoprocessorCli::mCachedCommands[CoprocessorCli::kMaxCommands];
 char                      CoprocessorCli::mCachedCommandsBuffer[CoprocessorCli::kCommandCacheBufferLength];
 uint8_t                   CoprocessorCli::mCachedCommandsLength = 0;
@@ -129,7 +129,7 @@ void CoprocessorCli::Initialize(Instance &aInstance)
                                                  OT_ARRAY_LENGTH(sCoprocessorCli->mCachedCommands)));
 
     // Get the number of supported commands
-    mCachedCommandsLength = Arg::GetArgsLength(ot::Coprocessor::CoprocessorCli::mCachedCommands);
+    mCachedCommandsLength = Arg::GetArgsLength(mCachedCommands);
 #endif
 
 exit:

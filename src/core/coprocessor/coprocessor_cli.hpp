@@ -184,7 +184,7 @@ private:
     /**
      * Store the output buffer pointer and size
      *
-     * These will be used later by @ref OutputFormat
+     * These will be used later by @ref OutputCallback
      *
      * @param[in]   aOutput         A output buffer
      * @param[in]   aOutputMaxLen   The size of @p aOutput

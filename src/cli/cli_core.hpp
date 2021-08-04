@@ -41,6 +41,7 @@
 #include <stdarg.h>
 
 #include <openthread/cli.h>
+#include <openthread/instance.h>
 
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
@@ -77,42 +78,6 @@ public:
      * @param[in]  aContext     A user context pointer.
      */
     explicit InterpreterCore(Instance *aInstance, otCliOutputCallback aCallback, void *aContext);
-
-    // virtual ~InterpreterCore()
-    // {
-
-    // };
-
-    /**
-     * This method returns a reference to the InterpreterCore object.
-     *
-     * @returns A reference to the InterpreterCore object.
-     *
-     */
-    // InterpreterCore &GetInterpreter(void)
-    // {
-    //     OT_ASSERT(sInterpreter != nullptr);
-
-    //     return *sInterpreter;
-    // }
-
-    // /**
-    //  * This method initializes the Console interpreter.
-    //  *
-    //  * @param[in]  aInstance  The OpenThread instance structure.
-    //  * @param[in]  aCallback  A pointer to a callback method.
-    //  * @param[in]  aContext   A pointer to a user context.
-    //  *
-    //  */
-    // static void Initialize(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext);
-
-    // /**
-    //  * This method returns whether the interpreter is initialized.
-    //  *
-    //  * @returns  Whether the interpreter is initialized.
-    //  *
-    //  */
-    // static bool IsInitialized(void) { return sInterpreter != nullptr; }
 
     /**
      * This method interprets a CLI command.
@@ -431,16 +396,6 @@ template <> inline constexpr const char *InterpreterCore::FormatStringFor<int32_
     return "%d";
 }
 
-// template <class InterpreterClass> void otCliCoreInit(otInstance *aInstance, otCliOutputCallback aCallback, void
-// *aContext); template <class InterpreterClass> void otCliCoreInputLine(char *aBuf); template <class InterpreterClass>
-// void otCliCoreSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength, void *aContext); template <class
-// InterpreterClass> void otCliCoreOutputBytes(const uint8_t *aBytes, uint8_t aLength); template <class
-// InterpreterClass> void otCliCoreOutputFormat(const char *aFmt, ...); template <class InterpreterClass> void
-// otCliCoreOutputLine(const char *aFmt, ...); template <class InterpreterClass> void otCliCoreOutputCommands(const
-// otCliCommand aCommands[], size_t aCommandsLength); template <class InterpreterClass> void
-// otCliCoreAppendResult(otError aError); template <class InterpreterClass> void otCliCorePlatLogv(otLogLevel aLogLevel,
-// otLogRegion aLogRegion, const char *aFormat, va_list aArgs); template <class InterpreterClass> void
-// otCliCorePlatLogLine(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aLogLine);
 
 template <class InterpreterClass>
 void otCliCoreInit(otInstance *aInstance, otCliOutputCallback aCallback, void *aContext)
