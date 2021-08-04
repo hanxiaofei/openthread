@@ -36,8 +36,6 @@
 #define OPENTHREAD_COPROCESSOR_CLI_H_
 
 #include <openthread/cli.h>
-#include <openthread/ip6.h>
-#include <openthread/instance.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,14 +46,18 @@ extern "C" {
  *
  * @brief
  *   This module includes functions that allow a Host processor to execute
- *   remote procedure calls on a co-processor over spinel
+ *   CLI commands on a co-processor over spinel
  *
  * @{
  *
  */
 
 /**
- * TODO: Doc this
+ * Callback function that handles printing to the output buffer
+ *
+ * @param[in]  aContext    A user context pointer.
+ * @param[in]  aFormat     A pointer to the format string.
+ * @param[in]  aArguments  A matching list of arguments.
  */
 int otCoprocessorCliOutputCallback(void *aContext, const char *aFormat, va_list aArguments);
 
@@ -110,9 +112,9 @@ void otCoprocessorCliProcessCmdLine(const char *aString, char *aOutput, size_t a
 /**
  * Output all available co-processor CLI built-in commands and user commands
  *
- * @param aContext
- * @param aArgsLength
- * @param aArgs
+ * @param[in]   aContext        A user context pointer.
+ * @param[in]   aArgsLength     The number of elements in @p aArgs.
+ * @param[in]   aArgs           An array of arguments.
  */
 void otCoprocessorCliProcessHelp(void *aContext, uint8_t aArgsLength, char *aArgs[]);
 

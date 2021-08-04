@@ -77,13 +77,16 @@ CoprocessorCli *CoprocessorCli::sCoprocessorCli = nullptr;
 static OT_DEFINE_ALIGNED_VAR(sCoprocessorCliRaw, sizeof(CoprocessorCli), uint64_t);
 
 #if OPENTHREAD_COPROCESSOR
+// Built-in Coprocessor CLI commands
 const CoprocessorCli::Command CoprocessorCli::sCommands[] = {
     {"help-coprocessor-cli", otCoprocessorCliProcessHelp},
 };
+
 #else
 Utils::CmdLineParser::Arg CoprocessorCli::mCachedCommands[CoprocessorCli::kMaxCommands];
 char                      CoprocessorCli::mCachedCommandsBuffer[CoprocessorCli::kCommandCacheBufferLength];
 uint8_t                   CoprocessorCli::mCachedCommandsLength = 0;
+
 #endif
 
 CoprocessorCli::CoprocessorCli(Instance &aInstance)
@@ -92,7 +95,6 @@ CoprocessorCli::CoprocessorCli(Instance &aInstance)
     , mOutputBuffer(nullptr)
     , mOutputBufferCount(0)
     , mOutputBufferMaxLen(0)
-#else
 #endif
 {
     if (!IsInitialized())
@@ -113,7 +115,6 @@ void CoprocessorCli::Initialize(Instance &aInstance)
     CoprocessorCli::sCoprocessorCli = new (&sCoprocessorCliRaw) CoprocessorCli(aInstance);
 
 #if !OPENTHREAD_COPROCESSOR
-
     // Initialize a response buffer
     memset(mCachedCommandsBuffer, 0, sizeof(mCachedCommandsBuffer));
 
@@ -130,6 +131,7 @@ void CoprocessorCli::Initialize(Instance &aInstance)
     // Get the number of supported commands
     mCachedCommandsLength = Arg::GetArgsLength(ot::Coprocessor::CoprocessorCli::mCachedCommands);
 #endif
+
 exit:
     return;
 }

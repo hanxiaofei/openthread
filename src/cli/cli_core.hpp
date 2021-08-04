@@ -41,7 +41,6 @@
 #include <stdarg.h>
 
 #include <openthread/cli.h>
-// #include <openthread/instance.h>
 
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"

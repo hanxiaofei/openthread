@@ -28,18 +28,17 @@
 
 /**
  * @file
- *   This file contains definitions for the Co-processor CoprocessorCli module.
+ *   This file contains definitions for the Co-processor CLI module.
  */
 
-#ifndef COPROCESSOR_CoprocessorCli_HPP_
-#define COPROCESSOR_CoprocessorCli_HPP_
+#ifndef COPROCESSOR_CLI_HPP_
+#define COPROCESSOR_CLI_HPP_
 
 #include "openthread-core-config.h"
 
 #include <string.h>
 
 #include <openthread/cli.h>
-#include <openthread/platform/radio.h>
 
 #include "common/debug.hpp"
 #include "common/error.hpp"
@@ -144,7 +143,7 @@ public:
     /**
      * Set the user command table.
      *
-     * @param[in]  aUserCommands  A pointer to an array with user commands.
+     * @param[in]  aCommands       A pointer to an array with user c ommands.
      * @param[in]  aLength        @p aUserCommands length.
      * @param[in]  aContext       @p aUserCommands context.
      *
@@ -221,4 +220,4 @@ private:
 } // namespace Coprocessor
 } // namespace ot
 
-#endif // COPROCESSOR_CoprocessorCli_HPP_
+#endif // COPROCESSOR_CLI_HPP_

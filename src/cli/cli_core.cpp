@@ -32,6 +32,7 @@
  */
 
 #include "cli_core.hpp"
+#include "openthread/ip6.h"
 #include "openthread/platform/toolchain.h"
 
 #include <stdio.h>
@@ -41,23 +42,12 @@
 #if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
 #include "openthread/coprocessor_cli.h"
 #endif
-#include <openthread/dns.h>
-#include <openthread/icmp6.h>
-#include <openthread/link.h>
 #include <openthread/logging.h>
-#include <openthread/ncp.h>
-#include <openthread/thread.h>
 
 #include "common/logging.hpp"
-#include "common/new.hpp"
-#include "common/string.hpp"
-#include "mac/channel_mask.hpp"
 
 namespace ot {
 namespace Cli {
-
-// InterpreterCore *InterpreterCore::sInterpreter = nullptr;
-// static OT_DEFINE_ALIGNED_VAR(sInterpreterRaw, sizeof(InterpreterCore), uint64_t);
 
 InterpreterCore::InterpreterCore(Instance *aInstance, otCliOutputCallback aCallback, void *aContext)
     : mInstance(aInstance)
