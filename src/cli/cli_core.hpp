@@ -56,14 +56,13 @@ namespace ot {
  * @namespace ot::Cli
  *
  * @brief
- *   This namespace contains definitions for the CLI interpreter.
+ *   This namespace contains definitions for the CLI interpreter core.
  *
  */
 namespace Cli {
 
 /**
- * This class implements the CLI interpreter.
- *
+ * This class implements the CLI interpreter core.
  */
 class InterpreterCore
 {
@@ -249,14 +248,6 @@ public:
 #endif
 
 protected:
-    enum
-    {
-        kIndentSize       = 4,
-        kMaxArgs          = 32,
-        kMaxAutoAddresses = 8,
-        kMaxLineLength    = OPENTHREAD_CONFIG_CLI_MAX_LINE_LENGTH,
-    };
-
     Instance *mInstance;
 
     template <typename ValueType> using GetHandler         = ValueType (&)(otInstance *);
@@ -352,6 +343,14 @@ protected:
     void *              mUserCommandsContext;
 
 private:
+    enum
+    {
+        kIndentSize       = 4,
+        kMaxArgs          = 32,
+        kMaxAutoAddresses = 8,
+        kMaxLineLength    = OPENTHREAD_CONFIG_CLI_MAX_LINE_LENGTH,
+    };
+
 #if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
     char     mOutputString[OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_LOG_STRING_SIZE];
     uint16_t mOutputLength;

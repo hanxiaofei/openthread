@@ -34,12 +34,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "openthread/coprocessor_cli.h"
+
 #include "common/code_utils.hpp"
 #include "common/instance.hpp"
 #include "common/locator_getters.hpp"
 #include "common/new.hpp"
 #include "coprocessor/coprocessor_cli.hpp"
-#include "openthread/coprocessor_cli.h"
 #include "utils/parse_cmdline.hpp"
 
 /**
@@ -175,7 +176,7 @@ exit:
 Error CoprocessorCli::ParseCmd(char *aString, uint8_t &aArgsLength, char *aArgs[])
 {
     Error                     error;
-    Utils::CmdLineParser::Arg args[kMaxArgs];
+    Utils::CmdLineParser::Arg args[kMaxArgs + 1];
 
     // Parse command string to a string array
     SuccessOrExit(error = Utils::CmdLineParser::ParseCmd(aString, args, aArgsLength));

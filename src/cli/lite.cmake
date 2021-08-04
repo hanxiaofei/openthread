@@ -33,23 +33,14 @@ add_library(openthread-cli-lite
     cli_core.hpp
 )
 
-# target_compile_definitions(openthread-cli-lite
-# )
-
 target_compile_options(openthread-cli-lite PRIVATE
     ${OT_CFLAGS}
 )
 
 target_include_directories(openthread-cli-lite PUBLIC ${OT_PUBLIC_INCLUDES} PRIVATE ${COMMON_INCLUDES})
 
-# target_sources(openthread-cli-lite PRIVATE ${COMMON_SOURCES})
-
 target_link_libraries(openthread-cli-lite
-    # PUBLIC
-        # openthread-radio
     PRIVATE
         ${OT_MBEDTLS}
         ot-config
 )
-
-# if(OT_FTD)

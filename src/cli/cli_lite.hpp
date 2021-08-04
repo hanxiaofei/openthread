@@ -28,7 +28,7 @@
 
 /**
  * @file
- *   This file contains definitions for the CLI interpreter.
+ *   This file contains definitions for a lite CLI interpreter.
  */
 
 #ifndef CLI_LITE_HPP_
@@ -57,7 +57,7 @@ namespace ot {
  * @namespace ot::Cli
  *
  * @brief
- *   This namespace contains definitions for the CLI interpreter.
+ *   This namespace contains definitions for a lite CLI interpreter.
  *
  */
 namespace Cli {
@@ -77,11 +77,6 @@ public:
      * @param[in]  aContext     A user context pointer.
      */
     explicit InterpreterLite(Instance *aInstance, otCliOutputCallback aCallback, void *aContext);
-
-    // virtual ~InterpreterLite()
-    // {
-
-    // };
 
     /**
      * This method returns a reference to the InterpreterLite object.
@@ -115,6 +110,10 @@ public:
     static bool IsInitialized(void) { return sInterpreter != nullptr; }
 
 protected:
+    static InterpreterLite *sInterpreter;
+    Instance *              mInstance;
+
+private:
     enum
     {
         kIndentSize       = 4,
@@ -122,16 +121,6 @@ protected:
         kMaxAutoAddresses = 8,
         kMaxLineLength    = OPENTHREAD_CONFIG_CLI_MAX_LINE_LENGTH,
     };
-
-    static InterpreterLite *sInterpreter;
-    Instance *              mInstance;
-
-private:
-    // struct Command
-    // {
-    //     const char *mName;
-    //     otError (InterpreterLite::*mHandler)(uint8_t aArgsLength, Arg aArgs[]);
-    // };
 };
 
 } // namespace Cli

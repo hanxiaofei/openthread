@@ -80,8 +80,6 @@
 #include "utils/lookup_table.hpp"
 #include "utils/parse_cmdline.hpp"
 
-using ot::Cli::InterpreterCore;
-
 namespace ot {
 
 /**
@@ -126,9 +124,9 @@ public:
     explicit Interpreter(Instance *aInstance, otCliOutputCallback aCallback, void *aContext);
 
     /**
-     * This method returns a reference to the InterpreterCore object.
+     * This method returns a reference to the interpreter object.
      *
-     * @returns A reference to the InterpreterCore object.
+     * @returns A reference to the interpreter object.
      *
      */
     static Interpreter &GetInterpreter(void)
@@ -232,10 +230,10 @@ private:
 #if OPENTHREAD_FTD
     otError ProcessContextIdReuseDelay(Arg aArgs[]);
 #endif
-    otError ProcessCounters(Arg aArgs[]);
 #if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
     otError ProcessCoprocessorCli(Arg aArgs[]);
 #endif
+    otError ProcessCounters(Arg aArgs[]);
     otError ProcessCsl(Arg aArgs[]);
 #if OPENTHREAD_FTD
     otError ProcessDelayTimerMin(Arg aArgs[]);
