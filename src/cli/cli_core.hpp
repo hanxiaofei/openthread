@@ -248,6 +248,13 @@ public:
 #endif
 
 protected:
+    enum
+    {
+        kIndentSize       = 4,
+        kMaxArgs          = 32,
+        kMaxAutoAddresses = 8,
+        kMaxLineLength    = OPENTHREAD_CONFIG_CLI_MAX_LINE_LENGTH,
+    };
     Instance *mInstance;
 
     template <typename ValueType> using GetHandler         = ValueType (&)(otInstance *);
@@ -350,13 +357,7 @@ protected:
     void *              mUserCommandsContext;
 
 private:
-    enum
-    {
-        kIndentSize       = 4,
-        kMaxArgs          = 32,
-        kMaxAutoAddresses = 8,
-        kMaxLineLength    = OPENTHREAD_CONFIG_CLI_MAX_LINE_LENGTH,
-    };
+
 
 #if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
     char     mOutputString[OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_LOG_STRING_SIZE];

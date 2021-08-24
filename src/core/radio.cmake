@@ -39,8 +39,15 @@ target_compile_options(openthread-radio PRIVATE
 
 target_include_directories(openthread-radio PUBLIC ${OT_PUBLIC_INCLUDES} PRIVATE ${COMMON_INCLUDES})
 
+if (OT_COPROCESSOR_CLI)
+    target_link_libraries(openthread-radio PRIVATE openthread-cli-lite)
+    target_sources(openthread-radio PRIVATE
+        api/coprocessor_cli_api.cpp
+        coprocessor/coprocessor_cli.cpp
+        )
+endif()
+
 target_sources(openthread-radio PRIVATE
-    api/coprocessor_cli_api.cpp
     api/diags_api.cpp
     api/error_api.cpp
     api/instance_api.cpp
@@ -55,7 +62,6 @@ target_sources(openthread-radio PRIVATE
     common/string.cpp
     common/tasklet.cpp
     common/timer.cpp
-    coprocessor/coprocessor_cli.cpp
     crypto/aes_ccm.cpp
     crypto/aes_ecb.cpp
     diags/factory_diags.cpp

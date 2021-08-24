@@ -131,10 +131,6 @@ Interpreter::Interpreter(Instance *aInstance, otCliOutputCallback aCallback, voi
 #if OPENTHREAD_CONFIG_HISTORY_TRACKER_ENABLE
     , mHistory(*this)
 #endif
-#if OPENTHREAD_CONFIG_CLI_LOG_INPUT_OUTPUT_ENABLE
-    , mOutputLength(0)
-    , mIsLogging(false)
-#endif
 {
 #if OPENTHREAD_FTD
     otThreadSetDiscoveryRequestCallback(mInstance, &Interpreter::HandleDiscoveryRequest, this);
