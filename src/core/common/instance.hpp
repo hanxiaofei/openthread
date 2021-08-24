@@ -51,6 +51,7 @@
 #include "common/tasklet.hpp"
 #include "common/time_ticker.hpp"
 #include "common/timer.hpp"
+#include "coprocessor/coprocessor_cli.hpp"
 #include "diags/factory_diags.hpp"
 #include "radio/radio.hpp"
 
@@ -414,6 +415,9 @@ private:
 #endif
 #if OPENTHREAD_ENABLE_VENDOR_EXTENSION
     Extension::ExtensionBase &mExtension;
+#endif
+#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
+    Coprocessor::CoprocessorCli mCoprocessorCli;
 #endif
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     FactoryDiags::Diags mDiags;

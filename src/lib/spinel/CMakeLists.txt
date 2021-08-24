@@ -35,7 +35,10 @@ target_compile_definitions(openthread-spinel-ncp PRIVATE
     PUBLIC OPENTHREAD_SPINEL_CONFIG_OPENTHREAD_MESSAGE_ENABLE=1
 )
 
-target_compile_definitions(openthread-spinel-rcp PRIVATE
+target_compile_definitions(openthread-spinel-rcp
+PUBLIC
+    OPENTHREAD_COPROCESSOR=1
+PRIVATE
     OPENTHREAD_RADIO=1
     OPENTHREAD_CONFIG_NCP_HDLC_ENABLE=1
     PUBLIC OPENTHREAD_SPINEL_CONFIG_OPENTHREAD_MESSAGE_ENABLE=0

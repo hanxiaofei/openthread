@@ -4713,10 +4713,21 @@ enum
     /** Format: 'E' */
     SPINEL_PROP_NEST_LEGACY_LAST_NODE_JOINED = SPINEL_PROP_NEST__BEGIN + 2,
 
+    /// Coprocessor CLI (Host -> Co-processor)
+    /** Format: `D`.
+     *
+     *  `D`: command string
+     *
+     * The Spinel property is used to allow a Host to execute a CLI command on a Co-processor.
+     *
+     */
+    SPINEL_PROP_COPROCESSOR_CLI = SPINEL_PROP_NEST__BEGIN + 3,
+
     SPINEL_PROP_NEST__END = 0x3C00,
 
     SPINEL_PROP_VENDOR__BEGIN = 0x3C00,
-    SPINEL_PROP_VENDOR__END   = 0x4000,
+
+    SPINEL_PROP_VENDOR__END = 0x4000,
 
     SPINEL_PROP_DEBUG__BEGIN = 0x4000,
 

@@ -33,6 +33,7 @@ set(COMMON_INCLUDES
 
 set(COMMON_SOURCES
     cli.cpp
+    cli_core.cpp
     cli_coap.cpp
     cli_coap_secure.cpp
     cli_commissioner.cpp
@@ -44,6 +45,10 @@ set(COMMON_SOURCES
     cli_tcp.cpp
     cli_udp.cpp
 )
+
+if(OT_RCP)
+    include(lite.cmake)
+endif()
 
 if(OT_FTD)
     include(ftd.cmake)

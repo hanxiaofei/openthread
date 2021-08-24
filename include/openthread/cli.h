@@ -70,9 +70,9 @@ typedef struct otCliCommand
 /**
  * This function pointer is called to notify about Console output.
  *
- * @param[in]  aBuf        A pointer to a buffer with an output.
- * @param[in]  aBufLength  A length of the output data stored in the buffer.
- * @param[out] aContext    A user context pointer.
+ * @param[in]  aContext    A user context pointer.
+ * @param[in]  aFormat     A pointer to the format string.
+ * @param[in]  aArguments  A matching list of arguments.
  *
  * @returns                Number of bytes written by the callback.
  *
@@ -126,6 +126,24 @@ void otCliOutputBytes(const uint8_t *aBytes, uint8_t aLength);
 void otCliOutputFormat(const char *aFmt, ...);
 
 /**
+ * Write formatted string to the CLI console
+ *
+ * @param[in]  aFmt   A pointer to the format string.
+ * @param[in]  ...    A matching list of arguments.
+ *
+ */
+void otCliOutputLine(const char *aFmt, ...);
+
+/**
+ * Write all commands in @p aCommands to the CLI console
+ *
+ * @param[in]  aCommands        List of commands
+ * @param[in]  aCommandsLength  Number of commands in @p aCommands
+ *
+ */
+void otCliOutputCommands(const otCliCommand aCommands[], size_t aCommandsLength);
+
+/**
  * Write error code to the CLI console
  *
  * If the @p aError is `OT_ERROR_PENDING` nothing will be outputted.
@@ -155,6 +173,29 @@ void otCliPlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aFo
  *
  */
 void otCliPlatLogLine(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aLogLine);
+
+/**
+ * Call the corresponding handler for a command
+ *
+ * This function will look through @p aCommands to find a command that matches
+ * @p aArgs[0]. If found, the handler function for the command will be called
+ * with the remaining args passed to it.
+ *
+ * @param[in]  aContext         a context
+ * @param[in]  aArgsLength      number of args
+ * @param[in]  aArgs            list of args
+ * @param[in]  aCommandsLength  number of commands in @p aCommands
+ * @param[in]  aCommands        list of commands
+ *
+ * @retval \ref OT_ERROR_INVALID_COMMAND if no matching command was found
+ * @retval \ref OT_ERROR_NONE if a matching command was found and the handler was called
+ *
+ */
+otError otCliHandleCommand(void *             aContext,
+                           uint8_t            aArgsLength,
+                           char *             aArgs[],
+                           uint8_t            aCommandsLength,
+                           const otCliCommand aCommands[]);
 
 /**
  * @}

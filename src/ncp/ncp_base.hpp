@@ -471,6 +471,14 @@ protected:
     otError HandlePropertySet_SPINEL_PROP_NEST_STREAM_MFG(uint8_t aHeader);
 #endif
 
+#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
+    static_assert(OPENTHREAD_CONFIG_COPROCESSOR_CLI_OUTPUT_BUFFER_SIZE <=
+                      OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE - kSpinelCmdHeaderSize - kSpinelPropIdSize,
+                  "Coprocessor CLI output buffer should be smaller than NCP HDLC tx buffer");
+
+    otError HandlePropertySet_SPINEL_PROP_COPROCESSOR_CLI(uint8_t aHeader);
+#endif
+
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_COMMISSIONER_ENABLE
     otError HandlePropertySet_SPINEL_PROP_MESHCOP_COMMISSIONER_GENERATE_PSKC(uint8_t aHeader);
     otError HandlePropertySet_SPINEL_PROP_THREAD_COMMISSIONER_ENABLED(uint8_t aHeader);

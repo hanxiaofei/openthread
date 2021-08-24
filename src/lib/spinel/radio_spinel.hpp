@@ -603,6 +603,22 @@ public:
     otError PlatDiagProcess(const char *aString, char *aOutput, size_t aOutputMaxLen);
 #endif
 
+#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
+    /**
+     * This method processes platform co-processor CLI commands.
+     *
+     * @param[in]   aString         A null-terminated input string.
+     * @param[out]  aOutput         The co-processor CLI execution execution result.
+     * @param[in]   aOutputMaxLen   The output buffer size.
+     *
+     * @retval  OT_ERROR_NONE               Succeeded.
+     * @retval  OT_ERROR_BUSY               Failed due to another operation is on going.
+     * @retval  OT_ERROR_RESPONSE_TIMEOUT   Failed due to no response received from the transceiver.
+     *
+     */
+    otError PlatCoprocessorCliProcess(const char *aString, char *aOutput, size_t aOutputMaxLen);
+#endif
+
     /**
      * This method returns the radio channel mask.
      *
@@ -1000,6 +1016,11 @@ private:
     bool   mDiagMode;
     char * mDiagOutput;
     size_t mDiagOutputMaxLen;
+#endif
+
+#if OPENTHREAD_CONFIG_COPROCESSOR_CLI_ENABLE
+    char * mCoprocessorCliOutput;
+    size_t mCoprocessorCliOutputMaxLen;
 #endif
 
     uint64_t mTxRadioEndUs;
