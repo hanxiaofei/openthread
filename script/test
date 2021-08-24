@@ -55,17 +55,19 @@ build_simulation()
 {
     local version="$1"
     local options=(
-        "-DOT_MESSAGE_USE_HEAP=ON"
-        "-DOT_THREAD_VERSION=${version}"
         "-DBUILD_TESTING=ON"
-        "-DOT_REFERENCE_DEVICE=ON"
-        "-DOT_SRP_SERVER=ON"
-        "-DOT_SRP_CLIENT=ON"
-        "-DOT_SERVICE=ON"
-        "-DOT_ECDSA=ON"
-        "-DOT_PING_SENDER=ON"
-        "-DOT_DNSSD_SERVER=ON"
         "-DOT_DNS_CLIENT=ON"
+        "-DOT_DNSSD_SERVER=ON"
+        "-DOT_ECDSA=ON"
+        "-DOT_HISTORY_TRACKER=ON"
+        "-DOT_MESSAGE_USE_HEAP=ON"
+        "-DOT_NETDATA_PUBLISHER=ON"
+        "-DOT_PING_SENDER=ON"
+        "-DOT_REFERENCE_DEVICE=ON"
+        "-DOT_SERVICE=ON"
+        "-DOT_SRP_CLIENT=ON"
+        "-DOT_SRP_SERVER=ON"
+        "-DOT_THREAD_VERSION=${version}"
     )
 
     if [[ ${FULL_LOGS} == 1 ]]; then
@@ -269,10 +271,12 @@ do_build_otbr_docker()
         "-DOT_DNS_CLIENT=ON"
         "-DOT_DUA=ON"
         "-DOT_MLR=ON"
+        "-DOT_NETDATA_PUBLISHER=ON"
         "-DOT_SLAAC=ON"
         "-DOT_SRP_CLIENT=ON"
         "-DOT_TREL=OFF"
         "-DOTBR_DUA_ROUTING=ON"
+        "-DCMAKE_CXX_FLAGS='-DOPENTHREAD_CONFIG_DNSSD_SERVER_BIND_UNSPECIFIED_NETIF=1'"
     )
     local otbr_docker_image=${OTBR_DOCKER_IMAGE:-otbr-ot12-backbone-ci}
 

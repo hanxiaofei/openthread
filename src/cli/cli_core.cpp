@@ -164,7 +164,11 @@ void InterpreterCore::OutputTableHeader(uint8_t aNumColumns, const char *const a
     }
 
     OutputLine("|");
+    OutputTableSeperator(aNumColumns, aWidths);
+}
 
+void InterpreterCore::OutputTableSeperator(uint8_t aNumColumns, const uint8_t aWidths[])
+{
     for (uint8_t index = 0; index < aNumColumns; index++)
     {
         OutputFormat("+");

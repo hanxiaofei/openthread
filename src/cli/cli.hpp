@@ -60,6 +60,7 @@
 #include "cli/cli_commissioner.hpp"
 #include "cli/cli_core.hpp"
 #include "cli/cli_dataset.hpp"
+#include "cli/cli_history.hpp"
 #include "cli/cli_joiner.hpp"
 #include "cli/cli_network_data.hpp"
 #include "cli/cli_srp_client.hpp"
@@ -104,6 +105,7 @@ class Interpreter : public InterpreterCore
     friend class CoapSecure;
     friend class Commissioner;
     friend class Dataset;
+    friend class History;
     friend class Joiner;
     friend class NetworkData;
     friend class SrpClient;
@@ -162,6 +164,22 @@ public:
      */
     void ProcessLine(char *aBuf) override;
 
+    static constexpr uint8_t kLinkModeStringSize = sizeof("rdn"); ///< Size of string buffer for a MLE Link Mode.
+
+    /**
+     * This method converts a given MLE Link Mode to flag string.
+     *
+     * The characters 'r', 'd', and 'n' are respectively used for `mRxOnWhenIdle`, `mDeviceType` and `mNetworkData`
+     * flags. If all flags are `false`, then "-" is returned.
+     *
+     * @param[in]  aLinkMode       The MLE Link Mode to convert.
+     * @param[out] aStringBuffer   A reference to an string array to place the string.
+     *
+     * @returns A pointer @p aStringBuffer which contains the converted string.
+     *
+     */
+    static const char *LinkModeToString(const otLinkModeConfig &aLinkMode, char (&aStringBuffer)[kLinkModeStringSize]);
+
 protected:
     static Interpreter *sInterpreter;
 
@@ -176,8 +194,13 @@ private:
     otError ParsePingInterval(const Arg &aArg, uint32_t &aInterval);
 #endif
     static otError ParseJoinerDiscerner(Arg &aArg, otJoinerDiscerner &aDiscerner);
+#if OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE
+    static otError ParsePrefix(Arg aArgs[], otBorderRouterConfig &aConfig);
+    static otError ParseRoute(Arg aArgs[], otExternalRouteConfig &aConfig);
+#endif
 
     otError ProcessHelp(Arg aArgs[]);
+    otError ProcessHistory(Arg aArgs[]);
     otError ProcessCcaThreshold(Arg aArgs[]);
     otError ProcessBufferInfo(Arg aArgs[]);
     otError ProcessChannel(Arg aArgs[]);
@@ -317,6 +340,7 @@ private:
     otError ProcessNetworkDataRoute(void);
     otError ProcessNetworkDataService(void);
     void    OutputPrefix(const otMeshLocalPrefix &aPrefix);
+    void    OutputIp6Prefix(const otIp6Prefix &aPrefix);
 
     otError ProcessNetstat(Arg aArgs[]);
 #if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
@@ -560,6 +584,9 @@ private:
 #endif
         {"fem", &Interpreter::ProcessFem},
         {"help", &Interpreter::ProcessHelp},
+#if OPENTHREAD_CONFIG_HISTORY_TRACKER_ENABLE
+        {"history", &Interpreter::ProcessHistory},
+#endif
         {"ifconfig", &Interpreter::ProcessIfconfig},
         {"ipaddr", &Interpreter::ProcessIpAddr},
         {"ipmaddr", &Interpreter::ProcessIpMulticastAddr},
@@ -702,6 +729,10 @@ private:
 #if OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
     SrpServer mSrpServer;
 #endif
+#if OPENTHREAD_CONFIG_HISTORY_TRACKER_ENABLE
+    History mHistory;
+#endif
+
 };
 
 } // namespace Cli

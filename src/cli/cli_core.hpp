@@ -327,12 +327,19 @@ protected:
     }
 
     void OutputTableHeader(uint8_t aNumColumns, const char *const aTitles[], const uint8_t aWidths[]);
+    void OutputTableSeperator(uint8_t aNumColumns, const uint8_t aWidths[]);
 
     template <uint8_t kTableNumColumns>
     void OutputTableHeader(const char *const (&aTitles)[kTableNumColumns], const uint8_t (&aWidths)[kTableNumColumns])
     {
         OutputTableHeader(kTableNumColumns, &aTitles[0], aWidths);
     }
+
+    template <uint8_t kTableNumColumns> void OutputTableSeperator(const uint8_t (&aWidths)[kTableNumColumns])
+    {
+        OutputTableSeperator(kTableNumColumns, aWidths);
+    }
+
 
     otError ProcessUserCommands(Arg aArgs[]);
 

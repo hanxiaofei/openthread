@@ -42,6 +42,10 @@
 #error "OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE is required for OPENTHREAD_CONFIG_SRP_SERVER_ENABLE"
 #endif
 
+#if !OPENTHREAD_CONFIG_NETDATA_PUBLISHER_ENABLE
+#error "OPENTHREAD_CONFIG_NETDATA_PUBLISHER_ENABLE is required for OPENTHREAD_CONFIG_SRP_SERVER_ENABLE"
+#endif
+
 #if !OPENTHREAD_CONFIG_ECDSA_ENABLE
 #error "OPENTHREAD_CONFIG_ECDSA_ENABLE is required for OPENTHREAD_CONFIG_SRP_SERVER_ENABLE"
 #endif
@@ -61,6 +65,7 @@
 #include "net/ip6.hpp"
 #include "net/ip6_address.hpp"
 #include "net/udp6.hpp"
+#include "thread/network_data_publisher.hpp"
 
 namespace ot {
 namespace Srp {
@@ -71,7 +76,7 @@ namespace Srp {
  */
 class Server : public InstanceLocator, private NonCopyable
 {
-    friend class ot::Notifier;
+    friend class NetworkData::Publisher;
     friend class UpdateMetadata;
     friend class Service;
     friend class Host;
@@ -89,6 +94,13 @@ public:
     typedef otSrpServerServiceUpdateId ServiceUpdateId;
 
     class Host;
+
+    enum State : uint8_t
+    {
+        kStateDisabled = OT_SRP_SERVER_STATE_DISABLED,
+        kStateRunning  = OT_SRP_SERVER_STATE_RUNNING,
+        kStateStopped  = OT_SRP_SERVER_STATE_STOPPED,
+    };
 
     /**
      * This class implements a server-side SRP service.
@@ -417,12 +429,12 @@ public:
         TimeMilli GetKeyExpireTime(void) const;
 
         /**
-         * This method returns the head of `Service` linked list associated with the host.
+         * This method returns the `Service` linked list associated with the host.
          *
-         * @returns A pointer to the head of `Service` linked list.
+         * @returns The `Service` linked list.
          *
          */
-        const Service *GetServices(void) const { return mServices.GetHead(); }
+        const LinkedList<Service> &GetServices(void) const { return mServices; }
 
         /**
          * This method finds the next matching service on the host.
@@ -461,7 +473,7 @@ public:
         void                        SetKey(Dns::Ecdsa256KeyRecord &aKey);
         void                        SetLease(uint32_t aLease) { mLease = aLease; }
         void                        SetKeyLease(uint32_t aKeyLease) { mKeyLease = aKeyLease; }
-        Service *                   GetServices(void) { return mServices.GetHead(); }
+        LinkedList<Service> &       GetServices(void) { return mServices; }
         Service *                   AddNewService(const char *aServiceName, const char *aInstanceName, bool aIsSubType);
         void                        RemoveService(Service *aService, bool aRetainName, bool aNotifyServiceHandler);
         void                        FreeAllServices(void);
@@ -593,7 +605,15 @@ public:
      * @returns  A boolean that indicates whether the server is running.
      *
      */
-    bool IsRunning(void) const { return mSocket.IsBound(); }
+    bool IsRunning(void) const { return (mState == kStateRunning); }
+
+    /**
+     * This method tells the state of the SRP server.
+     *
+     * @returns  An enum that represents the state of the server.
+     *
+     */
+    State GetState(void) const { return mState; }
 
     /**
      * This method enables/disables the SRP server.
@@ -688,11 +708,10 @@ private:
         UpdateMetadata *  mNext;
     };
 
-    void  Start(void);
-    void  Stop(void);
-    void  HandleNotifierEvents(Events aEvents);
-    Error PublishServerData(void);
-    void  UnpublishServerData(void);
+    void Start(void);
+    void Stop(void);
+    void SelectPort(void);
+    void HandleNetDataPublisherEvent(NetworkData::Publisher::Event aEvent);
 
     ServiceUpdateId AllocateId(void) { return mServiceUpdateId++; }
 
@@ -778,7 +797,8 @@ private:
     LinkedList<UpdateMetadata> mOutstandingUpdates;
 
     ServiceUpdateId mServiceUpdateId;
-    bool            mEnabled : 1;
+    uint16_t        mPort;
+    State           mState;
     bool            mHasRegisteredAnyService : 1;
 };
 

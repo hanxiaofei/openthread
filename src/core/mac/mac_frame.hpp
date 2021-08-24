@@ -353,8 +353,8 @@ public:
     /**
      * This method indicates whether the frame is empty (no payload).
      *
-     * @retval TRUE  The frame is empty (no PSDU payload).
-     * @retval FALSE The frame is not empty.
+     * @retval TRUE   The frame is empty (no PSDU payload).
+     * @retval FALSE  The frame is not empty.
      *
      */
     bool IsEmpty(void) const { return (mLength == 0); }
@@ -517,7 +517,8 @@ public:
     /**
      * This method indicates whether or not the Destination Address is present for this object.
      *
-     * @retval TRUE if the Destination Address is present, FALSE otherwise.
+     * @retval TRUE   If the Destination Address is present.
+     * @retval FALSE  If the Destination Address is not present.
      *
      */
     bool IsDstAddrPresent() const { return IsDstAddrPresent(GetFrameControlField()); }
@@ -559,7 +560,8 @@ public:
     /**
      * This method indicates whether or not the Source Address is present for this object.
      *
-     * @retval TRUE if the Source Address is present, FALSE otherwise.
+     * @retval TRUE   If the Source Address is present.
+     * @retval FALSE  If the Source Address is not present.
      *
      */
     bool IsSrcPanIdPresent(void) const { return IsSrcPanIdPresent(GetFrameControlField()); }
@@ -587,7 +589,8 @@ public:
     /**
      * This method indicates whether or not the Source Address is present for this object.
      *
-     * @retval TRUE if the Source Address is present, FALSE otherwise.
+     * @retval TRUE   If the Source Address is present.
+     * @retval FALSE  If the Source Address is not present.
      *
      */
     bool IsSrcAddrPresent(void) const { return IsSrcAddrPresent(GetFrameControlField()); }
@@ -1263,8 +1266,8 @@ public:
     /**
      * This method indicates whether or not CSMA-CA is enabled.
      *
-     * @retval TRUE  CSMA-CA is enabled.
-     * @retval FALSE CSMA-CA is not enabled is not enabled.
+     * @retval TRUE   CSMA-CA is enabled.
+     * @retval FALSE  CSMA-CA is not enabled is not enabled.
      *
      */
     bool IsCsmaCaEnabled(void) const { return mInfo.mTxInfo.mCsmaCaEnabled; }
@@ -1332,6 +1335,23 @@ public:
     {
         mInfo.mTxInfo.mIsSecurityProcessed = aIsSecurityProcessed;
     }
+
+    /**
+     * This method indicates whether or not the frame header is updated.
+     *
+     * @retval TRUE   The frame already has the header updated.
+     * @retval FALSE  The frame does not have the header updated.
+     *
+     */
+    bool IsHeaderUpdated(void) const { return mInfo.mTxInfo.mIsHeaderUpdated; }
+
+    /**
+     * This method sets the header updated flag attribute.
+     *
+     * @param[in]  aIsHeaderUpdated  TRUE if the frame header is updated.
+     *
+     */
+    void SetIsHeaderUpdated(bool aIsHeaderUpdated) { mInfo.mTxInfo.mIsHeaderUpdated = aIsHeaderUpdated; }
 
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
     /**
@@ -1432,8 +1452,8 @@ public:
     /**
      * This method indicates whether or not the beacon appears to be a valid Thread Beacon message.
      *
-     * @retval TRUE  if the beacon appears to be a valid Thread Beacon message.
-     * @retval FALSE if the beacon does not appear to be a valid Thread Beacon message.
+     * @retval TRUE   If the beacon appears to be a valid Thread Beacon message.
+     * @retval FALSE  If the beacon does not appear to be a valid Thread Beacon message.
      *
      */
     bool IsValid(void) const
@@ -1499,8 +1519,8 @@ public:
     /**
      * This method indicates whether or not the beacon appears to be a valid Thread Beacon Payload.
      *
-     * @retval TRUE  if the beacon appears to be a valid Thread Beacon Payload.
-     * @retval FALSE if the beacon does not appear to be a valid Thread Beacon Payload.
+     * @retval TRUE   If the beacon appears to be a valid Thread Beacon Payload.
+     * @retval FALSE  If the beacon does not appear to be a valid Thread Beacon Payload.
      *
      */
     bool IsValid(void) const { return (mProtocolId == kProtocolId); }
@@ -1524,8 +1544,8 @@ public:
     /**
      * This method indicates whether or not the Native Commissioner flag is set.
      *
-     * @retval TRUE   if the Native Commissioner flag is set.
-     * @retval FALSE  if the Native Commissioner flag is not set.
+     * @retval TRUE   If the Native Commissioner flag is set.
+     * @retval FALSE  If the Native Commissioner flag is not set.
      *
      */
     bool IsNative(void) const { return (mFlags & kNativeFlag) != 0; }
@@ -1545,8 +1565,8 @@ public:
     /**
      * This method indicates whether or not the Joining Permitted flag is set.
      *
-     * @retval TRUE   if the Joining Permitted flag is set.
-     * @retval FALSE  if the Joining Permitted flag is not set.
+     * @retval TRUE   If the Joining Permitted flag is set.
+     * @retval FALSE  If the Joining Permitted flag is not set.
      *
      */
     bool IsJoiningPermitted(void) const { return (mFlags & kJoiningFlag) != 0; }

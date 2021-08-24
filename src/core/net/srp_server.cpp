@@ -41,7 +41,6 @@
 #include "common/new.hpp"
 #include "common/random.hpp"
 #include "net/dns_types.hpp"
-#include "thread/network_data_service.hpp"
 #include "thread/thread_netif.hpp"
 
 namespace ot {
@@ -87,7 +86,8 @@ Server::Server(Instance &aInstance)
     , mLeaseTimer(aInstance, HandleLeaseTimer)
     , mOutstandingUpdatesTimer(aInstance, HandleOutstandingUpdatesTimer)
     , mServiceUpdateId(Random::NonCrypto::GetUint32())
-    , mEnabled(false)
+    , mPort(kUdpPortMin)
+    , mState(kStateDisabled)
     , mHasRegisteredAnyService(false)
 {
     IgnoreError(SetDomain(kDefaultDomain));
@@ -101,17 +101,27 @@ void Server::SetServiceHandler(otSrpServerServiceUpdateHandler aServiceHandler, 
 
 void Server::SetEnabled(bool aEnabled)
 {
-    VerifyOrExit(mEnabled != aEnabled);
-
-    mEnabled = aEnabled;
-
-    if (!mEnabled)
+    if (aEnabled)
     {
-        Stop();
+        VerifyOrExit(mState == kStateDisabled);
+        mState = kStateStopped;
+
+        // Select a port and then publish "DNS/SRP Unicast Address
+        // Service" in Thread Network Data using the device's
+        // mesh-local EID as the address. Then wait for callback
+        // `HandleNetDataPublisherEntryChange()` from to `Publisher` to
+        // start server operation when entry is published (i.e., added
+        // to the Network Data).
+
+        SelectPort();
+        Get<NetworkData::Publisher>().PublishDnsSrpServiceUnicast(mPort);
     }
-    else if (Get<Mle::MleRouter>().IsAttached())
+    else
     {
-        Start();
+        VerifyOrExit(mState != kStateDisabled);
+        Get<NetworkData::Publisher>().UnpublishDnsSrpService();
+        Stop();
+        mState = kStateDisabled;
     }
 
 exit:
@@ -174,7 +184,7 @@ Error Server::SetDomain(const char *aDomain)
     Error    error = kErrorNone;
     uint16_t length;
 
-    VerifyOrExit(!mEnabled, error = kErrorInvalidState);
+    VerifyOrExit(mState == kStateDisabled, error = kErrorInvalidState);
 
     length = StringLength(aDomain, Dns::Name::kMaxNameSize);
     VerifyOrExit((length > 0) && (length < Dns::Name::kMaxNameSize), error = kErrorInvalidArgs);
@@ -262,18 +272,17 @@ bool Server::HasNameConflictsWith(Host &aHost) const
         ExitNow(hasConflicts = true);
     }
 
-    for (const Service::Description *desc = aHost.mServiceDescriptions.GetHead(); desc != nullptr;
-         desc                             = desc->GetNext())
+    for (const Service::Description &desc : aHost.mServiceDescriptions)
     {
         // Check on all hosts for a matching service description with
         // the same instance name and if found, verify that it has the
         // same key.
 
-        for (const Host *host = mHosts.GetHead(); host != nullptr; host = host->GetNext())
+        for (const Host &host : mHosts)
         {
-            if (host->FindServiceDescription(desc->GetInstanceName()) != nullptr)
+            if (host.FindServiceDescription(desc.GetInstanceName()) != nullptr)
             {
-                VerifyOrExit(*aHost.GetKey() == *host->GetKey(), hasConflicts = true);
+                VerifyOrExit(*aHost.GetKey() == *host.GetKey(), hasConflicts = true);
             }
         }
     }
@@ -333,10 +342,11 @@ void Server::CommitSrpUpdate(Error                    aError,
 
     aHost.SetLease(grantedLease);
     aHost.SetKeyLease(grantedKeyLease);
-    for (Service::Description *desc = aHost.mServiceDescriptions.GetHead(); desc != nullptr; desc = desc->GetNext())
+
+    for (Service::Description &desc : aHost.mServiceDescriptions)
     {
-        desc->mLease    = grantedLease;
-        desc->mKeyLease = grantedKeyLease;
+        desc.mLease    = grantedLease;
+        desc.mKeyLease = grantedKeyLease;
     }
 
     existingHost = mHosts.FindMatching(aHost.GetFullName());
@@ -353,9 +363,9 @@ void Server::CommitSrpUpdate(Error                    aError,
             existingHost->SetKeyLease(aHost.GetKeyLease());
             RemoveHost(existingHost, /* aRetainName */ true, /* aNotifyServiceHandler */ false);
 
-            for (Service *service = existingHost->mServices.GetHead(); service != nullptr; service = service->GetNext())
+            for (Service &service : existingHost->mServices)
             {
-                existingHost->RemoveService(service, /* aRetainName */ true, /* aNotifyServiceHandler */ false);
+                existingHost->RemoveService(&service, /* aRetainName */ true, /* aNotifyServiceHandler */ false);
             }
         }
     }
@@ -367,10 +377,10 @@ void Server::CommitSrpUpdate(Error                    aError,
     {
         otLogInfoSrp("[server] add new host %s", aHost.GetFullName());
 
-        for (Service *service = aHost.GetServices(); service != nullptr; service = service->GetNext())
+        for (Service &service : aHost.GetServices())
         {
-            service->mIsCommitted = true;
-            service->Log(Service::kAddNew);
+            service.mIsCommitted = true;
+            service.Log(Service::kAddNew);
         }
 
         AddHost(aHost);
@@ -407,12 +417,9 @@ exit:
     }
 }
 
-void Server::Start(void)
+void Server::SelectPort(void)
 {
-    Error    error = kErrorNone;
-    uint16_t port  = kUdpPortMin;
-
-    VerifyOrExit(!IsRunning());
+    mPort = kUdpPortMin;
 
 #if OPENTHREAD_CONFIG_SRP_SERVER_PORT_SWITCH_ENABLE
     {
@@ -420,35 +427,44 @@ void Server::Start(void)
 
         if (Get<Settings>().Read(info) == kErrorNone)
         {
-            port = info.GetPort() + 1;
-            if (port < kUdpPortMin || port > kUdpPortMax)
+            mPort = info.GetPort() + 1;
+            if (mPort < kUdpPortMin || mPort > kUdpPortMax)
             {
-                port = kUdpPortMin;
+                mPort = kUdpPortMin;
             }
         }
     }
 #endif
 
-    SuccessOrExit(error = mSocket.Open(HandleUdpReceive, this));
-    SuccessOrExit(error = mSocket.Bind(port, OT_NETIF_THREAD));
-    SuccessOrExit(error = PublishServerData());
+    otLogInfoSrp("[server] selected port %u", mPort);
+}
 
-    otLogInfoSrp("[server] start listening on port %hu", mSocket.GetSockName().mPort);
+void Server::Start(void)
+{
+    Error error = kErrorNone;
+
+    VerifyOrExit(mState == kStateStopped);
+
+    mState = kStateRunning;
+
+    SuccessOrExit(error = mSocket.Open(HandleUdpReceive, this));
+    SuccessOrExit(error = mSocket.Bind(mPort, OT_NETIF_THREAD));
+
+    otLogInfoSrp("[server] start listening on port %u", mPort);
 
 exit:
     if (error != kErrorNone)
     {
         otLogCritSrp("[server] failed to start: %s", ErrorToString(error));
-        // Cleanup any resources we may have allocated.
         Stop();
     }
 }
 
 void Server::Stop(void)
 {
-    VerifyOrExit(IsRunning());
+    VerifyOrExit(mState == kStateRunning);
 
-    UnpublishServerData();
+    mState = kStateStopped;
 
     while (!mHosts.IsEmpty())
     {
@@ -465,7 +481,7 @@ void Server::Stop(void)
     mLeaseTimer.Stop();
     mOutstandingUpdatesTimer.Stop();
 
-    otLogInfoSrp("[server] stop listening on %hu", mSocket.GetSockName().mPort);
+    otLogInfoSrp("[server] stop listening on %u", mPort);
     IgnoreError(mSocket.Close());
     mHasRegisteredAnyService = false;
 
@@ -473,41 +489,17 @@ exit:
     return;
 }
 
-void Server::HandleNotifierEvents(Events aEvents)
+void Server::HandleNetDataPublisherEvent(NetworkData::Publisher::Event aEvent)
 {
-    VerifyOrExit(mEnabled);
-    VerifyOrExit(aEvents.Contains(kEventThreadRoleChanged));
-
-    if (Get<Mle::MleRouter>().IsAttached())
+    switch (aEvent)
     {
+    case NetworkData::Publisher::kEventEntryAdded:
         Start();
-    }
-    else
-    {
+        break;
+
+    case NetworkData::Publisher::kEventEntryRemoved:
         Stop();
-    }
-
-exit:
-    return;
-}
-
-Error Server::PublishServerData(void)
-{
-    NetworkData::Service::DnsSrpUnicast::ServerData serverData(Get<Mle::Mle>().GetMeshLocal64(),
-                                                               mSocket.GetSockName().GetPort());
-
-    OT_ASSERT(mSocket.IsBound());
-
-    return Get<NetworkData::Service::Manager>().Add<NetworkData::Service::DnsSrpUnicast>(serverData);
-}
-
-void Server::UnpublishServerData(void)
-{
-    Error error = Get<NetworkData::Service::Manager>().Remove<NetworkData::Service::DnsSrpUnicast>();
-
-    if (error != kErrorNone)
-    {
-        otLogWarnSrp("[server] failed to unpublish SRP service: %s", ErrorToString(error));
+        break;
     }
 }
 
@@ -516,13 +508,13 @@ const Server::UpdateMetadata *Server::FindOutstandingUpdate(const Ip6::MessageIn
 {
     const UpdateMetadata *ret = nullptr;
 
-    for (const UpdateMetadata *update = mOutstandingUpdates.GetHead(); update != nullptr; update = update->GetNext())
+    for (const UpdateMetadata &update : mOutstandingUpdates)
     {
-        if (aDnsMessageId == update->GetDnsHeader().GetMessageId() &&
-            aMessageInfo.GetPeerAddr() == update->GetMessageInfo().GetPeerAddr() &&
-            aMessageInfo.GetPeerPort() == update->GetMessageInfo().GetPeerPort())
+        if (aDnsMessageId == update.GetDnsHeader().GetMessageId() &&
+            aMessageInfo.GetPeerAddr() == update.GetMessageInfo().GetPeerAddr() &&
+            aMessageInfo.GetPeerPort() == update.GetMessageInfo().GetPeerPort())
         {
-            ExitNow(ret = update);
+            ExitNow(ret = &update);
         }
     }
 
@@ -701,14 +693,10 @@ Error Server::ProcessHostDescriptionInstruction(Host &                   aHost,
 
     VerifyOrExit(aHost.GetFullName() != nullptr, error = kErrorFailed);
     VerifyOrExit(aHost.GetKey() != nullptr, error = kErrorFailed);
-    {
-        uint8_t hostAddressesNum;
 
-        aHost.GetAddresses(hostAddressesNum);
-
-        // There MUST be at least one valid address if we have nonzero lease.
-        VerifyOrExit(aHost.GetLease() > 0 || hostAddressesNum > 0, error = kErrorFailed);
-    }
+    // We check the number of host addresses after processing of the
+    // Lease Option in the Addition Section and determining whether
+    // the host is being removed or registered.
 
 exit:
     return error;
@@ -789,14 +777,14 @@ Error Server::ProcessServiceDescriptionInstructions(Host &                   aHo
                                                     const Dns::Zone &        aZone,
                                                     uint16_t &               aOffset) const
 {
-    Service::Description *desc;
-    Error                 error = kErrorNone;
-    TimeMilli             now   = TimerMilli::GetNow();
+    Error     error = kErrorNone;
+    TimeMilli now   = TimerMilli::GetNow();
 
     for (uint16_t numRecords = aDnsHeader.GetUpdateRecordCount(); numRecords > 0; numRecords--)
     {
-        char                name[Dns::Name::kMaxNameSize];
-        Dns::ResourceRecord record;
+        Service::Description *desc;
+        char                  name[Dns::Name::kMaxNameSize];
+        Dns::ResourceRecord   record;
 
         SuccessOrExit(error = Dns::Name::ReadName(aMessage, aOffset, name, sizeof(name)));
         SuccessOrExit(error = aMessage.Read(aOffset, record));
@@ -863,15 +851,15 @@ Error Server::ProcessServiceDescriptionInstructions(Host &                   aHo
     // that `mTimeLastUpdate` on a new `Service::Description` is set to
     // `GetNow().GetDistantPast()`.
 
-    for (desc = aHost.mServiceDescriptions.GetHead(); desc != nullptr; desc = desc->GetNext())
+    for (Service::Description &desc : aHost.mServiceDescriptions)
     {
-        VerifyOrExit(desc->mTimeLastUpdate == now, error = kErrorFailed);
+        VerifyOrExit(desc.mTimeLastUpdate == now, error = kErrorFailed);
 
         // Check that either both `mPort` and `mTxtData` are set
         // (i.e., we saw both SRV and TXT record) or both are default
         // (cleared) value (i.e., we saw neither of them).
 
-        VerifyOrExit((desc->mPort == 0) == (desc->mTxtData == nullptr), error = kErrorFailed);
+        VerifyOrExit((desc.mPort == 0) == (desc.mTxtData == nullptr), error = kErrorFailed);
     }
 
 exit:
@@ -913,6 +901,16 @@ Error Server::ProcessAdditionalSection(Host *                   aHost,
 
     aHost->SetLease(leaseOption.GetLeaseInterval());
     aHost->SetKeyLease(leaseOption.GetKeyLeaseInterval());
+
+    if (aHost->GetLease() > 0)
+    {
+        uint8_t hostAddressesNum;
+
+        aHost->GetAddresses(hostAddressesNum);
+
+        // There MUST be at least one valid address if we have nonzero lease.
+        VerifyOrExit(hostAddressesNum > 0, error = kErrorFailed);
+    }
 
     // SIG(0).
 
@@ -1011,17 +1009,17 @@ void Server::HandleUpdate(const Dns::UpdateHeader &aDnsHeader, Host &aHost, cons
     // when removing a host. We copy and append any missing services to
     // `aHost` from the `existingHost` and mark them as deleted.
 
-    for (Service *service = existingHost->mServices.GetHead(); service != nullptr; service = service->GetNext())
+    for (Service &service : existingHost->mServices)
     {
-        if (service->mIsDeleted)
+        if (service.mIsDeleted)
         {
             continue;
         }
 
-        if (aHost.FindService(service->GetServiceName(), service->GetInstanceName()) == nullptr)
+        if (aHost.FindService(service.GetServiceName(), service.GetInstanceName()) == nullptr)
         {
             Service *newService =
-                aHost.AddNewService(service->GetServiceName(), service->GetInstanceName(), service->IsSubType());
+                aHost.AddNewService(service.GetServiceName(), service.GetInstanceName(), service.IsSubType());
 
             VerifyOrExit(newService != nullptr, error = kErrorNoBufs);
             newService->mDescription.mTimeLastUpdate = TimerMilli::GetNow();
@@ -1220,10 +1218,10 @@ void Server::HandleLeaseTimer(void)
             otLogInfoSrp("[server] LEASE of host %s expired", host->GetFullName());
 
             // If the host expired, delete all resources of this host and its services.
-            for (Service *service = host->mServices.GetHead(); service != nullptr; service = service->GetNext())
+            for (Service &service : host->mServices)
             {
                 // Don't need to notify the service handler as `RemoveHost` at below will do.
-                host->RemoveService(service, /* aRetainName */ true, /* aNotifyServiceHandler */ false);
+                host->RemoveService(&service, /* aRetainName */ true, /* aNotifyServiceHandler */ false);
             }
 
             RemoveHost(host, /* aRetainName */ true, /* aNotifyServiceHandler */ true);
@@ -1622,7 +1620,7 @@ const Server::Service *Server::Host::FindNextService(const Service *aPrevService
                                                      const char *   aServiceName,
                                                      const char *   aInstanceName) const
 {
-    const Service *service = (aPrevService == nullptr) ? GetServices() : aPrevService->GetNext();
+    const Service *service = (aPrevService == nullptr) ? GetServices().GetHead() : aPrevService->GetNext();
 
     for (; service != nullptr; service = service->GetNext())
     {
@@ -1758,12 +1756,12 @@ Error Server::Host::MergeServicesAndResourcesFrom(Host &aHost)
     mKeyLease       = aHost.mKeyLease;
     mTimeLastUpdate = TimerMilli::GetNow();
 
-    for (Service *service = aHost.mServices.GetHead(); service != nullptr; service = service->GetNext())
+    for (Service &service : aHost.mServices)
     {
-        Service *existingService = FindService(service->GetServiceName(), service->GetInstanceName());
+        Service *existingService = FindService(service.GetServiceName(), service.GetInstanceName());
         Service *newService;
 
-        if (service->mIsDeleted)
+        if (service.mIsDeleted)
         {
             // `RemoveService()` does nothing if `exitsingService` is `nullptr`.
             RemoveService(existingService, /* aRetainName */ true, /* aNotifyServiceHandler */ false);
@@ -1774,14 +1772,21 @@ Error Server::Host::MergeServicesAndResourcesFrom(Host &aHost)
 
         newService = (existingService != nullptr)
                          ? existingService
-                         : AddNewService(service->GetServiceName(), service->GetInstanceName(), service->IsSubType());
+                         : AddNewService(service.GetServiceName(), service.GetInstanceName(), service.IsSubType());
 
         VerifyOrExit(newService != nullptr, error = kErrorNoBufs);
 
         newService->mIsDeleted      = false;
         newService->mIsCommitted    = true;
         newService->mTimeLastUpdate = TimerMilli::GetNow();
-        newService->mDescription.TakeResourcesFrom(service->mDescription);
+
+        if (!service.mIsSubType)
+        {
+            // (1) Service description is shared across a base type and all its subtypes.
+            // (2) `TakeResourcesFrom()` releases resources pinned to its argument.
+            // Therefore, make sure the function is called only for the base type.
+            newService->mDescription.TakeResourcesFrom(service.mDescription);
+        }
 
         newService->Log((existingService != nullptr) ? Service::kUpdateExisting : Service::kAddNew);
     }

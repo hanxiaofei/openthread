@@ -168,7 +168,8 @@ public:
     /**
      * This method indicates whether or not IEEE 802.15.4 Beacon transmissions are enabled.
      *
-     * @retval TRUE if IEEE 802.15.4 Beacon transmissions are enabled, FALSE otherwise.
+     * @retval TRUE   If IEEE 802.15.4 Beacon transmissions are enabled.
+     * @retval FALSE  If IEEE 802.15.4 Beacon transmissions are not enabled.
      *
      */
     bool IsBeaconEnabled(void) const { return mBeaconsEnabled; }
@@ -697,10 +698,20 @@ public:
     /**
      * This method indicates whether CSL is started at the moment.
      *
-     * @retval TURE if CSL is actually running at the moment, FALSE otherwise.
+     * @retval TRUE   If CSL is enabled.
+     * @retval FALSE  If CSL is not enabled.
      *
      */
     bool IsCslEnabled(void) const;
+
+    /**
+     * This method indicates whether Link is capable of starting CSL.
+     *
+     * @retval TRUE   If Link is capable of starting CSL.
+     * @retval FALSE  If link is not capable of starting CSL.
+     *
+     */
+    bool IsCslCapable(void) const;
 
     /**
      * This method returns CSL parent clock accuracy, in ± ppm.
@@ -739,7 +750,6 @@ public:
     {
         mLinks.GetSubMac().SetCslParentUncertainty(aCslParentUncert);
     }
-
 #endif // OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
 
 private:
@@ -906,6 +916,7 @@ private:
 
 #if OPENTHREAD_CONFIG_MULTI_RADIO
     RadioTypes mTxPendingRadioLinks;
+    RadioTypes mTxBeaconRadioLinks;
     Error      mTxError;
 #endif
 
