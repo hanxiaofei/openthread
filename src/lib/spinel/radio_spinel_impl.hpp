@@ -1954,7 +1954,7 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::Transmit(otRadioFrame &a
                     mTransmitFrame->mInfo.mTxInfo.mIsARetx, mTransmitFrame->mInfo.mTxInfo.mIsSecurityProcessed,
                     mTransmitFrame->mInfo.mTxInfo.mTxDelay, mTransmitFrame->mInfo.mTxInfo.mTxDelayBaseTime);
 
-    otLogCritPlat("Transmit started error:%d", error);
+    otLogCritPlat("Transmit started error:%d mTxRadioEndUs not set", error);
 
     if (error == OT_ERROR_NONE)
     {
@@ -1963,6 +1963,8 @@ otError RadioSpinel<InterfaceType, ProcessContextType>::Transmit(otRadioFrame &a
         mTxRadioEndUs = otPlatTimeGet() + TX_WAIT_US;
         mChannel      = mTransmitFrame->mChannel;
     }
+
+    otLogCritPlat("Transmit started mTxRadioEndUs set");
 
 exit:
     return error;
