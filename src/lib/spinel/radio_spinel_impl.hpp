@@ -2228,7 +2228,7 @@ void RadioSpinel<InterfaceType, ProcessContextType>::HandleRcpTimeout(void)
 #if OPENTHREAD_SPINEL_CONFIG_RCP_RESTORATION_MAX_COUNT > 0
     mRcpFailed = true;
 #else
-    DieNow(OT_EXIT_RADIO_SPINEL_NO_RESPONSE);
+    // DieNow(OT_EXIT_RADIO_SPINEL_NO_RESPONSE);
 #endif
 }
 
