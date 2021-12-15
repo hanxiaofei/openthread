@@ -39,6 +39,7 @@
 #include <openthread/dns.h>
 #include <openthread/dns_client.h>
 
+#include "common/appender.hpp"
 #include "common/as_core_type.hpp"
 #include "common/clearable.hpp"
 #include "common/encoding.hpp"
@@ -871,7 +872,7 @@ public:
      * This static method compares a single name label from a message with a given label string.
      *
      * This method can be used to compare labels one by one. It checks whether the label read from @p aMessage matches
-     * @p aLabel string.
+     * @p aLabel string (case-insensitive comparison).
      *
      * Unlike `CompareName()` which requires the labels in the the name string to contain no dot '.' character, this
      * method allows @p aLabel to include any character.
@@ -882,7 +883,7 @@ public:
      *                                On exit and only when label is successfully read and does match @p aLabel,
      *                                @p aOffset is updated to point to the start of the next label.
      * @param[in]    aLabel           A pointer to a null terminated string containing the label to compare with.
-
+     *
      * @retval kErrorNone          The label from @p aMessage matches @p aLabel. @p aOffset is updated.
      * @retval kErrorNotFound      The label from @p aMessage does not match @p aLabel (note that @p aOffset is not
      *                             updated in this case).
@@ -894,9 +895,10 @@ public:
     /**
      * This static method parses and compares a full name from a message with a given name.
      *
-     * This method checks whether the encoded name in a message matches a given name string. It checks the name in
-     * the message in place and handles compressed names. If the name read from the message does not match @p aName, it
-     * returns `kErrorNotFound`. `kErrorNone` indicates that the name matches @p aName.
+     * This method checks whether the encoded name in a message matches a given name string (using case-insensitive
+     * comparison). It checks the name in the message in place and handles compressed names. If the name read from the
+     * message does not match @p aName, it returns `kErrorNotFound`. `kErrorNone` indicates that the name matches
+     * @p aName.
      *
      * The @p aName must follow  "<label1>.<label2>.<label3>", i.e., a sequence of labels separated by dot '.' char.
      * E.g., "example.com", "example.com." (same as previous one), "local.", "default.service.arpa", "." or "" (root).
@@ -921,9 +923,10 @@ public:
     /**
      * This static method parses and compares a full name from a message with a name from another message.
      *
-     * This method checks whether the encoded name in @p aMessage matches the name from @p aMessage2. It compares the
-     * names in both messages in place and handles compressed names. Note that this method works correctly even when
-     * the same message instance is used for both @p aMessage and @p aMessage2 (e.g., at different offsets).
+     * This method checks whether the encoded name in @p aMessage matches the name from @p aMessage2 (using
+     * case-insensitive comparison). It compares the names in both messages in place and handles compressed names. Note
+     * that this method works correctly even when the same message instance is used for both @p aMessage and
+     * @p aMessage2 (e.g., at different offsets).
      *
      * Only the name in @p aMessage is fully parsed and checked for parse errors. This method assumes that the name in
      * @p aMessage2 was previously parsed and validated before calling this method (if there is a parse error in
@@ -951,7 +954,8 @@ public:
     static Error CompareName(const Message &aMessage, uint16_t &aOffset, const Message &aMessage2, uint16_t aOffset2);
 
     /**
-     * This static method parses and compares a full name from a message with a given name.
+     * This static method parses and compares a full name from a message with a given name (using case-insensitive
+     * comparison).
      *
      * If @p aName is empty (not specified), then any name in @p aMessage is considered a match to it.
      *
@@ -984,8 +988,6 @@ public:
     static bool IsSubDomainOf(const char *aName, const char *aDomain);
 
 private:
-    static constexpr char kNullChar = '\0';
-
     // The first 2 bits of the encoded label specifies label type.
     //
     // - Value 00 indicates normal text label (lower 6-bits indicates the label length).
@@ -1000,6 +1002,8 @@ private:
 
     static constexpr uint16_t kPointerLabelTypeUint16 = 0xc000; // Pointer label type mask (first 2 bits).
     static constexpr uint16_t kPointerLabelOffsetMask = 0x3fff; // Mask for offset in a pointer label (lower 14 bits).
+
+    static constexpr bool kIsSingleLabel = true; // Used in `LabelIterator::CompareLable()`.
 
     struct LabelIterator
     {
@@ -1018,6 +1022,8 @@ private:
         bool  CompareLabel(const char *&aName, bool aIsSingleLabel) const;
         bool  CompareLabel(const LabelIterator &aOtherIterator) const;
         Error AppendLabel(Message &aMessage) const;
+
+        static bool CaseInsensitiveMatch(uint8_t aFirst, uint8_t aSecond);
 
         const Message &mMessage;          // Message to read labels from.
         uint16_t       mLabelStartOffset; // Offset in `mMessage` to the first char of current label text.
@@ -1161,10 +1167,26 @@ public:
      */
     static Error AppendEntries(const TxtEntry *aEntries, uint8_t aNumEntries, Message &aMessage);
 
+    /**
+     * This static method appends an array of `TxtEntry` items to a `MutableData` buffer.
+     *
+     * @param[in] aEntries     A pointer to array of `TxtEntry` items.
+     * @param[in] aNumEntries  The number of entries in @p aEntries array.
+     * @param[in] aData        The `MutableData` to append in.
+     *
+     * @retval kErrorNone          Entries appended successfully .
+     * @retval kErrorInvalidArgs   The `TxTEntry` info is not valid.
+     * @retval kErrorNoBufs        Insufficient available buffers.
+     *
+     */
+    static Error AppendEntries(const TxtEntry *aEntries, uint8_t aNumEntries, MutableData<kWithUint16Length> &aData);
+
 private:
+    Error        AppendTo(Appender &aAppender) const;
+    static Error AppendEntries(const TxtEntry *aEntries, uint8_t aNumEntries, Appender &aAppender);
+
     static constexpr uint8_t kMaxKeyValueEncodedSize = 255;
     static constexpr char    kKeyValueSeparator      = '=';
-    static constexpr char    kNullChar               = '\0';
 };
 
 /**

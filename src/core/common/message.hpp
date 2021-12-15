@@ -346,13 +346,24 @@ public:
     {
     public:
         /**
-         * This constructor initializes the Settings object.
+         * This constructor initializes the `Settings` object.
          *
          * @param[in]  aSecurityMode  A link security mode.
          * @param[in]  aPriority      A message priority.
          *
          */
         Settings(LinkSecurityMode aSecurityMode, Priority aPriority);
+
+        /**
+         * This constructor initializes the `Settings` with a given message priority and link security enabled.
+         *
+         * @param[in]  aPriority      A message priority.
+         *
+         */
+        explicit Settings(Priority aPriority)
+            : Settings(kWithLinkSecurity, aPriority)
+        {
+        }
 
         /**
          * This method gets the message priority.
@@ -697,12 +708,14 @@ public:
      * @param[in]  aOffset    Byte offset within the message to read from for the comparison.
      * @param[in]  aBuf       A pointer to a data buffer to compare with the bytes from message.
      * @param[in]  aLength    Number of bytes in @p aBuf.
+     * @param[in]  aMatcher   A `ByteMatcher` function pointer to match the bytes. If `nullptr` then bytes are directly
+     *                        compared.
      *
      * @returns TRUE if there are enough bytes available in @p aMessage and they match the bytes from @p aBuf,
      *          FALSE otherwise.
      *
      */
-    bool CompareBytes(uint16_t aOffset, const void *aBuf, uint16_t aLength) const;
+    bool CompareBytes(uint16_t aOffset, const void *aBuf, uint16_t aLength, ByteMatcher aMatcher = nullptr) const;
 
     /**
      * This method compares the bytes in the message at a given offset with bytes read from another message.
@@ -714,11 +727,17 @@ public:
      * @param[in]  aOtherMessage  The other message to compare with.
      * @param[in]  aOtherOffset   Byte offset within @p aOtherMessage to read from for the comparison.
      * @param[in]  aLength        Number of bytes to compare.
+     * @param[in]  aMatcher       A `ByteMatcher` function pointer to match the bytes. If `nullptr` then bytes are
+     *                            directly compared.
      *
      * @returns TRUE if there are enough bytes available in both messages and they all match. FALSE otherwise.
      *
      */
-    bool CompareBytes(uint16_t aOffset, const Message &aOtherMessage, uint16_t aOtherOffset, uint16_t aLength) const;
+    bool CompareBytes(uint16_t       aOffset,
+                      const Message &aOtherMessage,
+                      uint16_t       aOtherOffset,
+                      uint16_t       aLength,
+                      ByteMatcher    aMatcher = nullptr) const;
 
     /**
      * This method compares the bytes in the message at a given offset with an object.
@@ -1453,21 +1472,7 @@ public:
     explicit MessagePool(Instance &aInstance);
 
     /**
-     * This method is used to obtain a new message.
-     *
-     * The link security is enabled by default on the newly obtained message.
-     *
-     * @param[in]  aType           The message type.
-     * @param[in]  aReserveHeader  The number of header bytes to reserve.
-     * @param[in]  aPriority       The priority level of the message.
-     *
-     * @returns A pointer to the message or nullptr if no message buffers are available.
-     *
-     */
-    Message *New(Message::Type aType, uint16_t aReserveHeader, Message::Priority aPriority);
-
-    /**
-     * This method is used to obtain a new message with specified settings.
+     * This method allocates a new message with specified settings.
      *
      * @param[in]  aType           The message type.
      * @param[in]  aReserveHeader  The number of header bytes to reserve.
@@ -1476,9 +1481,9 @@ public:
      * @returns A pointer to the message or nullptr if no message buffers are available.
      *
      */
-    Message *New(Message::Type            aType,
-                 uint16_t                 aReserveHeader,
-                 const Message::Settings &aSettings = Message::Settings::GetDefault());
+    Message *Allocate(Message::Type            aType,
+                      uint16_t                 aReserveHeader = 0,
+                      const Message::Settings &aSettings      = Message::Settings::GetDefault());
 
     /**
      * This method is used to free a message and return all message buffers to the buffer pool.
